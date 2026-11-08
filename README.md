@@ -34,7 +34,7 @@ Pinbelegung: [`firmware/include/pins.h`](firmware/include/pins.h). Ausführliche
 Voraussetzung: [PlatformIO](https://platformio.org/).
 
 ```bash
-git clone https://github.com/<DEIN-NAME>/filamentwaage.git
+git clone https://github.com/<Drache055>/filamentwaage.git
 cd filamentwaage/firmware
 cp include/secrets.h.example include/secrets.h   # ausfüllen (WLAN optional, Spoolman-URL)
 pio run -e waage -t upload                       # erstes Flashen per USB
@@ -98,7 +98,7 @@ Waveshare ESP32-S3-Touch-LCD-2, 5 kg bar load cell, HX711, PN532 (SPI mode), NTA
 ## Quick start
 
 ```bash
-git clone https://github.com/<YOUR-NAME>/filamentwaage.git
+git clone https://github.com/<Drache055>/filamentwaage.git
 cd filamentwaage/firmware
 cp include/secrets.h.example include/secrets.h
 pio run -e waage -t upload
