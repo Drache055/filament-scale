@@ -1,0 +1,116 @@
+# Filamentwaage / Filament Scale
+
+**🇩🇪 Deutsch** · [🇬🇧 English below](#english)
+
+Eine smarte Filamentwaage auf Basis des ESP32-S3: Spule per NFC erkennen, Lagerbox per NFC erkennen, Restgewicht per Differenzwägung bestimmen und automatisch in [Spoolman](https://github.com/Donkie/Spoolman) eintragen.
+
+![Filamentwaage](docs/img/hero.jpg)
+
+## Funktionen
+
+- **NFC-Erkennung** von Spulen (OpenSpool-kompatibel, NTAG215/216) und Lagerboxen
+- **Differenzwägung:** Box wiegen, Spule hineinstellen, nochmal wiegen. Das Gewicht der Box (und was sonst darin liegt) spielt keine Rolle
+- **Spoolman-Anbindung:** `remaining_weight`, `location` (= Box) und Besitzer werden per API aktualisiert, mit Offline-Warteschlange
+- **Touch-Display** (240×320) mit Tara, Kalibrierung, Tag-Schreiben direkt am Gerät
+- **Weboberfläche** mit Benutzerverwaltung, Rollen (Admin / Benutzer / Generic), Filament-Katalog, Log, Systemeinstellungen
+- **WLAN-Einrichtung wie bei Tasmota** (Hotspot + Captive Portal), Updates per OTA
+- Deutsch und Englisch, Sprache pro Benutzer
+
+## Hardware
+
+| Teil | Details |
+|---|---|
+| Board | Waveshare ESP32-S3-Touch-LCD-2 (ESP32-S3R8, 16 MB Flash, 8 MB PSRAM, ST7789 240×320, CST816 Touch) |
+| Wägezelle | Biegebalken 5 kg |
+| ADC | HX711 (3,3 V) |
+| NFC | PN532 im SPI-Modus |
+| Tags | NTAG215 / NTAG216 |
+| Gehäuse | 3D-gedruckt, Ballast aus Stahl im Sockel |
+
+Pinbelegung: [`firmware/include/pins.h`](firmware/include/pins.h). Ausführliche Entwicklungsnotizen: [`firmware/CLAUDE.md`](firmware/CLAUDE.md).
+
+## Schnellstart
+
+Voraussetzung: [PlatformIO](https://platformio.org/).
+
+```bash
+git clone https://github.com/<DEIN-NAME>/filamentwaage.git
+cd filamentwaage/firmware
+cp include/secrets.h.example include/secrets.h   # ausfüllen (WLAN optional, Spoolman-URL)
+pio run -e waage -t upload                       # erstes Flashen per USB
+pio run -e waage -t uploadfs                     # Theme-Daten
+```
+
+Danach geht alles per WLAN (OTA). Ohne WLAN-Daten startet das Gerät den Hotspot `Filamentwaage-Setup`.
+
+Tests auf dem Rechner (ohne Hardware):
+
+```bash
+cd firmware && pio test -e native
+```
+
+Standard-Zugang: Admin-Passwort `Filament`, Geräte-PIN `1234`. **Bitte direkt ändern.**
+
+## Ablauf
+
+1. Spule ans Gerät halten, Tag wird gelesen, Spoolman liefert die Daten
+2. Box (mit Box-Tag) auf die Waage stellen, Gewicht W1 wird erfasst
+3. Spule in die Box stellen, Gewicht W2 wird erfasst
+4. Restgewicht = (W2 − W1) − Leerspulengewicht, bestätigen, an Spoolman senden
+
+## Repository
+
+```
+firmware/   PlatformIO-Projekt (ESP32-S3, LVGL 9, Arduino)
+docs/       Webseite (GitHub Pages)
+```
+
+## Status
+
+Firmware baut, Logik ist per Unit-Tests abgedeckt. Der komplette Wiegeablauf mit echter Waage, Box-Tag und Spoolman ist noch nicht abschließend am Gerät geprüft. Siehe Abschnitt „Offene Punkte“ in `firmware/CLAUDE.md`.
+
+## Lizenz
+
+Noch nicht festgelegt. Solange keine Lizenz hinterlegt ist, gilt das Urheberrecht des Autors.
+
+---
+
+<a id="english"></a>
+
+# Filament Scale (English)
+
+A smart filament scale built on the ESP32-S3: identify a spool via NFC, identify a storage box via NFC, determine remaining filament by differential weighing and write it to [Spoolman](https://github.com/Donkie/Spoolman) automatically.
+
+## Features
+
+- **NFC identification** of spools (OpenSpool compatible, NTAG215/216) and storage boxes
+- **Differential weighing:** weigh the box, put the spool in, weigh again. The box weight (and whatever else is inside) does not matter
+- **Spoolman integration:** updates `remaining_weight`, `location` (= box) and owner via API, with an offline queue
+- **Touch display** (240×320) for tare, calibration and writing tags on the device
+- **Web UI** with user management, roles (admin / user / generic), filament catalog, log, system settings
+- **Tasmota-style Wi-Fi setup** (hotspot + captive portal), OTA updates
+- German and English, language per user
+
+## Hardware
+
+Waveshare ESP32-S3-Touch-LCD-2, 5 kg bar load cell, HX711, PN532 (SPI mode), NTAG215/216 tags, 3D-printed enclosure. Pinout: [`firmware/include/pins.h`](firmware/include/pins.h).
+
+## Quick start
+
+```bash
+git clone https://github.com/<YOUR-NAME>/filamentwaage.git
+cd filamentwaage/firmware
+cp include/secrets.h.example include/secrets.h
+pio run -e waage -t upload
+pio run -e waage -t uploadfs
+```
+
+Unit tests run on the host: `pio test -e native`. Default credentials: admin password `Filament`, device PIN `1234`. **Change them right away.**
+
+## Status
+
+The firmware builds and the core logic is unit-tested. The full weighing flow with a real scale, box tag and Spoolman has not been fully verified on hardware yet.
+
+## License
+
+Not decided yet.

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filamentwaage</title>
+<meta name="description" content="Smarte Filamentwaage mit NFC und Spoolman-Anbindung, Open Source auf ESP32-S3-Basis.">
+<meta property="og:title" content="Filamentwaage">
+<meta property="og:description" content="Spule scannen, Box wiegen, Restgewicht automatisch in Spoolman.">
+<meta property="og:image" content="img/hero.jpg">
+<style>
+:root{
+  --bg:#0f1216;--panel:#171b21;--line:#262c35;--text:#e8ecf1;--muted:#9aa5b1;
+  --accent:#4f8ef7;--accent2:#34d399;--radius:14px;
+}
+@media (prefers-color-scheme:light){
+  :root{--bg:#f6f7f9;--panel:#fff;--line:#dde1e6;--text:#14181d;--muted:#5b6672;--accent:#2563eb;--accent2:#059669}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:20px;height:56px}
+nav b{font-size:17px}
+nav a{color:var(--muted);text-decoration:none;font-size:14px}
+nav a:hover{color:var(--text)}
+nav .sp{flex:1}
+nav .links{display:flex;gap:18px}
+@media(max-width:640px){nav .links{display:none}}
+.lang{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+.btn{display:inline-block;padding:12px 20px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.hero{padding:56px 0 40px;display:grid;grid-template-columns:1fr 1.15fr;gap:40px;align-items:center}
+@media(max-width:820px){.hero{grid-template-columns:1fr}}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.1;margin:0 0 16px;letter-spacing:-.02em}
+.lead{color:var(--muted);font-size:18px;margin:0 0 24px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.hero img{width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line);display:block}
+section{padding:48px 0}
+h2{font-size:28px;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 28px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0;color:var(--muted);font-size:15px}
+.step{counter-increment:s}
+.step::before{content:counter(s);display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;margin-bottom:10px}
+.steps{counter-reset:s}
+.shots{display:flex;gap:16px;overflow-x:auto;padding-bottom:12px;scroll-snap-type:x proximity}
+.shots figure{margin:0;flex:0 0 auto;scroll-snap-align:start;text-align:center}
+.shots img{width:240px;height:320px;image-rendering:pixelated;border-radius:10px;border:1px solid var(--line);display:block;background:#000}
+.shots figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.two{grid-template-columns:1fr}}
+.two img{width:100%;border-radius:var(--radius);border:1px solid var(--line);display:block}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+td,th{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:15px;vertical-align:top}
+th{width:150px;color:var(--muted);font-weight:500}
+tr:last-child td,tr:last-child th{border-bottom:0}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;overflow-x:auto;font-size:14px;line-height:1.5}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.note{border-left:3px solid var(--accent2);padding:8px 14px;color:var(--muted);background:var(--panel);border-radius:0 10px 10px 0}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:14px}
+[data-l]{display:none}
+html[lang=de] [data-l=de],html[lang=en] [data-l=en]{display:revert}
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <b>Filamentwaage</b>
+  <div class="links">
+    <a href="#funktion"><span data-l="de">Funktion</span><span data-l="en">How it works</span></a>
+    <a href="#features">Features</a>
+    <a href="#screens">Screens</a>
+    <a href="#hardware">Hardware</a>
+    <a href="#start"><span data-l="de">Loslegen</span><span data-l="en">Get started</span></a>
+  </div>
+  <span class="sp"></span>
+  <a href="https://github.com/DEIN-NAME/filamentwaage" class="gh">GitHub</a>
+  <button class="lang" id="lang" aria-label="Sprache / Language">EN</button>
+</div></nav>
+
+<main class="wrap">
+<header class="hero">
+  <div>
+    <h1><span data-l="de">Spule scannen.<br>Wiegen. Fertig.</span><span data-l="en">Scan the spool.<br>Weigh. Done.</span></h1>
+    <p class="lead">
+      <span data-l="de">Eine smarte Filamentwaage mit NFC und Touch-Display. Sie erkennt Spule und Lagerbox, ermittelt das Restgewicht per Differenzwägung und trägt es automatisch in Spoolman ein.</span>
+      <span data-l="en">A smart filament scale with NFC and a touch display. It identifies the spool and the storage box, determines the remaining filament by differential weighing and writes it to Spoolman automatically.</span>
+    </p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/DEIN-NAME/filamentwaage"><span data-l="de">Projekt auf GitHub</span><span data-l="en">View on GitHub</span></a>
+      <a class="btn ghost" href="#start"><span data-l="de">Selber bauen</span><span data-l="en">Build your own</span></a>
+    </div>
+  </div>
+  <img src="img/hero.jpg" alt="Filamentwaage, 3D-Rendering" width="1600" height="900">
+</header>
+
+<section id="funktion">
+  <h2><span data-l="de">So funktioniert es</span><span data-l="en">How it works</span></h2>
+  <p class="sub"><span data-l="de">Vier Schritte, ohne Tippen und ohne Zettel.</span><span data-l="en">Four steps, no typing, no notes.</span></p>
+  <div class="grid steps">
+    <div class="card step"><h3><span data-l="de">Spule scannen</span><span data-l="en">Scan the spool</span></h3><p><span data-l="de">Spule an die Scan-Zone halten. Der NFC-Tag (OpenSpool-Format) identifiziert sie, Spoolman liefert die Daten.</span><span data-l="en">Hold the spool to the scan zone. The NFC tag (OpenSpool format) identifies it, Spoolman supplies the data.</span></p></div>
+    <div class="card step"><h3><span data-l="de">Box wiegen</span><span data-l="en">Weigh the box</span></h3><p><span data-l="de">Lagerbox mit Box-Tag auf die Waage stellen. Gewicht W1 wird gespeichert, der Box-Name wird zum Lagerort.</span><span data-l="en">Put the storage box with its tag on the scale. Weight W1 is stored, the box name becomes the location.</span></p></div>
+    <div class="card step"><h3><span data-l="de">Spule einstellen</span><span data-l="en">Insert the spool</span></h3><p><span data-l="de">Spule in die Box stellen. Gewicht W2 wird erfasst. Was sonst noch in der Box liegt, ist egal.</span><span data-l="en">Place the spool in the box. Weight W2 is recorded. Anything else in the box does not matter.</span></p></div>
+    <div class="card step"><h3><span data-l="de">Speichern</span><span data-l="en">Save</span></h3><p><span data-l="de">Rest = (W2 − W1) − Leerspule. Bestätigen, und Spoolman kennt Restgewicht und Lagerort.</span><span data-l="en">Remaining = (W2 − W1) − empty spool. Confirm, and Spoolman knows weight and location.</span></p></div>
+  </div>
+</section>
+
+<section id="features">
+  <h2>Features</h2>
+  <p class="sub"><span data-l="de">Alles läuft auf dem Gerät, ohne Cloud.</span><span data-l="en">Everything runs on the device, no cloud.</span></p>
+  <div class="grid">
+    <div class="card"><h3>NFC</h3><p><span data-l="de">PN532 liest und schreibt NTAG215/216. Spulen-, Box-, Benutzer- und Admin-Tags.</span><span data-l="en">PN532 reads and writes NTAG215/216. Spool, box, user and admin tags.</span></p></div>
+    <div class="card"><h3>Spoolman</h3><p><span data-l="de">Gewicht, Lagerort und Besitzer per API. Offline-Warteschlange, wenn der Server fehlt.</span><span data-l="en">Weight, location and owner via API. Offline queue when the server is unreachable.</span></p></div>
+    <div class="card"><h3><span data-l="de">Stabile Messung</span><span data-l="en">Stable readings</span></h3><p><span data-l="de">HX711 mit 10 Hz, Stabilitätsfenster, Tara, Kalibrierung und Drift-Nachführung.</span><span data-l="en">HX711 at 10 Hz, stability window, tare, calibration and drift tracking.</span></p></div>
+    <div class="card"><h3><span data-l="de">Weboberfläche</span><span data-l="en">Web UI</span></h3><p><span data-l="de">Benutzer, Rollen, Filament-Katalog, Kalibrierung, Log. Zweisprachig.</span><span data-l="en">Users, roles, filament catalog, calibration, log. Bilingual.</span></p></div>
+    <div class="card"><h3><span data-l="de">Einfache Einrichtung</span><span data-l="en">Easy setup</span></h3><p><span data-l="de">WLAN-Hotspot mit Captive Portal wie bei Tasmota. Updates per OTA.</span><span data-l="en">Tasmota-style Wi-Fi hotspot with captive portal. OTA updates.</span></p></div>
+    <div class="card"><h3><span data-l="de">Rechte & Sperre</span><span data-l="en">Roles & lock</span></h3><p><span data-l="de">Admin-PIN, Benutzer-PINs und Admin-Tag. Einstellungen sind geschützt.</span><span data-l="en">Admin PIN, user PINs and admin tag. Settings are protected.</span></p></div>
+  </div>
+</section>
+
+<section id="screens">
+  <h2>Screens</h2>
+  <p class="sub"><span data-l="de">Direkt aus dem echten UI-Code gerendert (240×320, LVGL 9).</span><span data-l="en">Rendered straight from the real UI code (240×320, LVGL 9).</span></p>
+  <div class="shots">
+    <figure><img src="img/02_home_gewicht_benutzer.png" alt="Home" loading="lazy"><figcaption>Home</figcaption></figure>
+    <figure><img src="img/38_ablauf_1_spule_erkannt.png" alt="" loading="lazy"><figcaption><span data-l="de">Spule erkannt</span><span data-l="en">Spool detected</span></figcaption></figure>
+    <figure><img src="img/40_ablauf_3_box_erkannt.png" alt="" loading="lazy"><figcaption><span data-l="de">Box erkannt</span><span data-l="en">Box detected</span></figcaption></figure>
+    <figure><img src="img/42_ablauf_5_spule_einstellen_842g.png" alt="" loading="lazy"><figcaption><span data-l="de">Spule einstellen</span><span data-l="en">Insert spool</span></figcaption></figure>
+    <figure><img src="img/43_ablauf_6_bestaetigen.png" alt="" loading="lazy"><figcaption><span data-l="de">Bestätigen</span><span data-l="en">Confirm</span></figcaption></figure>
+    <figure><img src="img/45_ablauf_8_gespeichert.png" alt="" loading="lazy"><figcaption><span data-l="de">Gespeichert</span><span data-l="en">Saved</span></figcaption></figure>
+    <figure><img src="img/06_menue.png" alt="" loading="lazy"><figcaption><span data-l="de">Menü</span><span data-l="en">Menu</span></figcaption></figure>
+    <figure><img src="img/26_filament_farbe.png" alt="" loading="lazy"><figcaption><span data-l="de">Tag schreiben</span><span data-l="en">Write tag</span></figcaption></figure>
+    <figure><img src="img/29_en_home.png" alt="" loading="lazy"><figcaption>English</figcaption></figure>
+  </div>
+  <div class="two" style="margin-top:24px">
+    <img src="img/render-front.jpg" alt="Waage von vorne" loading="lazy">
+    <img src="img/render-menu.jpg" alt="Waage mit Menü" loading="lazy">
+  </div>
+</section>
+
+<section id="hardware">
+  <h2>Hardware</h2>
+  <p class="sub"><span data-l="de">Überschaubar und günstig zu beschaffen.</span><span data-l="en">Small and cheap to source.</span></p>
+  <table>
+    <tr><th><span data-l="de">Board</span><span data-l="en">Board</span></th><td>Waveshare ESP32-S3-Touch-LCD-2 (16 MB Flash, 8 MB PSRAM, ST7789 240×320, CST816 Touch)</td></tr>
+    <tr><th><span data-l="de">Wägezelle</span><span data-l="en">Load cell</span></th><td><span data-l="de">Biegebalken 5 kg, 4 Leiter</span><span data-l="en">5 kg bar load cell, 4 wire</span></td></tr>
+    <tr><th>ADC</th><td>HX711, 3,3 V, 10 Hz</td></tr>
+    <tr><th>NFC</th><td>PN532 (SPI)</td></tr>
+    <tr><th>Tags</th><td>NTAG215 / NTAG216</td></tr>
+    <tr><th><span data-l="de">Gehäuse</span><span data-l="en">Enclosure</span></th><td><span data-l="de">3D-gedruckt, Stahlballast im Sockel. PN532 mittig unter der Wiegeplatte, mindestens 3 cm frei von Metall.</span><span data-l="en">3D printed, steel ballast in the base. PN532 centered under the platform, at least 3 cm free of metal.</span></td></tr>
+  </table>
+</section>
+
+<section id="start">
+  <h2><span data-l="de">Loslegen</span><span data-l="en">Get started</span></h2>
+  <p class="sub"><span data-l="de">Mit PlatformIO bauen und flashen.</span><span data-l="en">Build and flash with PlatformIO.</span></p>
+<pre><code>git clone https://github.com/DEIN-NAME/filamentwaage.git
+cd filamentwaage/firmware
+cp include/secrets.h.example include/secrets.h
+pio run -e waage -t upload     # USB
+pio run -e waage -t uploadfs
+pio test -e native             # Unit-Tests / unit tests</code></pre>
+  <p class="note"><span data-l="de">Ohne WLAN-Daten startet das Gerät den Hotspot „Filamentwaage-Setup“. Standard-Zugang: Admin-Passwort „Filament“, Geräte-PIN „1234“. Bitte sofort ändern.</span><span data-l="en">Without Wi-Fi credentials the device starts the “Filamentwaage-Setup” hotspot. Default access: admin password “Filament”, device PIN “1234”. Please change them right away.</span></p>
+</section>
+</main>
+
+<footer><div class="wrap">
+  <span data-l="de">Open-Source-Projekt von Fabian. Funktioniert mit </span><span data-l="en">Open-source project by Fabian. Works with </span><a href="https://github.com/Donkie/Spoolman">Spoolman</a>.
+</div></footer>
+
+<script>
+(function(){
+  var btn=document.getElementById('lang'),h=document.documentElement,l='de';
+  try{l=localStorage.getItem('lang')||((navigator.language||'de').slice(0,2)==='de'?'de':'en')}catch(e){}
+  function set(x){l=x;h.lang=x;btn.textContent=x==='de'?'EN':'DE';try{localStorage.setItem('lang',x)}catch(e){}}
+  btn.onclick=function(){set(l==='de'?'en':'de')};
+  set(l);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+#pragma once
+#include <cstddef>
+#include <cstdint>
+
+// Spulen- und Box-Tags (CLAUDE.md Abschnitt 4.2 bis 4.4).
+enum class TagKind : uint8_t { Unknown, Spool, Box, User, Admin };
+
+struct SpoolTag {
+  char type[16] = "";
+  char colorHex[8] = "";
+  char brand[32] = "";
+  int minTemp = 0;
+  int maxTemp = 0;
+  int spoolmanId = -1;  // -1 = nicht auf dem Tag
+};
+
+struct BoxTag {
+  char id[16] = "";
+  char name[32] = "";
+};
+
+struct UserTag {
+  int id = -1;
+  char name[24] = "";
+};
+
+struct AdminTag {
+  char token[33] = "";  // geheimer Wert, den das Gerät mit dem gespeicherten Admin-Token vergleicht
+};
+
+struct TagContent {
+  TagKind kind = TagKind::Unknown;
+  SpoolTag spool;
+  BoxTag box;
+  UserTag user;
+  AdminTag admin;
+};
+
+// Erkennung: "protocol":"openspool" -> Spule, "type":"box" -> Box, "type":"user" -> Benutzer, "type":"admin" -> Admin, sonst Unknown.
+TagContent tagParse(const char *json, size_t len);
+
+// JSON für einen Box-Tag. Rückgabe: Länge, oder 0 wenn es nicht in cap passt.
+size_t tagBuildBox(const char *id, const char *name, char *out, size_t cap);
+
+// JSON für einen OpenSpool-Tag (Temperaturen als Strings, wie im Format üblich). spoolmanId < 0 wird weggelassen.
+size_t tagBuildSpool(const SpoolTag &spool, char *out, size_t cap);
+
+// JSON für einen Benutzer-Tag: {"type":"user","id":3,"name":"Fabian"}
+size_t tagBuildUser(int id, const char *name, char *out, size_t cap);
+
+// JSON für einen Admin-Tag: {"type":"admin","token":"<32 Hex-Zeichen>"}
+size_t tagBuildAdmin(const char *token, char *out, size_t cap);

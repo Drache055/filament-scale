@@ -1,0 +1,22 @@
+{
+  "colors": {
+    "bg": "#10131A",
+    "surface": "#1B2030",
+    "primary": "#3B82F6",
+    "primary_text": "#FFFFFF",
+    "text": "#F1F5F9",
+    "text_dim": "#8892A6",
+    "ok": "#22C55E",
+    "warn": "#F59E0B",
+    "error": "#EF4444"
+  },
+  "radius": 12,
+  "padding": 10,
+  "button_height": 52,
+  "fonts": {
+    "small": 14,
+    "normal": 20,
+    "large": 28,
+    "weight": 48
+  }
+}
