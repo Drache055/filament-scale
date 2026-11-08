@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bauen &amp; Flashen – Filamentwaage</title>
+<meta name="description" content="Bauanleitung der Filamentwaage: Teile, Verdrahtung, Mechanik, Flashen, Kalibrieren.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><div class="wrap">
+  <b><a href="index.html" style="color:inherit">Filamentwaage</a></b>
+  <div class="links">
+    <a href="funktionen.html"><span data-l="de">Funktionen</span><span data-l="en">Features</span></a>
+    <a href="nfc-spoolman.html">NFC &amp; Spoolman</a>
+    <a href="bauen.html"><span data-l="de">Bauen &amp; Flashen</span><span data-l="en">Build &amp; flash</span></a>
+  </div>
+  <span class="sp"></span>
+  <a href="https://github.com/Drache055/filamentwaage" class="gh">GitHub</a>
+  <button class="lang" id="lang" aria-label="Sprache / Language">EN</button>
+</div></nav>
+
+<main class="wrap page">
+<h1><span data-l="de">Bauen &amp; Flashen</span><span data-l="en">Build &amp; flash</span></h1>
+<p class="muted"><span data-l="de">Von den Teilen bis zur ersten Wägung.</span><span data-l="en">From parts to the first weighing.</span></p>
+<ul class="toc">
+  <li><a href="#teile"><span data-l="de">Teile</span><span data-l="en">Parts</span></a></li>
+  <li><a href="#pins"><span data-l="de">Verdrahtung</span><span data-l="en">Wiring</span></a></li>
+  <li><a href="#mechanik"><span data-l="de">Mechanik</span><span data-l="en">Mechanics</span></a></li>
+  <li><a href="#flashen"><span data-l="de">Flashen</span><span data-l="en">Flashing</span></a></li>
+  <li><a href="#inbetrieb"><span data-l="de">Inbetriebnahme</span><span data-l="en">Commissioning</span></a></li>
+  <li><a href="#tipps"><span data-l="de">Tipps &amp; Probleme</span><span data-l="en">Tips &amp; problems</span></a></li>
+</ul>
+
+<h2 id="teile"><span data-l="de">Teile</span><span data-l="en">Parts</span></h2>
+<table>
+  <tr><th>Board</th><td>Waveshare ESP32-S3-Touch-LCD-2 (ESP32-S3R8, 16 MB Flash, 8 MB Octal-PSRAM, ST7789T3 240×320, Touch CST816)</td></tr>
+  <tr><th><span data-l="de">Wägezelle</span><span data-l="en">Load cell</span></th><td><span data-l="de">Biegebalken 5 kg, 4 Leiter (E+, E−, A+, A−)</span><span data-l="en">5 kg bar load cell, 4 wires (E+, E−, A+, A−)</span></td></tr>
+  <tr><th>ADC</th><td>HX711-Modul, <span data-l="de">mit <b>3,3 V</b> versorgen, DOUT darf keine 5 V führen</span><span data-l="en">powered with <b>3.3 V</b>, DOUT must not carry 5 V</span></td></tr>
+  <tr><th>NFC</th><td>PN532 <span data-l="de">im SPI-Modus (DIP: SW1 = OFF, SW2 = ON), 3,3 V</span><span data-l="en">in SPI mode (DIP: SW1 = OFF, SW2 = ON), 3.3 V</span></td></tr>
+  <tr><th>Tags</th><td>NTAG215 / NTAG216</td></tr>
+  <tr><th><span data-l="de">Gehäuse</span><span data-l="en">Enclosure</span></th><td><span data-l="de">3D-gedruckt, Stahl als Ballast im Sockel</span><span data-l="en">3D printed, steel as ballast in the base</span></td></tr>
+  <tr><th><span data-l="de">Optional</span><span data-l="en">Optional</span></th><td><span data-l="de">Kondensatoren 100 µF und 100 nF am HX711 gegen gestörte Messwerte</span><span data-l="en">100 µF and 100 nF capacitors at the HX711 against noisy readings</span></td></tr>
+</table>
+<p class="note"><span data-l="de">Es gibt keine SD-Karte. Konfiguration liegt im NVS, Theme und Warteschlange im LittleFS.</span><span data-l="en">There is no SD card. Configuration lives in NVS, theme and queue in LittleFS.</span></p>
+
+<h2 id="pins"><span data-l="de">Verdrahtung</span><span data-l="en">Wiring</span></h2>
+<p><span data-l="de">Alle Pins stehen zentral in <code>firmware/include/pins.h</code>. Display und Touch sind auf dem Waveshare-Board fest verdrahtet. Extern kommen nur HX711 und PN532 an die Header.</span><span data-l="en">All pins are defined in <code>firmware/include/pins.h</code>. Display and touch are wired on the Waveshare board. Only the HX711 and PN532 connect to the headers.</span></p>
+<table>
+  <tr><th>HX711</th><td>SCK = GPIO17 (Header P1 Pin 5)<br>DOUT = GPIO18 (Header P1 Pin 6)<br>VCC = 3V3 (P2 Pin 1), GND</td></tr>
+  <tr><th>PN532 (SPI)</th><td>SCK = GPIO15 (P2 Pin 7)<br>MISO = GPIO13 (P2 Pin 8)<br>MOSI = GPIO11 (P2 Pin 9)<br>SS = GPIO12 (P2 Pin 10)<br>3V3 = P2 Pin 1, GND = P2 Pin 2</td></tr>
+  <tr><th>Touch (I²C)</th><td>SDA = GPIO48, SCL = GPIO47, <span data-l="de">Adresse</span><span data-l="en">address</span> 0x15</td></tr>
+  <tr><th>Display</th><td>SCLK 39, MOSI 38, MISO 40, DC 42, CS 45, BL 1</td></tr>
+</table>
+<p class="note warn"><span data-l="de"><b>Warum SPI statt I²C beim PN532?</b> Im I²C-Modus blieb SCL am Waagen-Board dauerhaft auf low, an allen getesteten Pins. Dasselbe Modul lief an einem NodeMCU-ESP32 fehlerfrei, die Ursache ist nicht geklärt. Per Software-SPI an eigenen Pins läuft es. Ob GPIO11 bis 15 sonst belegt sind (vermutlich SD-Slot, ungenutzt), ist am Schaltplan nicht geprüft.</span><span data-l="en"><b>Why SPI instead of I²C for the PN532?</b> In I²C mode SCL stayed low on the scale board on every pin tested. The same module worked flawlessly on a NodeMCU-ESP32; the cause is unknown. Software SPI on dedicated pins works. Whether GPIO11 to 15 are otherwise used (probably the unused SD slot) has not been checked against the schematic.</span></p>
+
+<h2 id="mechanik"><span data-l="de">Mechanik</span><span data-l="en">Mechanics</span></h2>
+<div class="two">
+  <img src="img/render-front.jpg" alt="" loading="lazy">
+  <img src="img/render-menu.jpg" alt="" loading="lazy">
+</div>
+<ul>
+  <li><span data-l="de"><b>Biegebalken:</b> Sockel an einem Ende, Wiegeplatte am anderen. Distanzstücke sorgen dafür, dass nur die Enden Kontakt haben. Der Pfeil auf der Zelle zeigt die Lastrichtung.</span><span data-l="en"><b>Bar load cell:</b> base at one end, weighing platform at the other. Spacers make sure only the ends touch. The arrow on the cell shows the load direction.</span></li>
+  <li><span data-l="de"><b>Ballast</b> (Stahl) nur im Sockel und am Rand. Die Wiegeplatte enthält keinen Ballast, ihr Eigengewicht wird tariert.</span><span data-l="en"><b>Ballast</b> (steel) only in the base and at the edge. The platform holds none, its own weight is tared.</span></li>
+  <li><span data-l="de"><b>Ein PN532</b> sitzt mittig unter der Wiegeplatte, die aus Kunststoff und möglichst höchstens 10 mm dick ist. Um die Antenne herum sind mindestens 3 cm frei von Metall. Realistische Leseweite: 2 bis 4 cm.</span><span data-l="en"><b>One PN532</b> sits centred under the plastic platform, ideally at most 10 mm thick. Keep at least 3 cm around the antenna free of metal. Realistic reading range: 2 to 4 cm.</span></li>
+  <li><span data-l="de"><b>Box-Tags</b> kleben mittig auf dem Boxboden und werden gelesen, wenn die Box auf der Platte steht. Der <b>Spulen-Tag</b> wird an der markierten Scan-Zone gelesen.</span><span data-l="en"><b>Box tags</b> are stuck to the centre of the box bottom and read while the box stands on the platform. The <b>spool tag</b> is read at the marked scan zone.</span></li>
+  <li><span data-l="de">Mehrere Tags können gleichzeitig in Reichweite sein. Die Software ordnet sie nach Typ und aktuellem Zustand zu und ignoriert unerwartete.</span><span data-l="en">Several tags can be in range at once. The software assigns them by type and current state and ignores unexpected ones.</span></li>
+</ul>
+
+<h2 id="flashen"><span data-l="de">Flashen</span><span data-l="en">Flashing</span></h2>
+<p><span data-l="de">Du brauchst <a href="https://platformio.org/">PlatformIO</a> (VS Code oder CLI).</span><span data-l="en">You need <a href="https://platformio.org/">PlatformIO</a> (VS Code or CLI).</span></p>
+<pre><code>git clone https://github.com/Drache055/filamentwaage.git
+cd filamentwaage/firmware
+cp include/secrets.h.example include/secrets.h
+# secrets.h bearbeiten / edit: Spoolman-URL, OTA-Passwort
+
+pio run -e waage -t upload      # Firmware per USB
+pio run -e waage -t uploadfs    # LittleFS (theme.json)</code></pre>
+<p><span data-l="de">Danach reicht das Netzwerk:</span><span data-l="en">After that the network is enough:</span></p>
+<pre><code>OTA_PASSWORD=&lt;pw&gt; pio run -e waage-ota -t upload      # Firmware
+OTA_PASSWORD=&lt;pw&gt; pio run -e waage-ota -t uploadfs    # Theme</code></pre>
+<p class="note warn"><span data-l="de"><b>Achtung:</b> <code>uploadfs</code> überschreibt das ganze LittleFS und löscht damit die Offline-Warteschlange. Vorher prüfen, ob Updates ausstehen.</span><span data-l="en"><b>Careful:</b> <code>uploadfs</code> overwrites the whole LittleFS including the offline queue. Check for pending updates first.</span></p>
+<p><span data-l="de"><b>WLAN:</b> Die Werte aus <code>secrets.h</code> werden einmalig beim ersten Start übernommen. Ohne WLAN startet der Hotspot <code>Filamentwaage-Setup</code> (Passwort = OTA-Passwort, wenn mindestens 8 Zeichen).</span><span data-l="en"><b>Wi-Fi:</b> the values in <code>secrets.h</code> are adopted once at first boot. Without Wi-Fi the <code>Filamentwaage-Setup</code> hotspot starts (password = OTA password if at least 8 characters).</span></p>
+<p><span data-l="de"><code>secrets.h</code> steht in der <code>.gitignore</code> und wird nie eingecheckt.</span><span data-l="en"><code>secrets.h</code> is in <code>.gitignore</code> and is never committed.</span></p>
+
+<h2 id="inbetrieb"><span data-l="de">Inbetriebnahme</span><span data-l="en">Commissioning</span></h2>
+<ol>
+  <li><span data-l="de"><b>Board-Test:</b> Beim Start erscheinen Flash- und PSRAM-Größe im seriellen Monitor (115200 Baud).</span><span data-l="en"><b>Board test:</b> at boot flash and PSRAM size show in the serial monitor (115200 baud).</span></li>
+  <li><span data-l="de"><b>Display und Touch:</b> Zeigt Home an, reagiert das Tippen? Sonst Menü → Einstellungen → Touch-Kalibrierung.</span><span data-l="en"><b>Display and touch:</b> does Home show, does tapping respond? Otherwise Menu → Settings → Touch calibration.</span></li>
+  <li><span data-l="de"><b>Waage:</b> Rohwert ansehen, Lastrichtung der Zelle prüfen, dann kalibrieren (Menü → Einstellungen → Kalibrierung, Referenzgewicht 100 g oder mehr).</span><span data-l="en"><b>Scale:</b> check the raw value and the load direction of the cell, then calibrate (Menu → Settings → Calibration, reference weight 100 g or more).</span></li>
+  <li><span data-l="de"><b>NFC:</b> Menü → NFC zeigt den aufliegenden Tag. Einen Box-Tag und einen Filament-Tag schreiben.</span><span data-l="en"><b>NFC:</b> Menu → NFC shows the tag on the scale. Write a box tag and a filament tag.</span></li>
+  <li><span data-l="de"><b>Spoolman:</b> URL eintragen, Status auf der Webseite prüfen, Spule zuordnen.</span><span data-l="en"><b>Spoolman:</b> enter the URL, check the status in the web UI, assign a spool.</span></li>
+  <li><span data-l="de"><b>Erster Durchlauf</b> mit einer Testspule, bevor du echte Bestände aktualisierst.</span><span data-l="en"><b>First run</b> with a test spool before you update real inventory.</span></li>
+  <li><span data-l="de"><b>Zugang ändern:</b> Admin-Passwort und Geräte-PIN auf der Webseite unter Benutzer → Admin setzen.</span><span data-l="en"><b>Change credentials:</b> set admin password and device PIN in the web UI under Users → Admin.</span></li>
+</ol>
+
+<h2 id="tipps"><span data-l="de">Tipps &amp; Probleme</span><span data-l="en">Tips &amp; problems</span></h2>
+<table>
+  <tr><th><span data-l="de">Feste Anzeige wie −67 g</span><span data-l="en">Fixed reading like −67 g</span></th><td><span data-l="de">HX711 liefert keine Daten (nicht angeschlossen). Im Log erscheint „ungültige Lesungen verworfen“. Tritt das mit angeschlossenem HX711 auf, ist die Versorgung gestört: Kondensatoren ergänzen, Verdrahtung prüfen.</span><span data-l="en">The HX711 delivers no data (not connected). The log shows “invalid readings discarded”. If it happens while connected, power is unstable: add capacitors, check wiring.</span></td></tr>
+  <tr><th><span data-l="de">Gewicht negativ beim Auflegen</span><span data-l="en">Weight goes negative when loading</span></th><td><span data-l="de">Zelle falsch herum eingebaut. Pfeil muss in Lastrichtung zeigen.</span><span data-l="en">Cell mounted the wrong way. The arrow must point in load direction.</span></td></tr>
+  <tr><th><span data-l="de">Tag wird nicht gelesen</span><span data-l="en">Tag is not read</span></th><td><span data-l="de">Abstand zur Antenne unter 4 cm halten, Metall in der Nähe vermeiden. Meldet das Log „Firmware-Abfrage fehlgeschlagen“, antwortet das Modul nicht: DIP-Schalter (SPI) und Verdrahtung prüfen. Die Waage versucht es alle 15 s erneut.</span><span data-l="en">Keep the distance to the antenna under 4 cm and avoid nearby metal. If the log says “Firmware-Abfrage fehlgeschlagen” the module does not answer: check DIP switches (SPI) and wiring. The scale retries every 15 s.</span></td></tr>
+  <tr><th><span data-l="de">Meldung „Invalid IO 255“</span><span data-l="en">“Invalid IO 255” message</span></th><td><span data-l="de">Kommt von der Adafruit-Bibliothek (kein IRQ-/Reset-Pin) und ist harmlos.</span><span data-l="en">Comes from the Adafruit library (no IRQ/reset pin) and is harmless.</span></td></tr>
+  <tr><th><span data-l="de">Passwort vergessen</span><span data-l="en">Forgot password</span></th><td><span data-l="de">Seriell <code>admin reset</code> setzt Passwort „Filament“, PIN „1234“, die Sperre und den Admin-Tag zurück.</span><span data-l="en">Serial <code>admin reset</code> restores password “Filament”, PIN “1234”, the lock and the admin tag.</span></td></tr>
+  <tr><th><span data-l="de">Geisterbilder auf dem Display</span><span data-l="en">Ghosting on the display</span></th><td><span data-l="de">Der VCOMS-Wert (Standard 0x24) lässt sich unter Einstellungen → Display ändern. Nur mit Sichtprüfung am Gerät, LCM-Control muss <code>0x0C</code> bleiben (sonst sind Rot und Blau vertauscht).</span><span data-l="en">The VCOMS value (default 0x24) can be changed under Settings → Display. Only with a visual check on the device; LCM control must stay <code>0x0C</code> (otherwise red and blue are swapped).</span></td></tr>
+  <tr><th>OTA-Build</th><td><span data-l="de">Bricht der OTA-Build wegen eines beschädigten Build-Ordners ab: <code>rm -rf .pio/build/waage-ota</code>.</span><span data-l="en">If the OTA build fails due to a corrupted build folder: <code>rm -rf .pio/build/waage-ota</code>.</span></td></tr>
+</table>
+<h3><span data-l="de">Tests</span><span data-l="en">Tests</span></h3>
+<pre><code>cd firmware
+pio test -e native</code></pre>
+<p class="muted"><span data-l="de">Die Logik (NDEF, Tags, Warteschlange, Wiegeablauf) ist am Rechner getestet. Der komplette Ablauf mit echter Waage, Box-Tag und Spoolman wurde noch nicht abschließend am Gerät geprüft. Rückmeldungen sind willkommen.</span><span data-l="en">The logic (NDEF, tags, queue, weighing flow) is tested on the host. The complete flow with a real scale, box tag and Spoolman has not been fully verified on hardware yet. Feedback is welcome.</span></p>
+</main>
+
+<footer><div class="wrap">
+  <a href="nfc-spoolman.html">← NFC &amp; Spoolman</a> ·
+  <a href="index.html"><span data-l="de">Startseite</span><span data-l="en">Home</span> →</a>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

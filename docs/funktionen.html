@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Funktionen – Filamentwaage</title>
+<meta name="description" content="Alle Funktionen der Filamentwaage im Detail: Wiegeablauf, Kalibrierung, Weboberfläche, Rechte, WLAN-Einrichtung.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><div class="wrap">
+  <b><a href="index.html" style="color:inherit">Filamentwaage</a></b>
+  <div class="links">
+    <a href="funktionen.html"><span data-l="de">Funktionen</span><span data-l="en">Features</span></a>
+    <a href="nfc-spoolman.html">NFC &amp; Spoolman</a>
+    <a href="bauen.html"><span data-l="de">Bauen &amp; Flashen</span><span data-l="en">Build &amp; flash</span></a>
+  </div>
+  <span class="sp"></span>
+  <a href="https://github.com/Drache055/filamentwaage" class="gh">GitHub</a>
+  <button class="lang" id="lang" aria-label="Sprache / Language">EN</button>
+</div></nav>
+
+<main class="wrap page">
+<h1><span data-l="de">Funktionen im Detail</span><span data-l="en">Features in detail</span></h1>
+<p class="muted"><span data-l="de">Was die Waage kann und wie sie es macht.</span><span data-l="en">What the scale can do and how it does it.</span></p>
+<ul class="toc">
+  <li><a href="#wiegen"><span data-l="de">Wiegeablauf</span><span data-l="en">Weighing flow</span></a></li>
+  <li><a href="#messung"><span data-l="de">Messung &amp; Kalibrierung</span><span data-l="en">Measuring &amp; calibration</span></a></li>
+  <li><a href="#geraet"><span data-l="de">Bedienung am Gerät</span><span data-l="en">On-device UI</span></a></li>
+  <li><a href="#web"><span data-l="de">Weboberfläche</span><span data-l="en">Web UI</span></a></li>
+  <li><a href="#rechte"><span data-l="de">Benutzer &amp; Rechte</span><span data-l="en">Users &amp; roles</span></a></li>
+  <li><a href="#wlan"><span data-l="de">WLAN &amp; Updates</span><span data-l="en">Wi-Fi &amp; updates</span></a></li>
+  <li><a href="#weiteres"><span data-l="de">Weitere Funktionen</span><span data-l="en">More</span></a></li>
+</ul>
+
+<h2 id="wiegen"><span data-l="de">Wiegeablauf (Differenzwägung)</span><span data-l="en">Weighing flow (differential weighing)</span></h2>
+<p>
+  <span data-l="de">Die Waage kennt das Gewicht deiner Lagerbox nicht und muss es auch nicht kennen. Sie wiegt die Box zweimal, einmal ohne und einmal mit Spule, und rechnet die Differenz aus. Trockenmittel, andere Spulen oder Zubehör in der Box spielen keine Rolle.</span>
+  <span data-l="en">The scale does not need to know the weight of your storage box. It weighs the box twice, without and with the spool, and takes the difference. Desiccant, other spools or accessories in the box do not matter.</span>
+</p>
+<div class="flow">
+  <span class="s"><span data-l="de">Spule erkannt</span><span data-l="en">Spool detected</span></span><span class="a">→</span>
+  <span class="s"><span data-l="de">Box auflegen</span><span data-l="en">Place box</span></span><span class="a">→</span>
+  <span class="s"><span data-l="de">Spule einstellen</span><span data-l="en">Insert spool</span></span><span class="a">→</span>
+  <span class="s"><span data-l="de">Bestätigen</span><span data-l="en">Confirm</span></span><span class="a">→</span>
+  <span class="s"><span data-l="de">Speichern</span><span data-l="en">Save</span></span><span class="a">→</span>
+  <span class="s"><span data-l="de">Box entnehmen</span><span data-l="en">Remove box</span></span>
+</div>
+<div class="formula">
+  spool_gross&nbsp;&nbsp;= W2 − W1<br>
+  remaining&nbsp;&nbsp;&nbsp;&nbsp;= spool_gross − empty_spool
+</div>
+<ol>
+  <li><span data-l="de"><b>Spule scannen:</b> Der Spulen-Tag wird an der Scan-Zone gelesen. Spoolman liefert Hersteller, Material, Farbe und das letzte Restgewicht. Der Screen bleibt mindestens 2 Sekunden stehen. Ist die Waage nicht leer, erscheint „Waage leeren“.</span><span data-l="en"><b>Scan the spool:</b> the spool tag is read at the scan zone. Spoolman supplies vendor, material, colour and the last remaining weight. The screen stays for at least 2 seconds. If the scale is not empty it shows “Empty the scale”.</span></li>
+  <li><span data-l="de"><b>Box auflegen:</b> Sobald das Gewicht stabil über 50 g liegt <em>und</em> ein Box-Tag gelesen wird, friert die Waage W1 ein. Der Box-Name wird später zum Lagerort (<code>location</code>) in Spoolman. Ab hier werden Spulen-Tags ignoriert.</span><span data-l="en"><b>Place the box:</b> as soon as the weight is stable above 50 g <em>and</em> a box tag is read, the scale freezes W1. The box name later becomes the Spoolman <code>location</code>. From here on, spool tags are ignored.</span></li>
+  <li><span data-l="de"><b>Spule einstellen:</b> Die Anzeige zeigt das Gewicht relativ zu W1. Ist es um mindestens 50 g gestiegen und stabil, wird W2 erfasst.</span><span data-l="en"><b>Insert the spool:</b> the display shows weight relative to W1. Once it rose by at least 50 g and is stable, W2 is captured.</span></li>
+  <li><span data-l="de"><b>Bestätigen:</b> Box, Spule und Restgewicht in Gramm werden angezeigt. Das Leerspulengewicht kommt aus Spoolman (Spule, dann Filament, dann Hersteller). Fehlt es, kannst du es mit −10/+10 eingeben (Startwert 250 g).</span><span data-l="en"><b>Confirm:</b> box, spool and remaining weight in grams are shown. The empty spool weight comes from Spoolman (spool, then filament, then vendor). If missing you can enter it with −10/+10 (default 250 g).</span></li>
+  <li><span data-l="de"><b>Speichern:</b> Das Update geht an Spoolman. Bei Erfolg oder Einreihen in die Warteschlange erscheint „Gespeichert“. Danach „Box entnehmen“ und zurück zu Home, sobald die Waage leer ist.</span><span data-l="en"><b>Save:</b> the update goes to Spoolman. On success, or when queued, “Saved” is shown. Then “Remove box”, and back to Home once the scale is empty.</span></li>
+</ol>
+<h3><span data-l="de">Plausibilitätsprüfungen</span><span data-l="en">Plausibility checks</span></h3>
+<table>
+  <tr><th><span data-l="de">Rest &lt; −20 g</span><span data-l="en">Rest &lt; −20 g</span></th><td><span data-l="de">Fehler „Leerspulengewicht prüfen“. Speichern ist ausgeblendet, [Nochmal] startet neu.</span><span data-l="en">Error “Check empty spool weight”. Save is hidden, [Retry] starts over.</span></td></tr>
+  <tr><th><span data-l="de">−20 bis 0 g</span><span data-l="en">−20 to 0 g</span></th><td><span data-l="de">Wird auf 0 gesetzt, mit Hinweis.</span><span data-l="en">Clamped to 0, with a notice.</span></td></tr>
+  <tr><th><span data-l="de">Zu schwer</span><span data-l="en">Too heavy</span></th><td><span data-l="de">Rest über Anfangsgewicht + 50 g: Warnung, Speichern nur nach Bestätigung.</span><span data-l="en">Remaining above initial weight + 50 g: warning, saving possible after confirmation.</span></td></tr>
+  <tr><th><span data-l="de">Überlast</span><span data-l="en">Overload</span></th><td><span data-l="de">Über 4500 g Gesamtgewicht erscheint „Überlast“ (die Zelle verträgt 5 kg).</span><span data-l="en">Above 4500 g total, “Overload” is shown (the cell is rated for 5 kg).</span></td></tr>
+  <tr><th>Timeout</th><td><span data-l="de">Jeder Wartezustand läuft nach 120 s ab und führt zurück zu Home.</span><span data-l="en">Every waiting state times out after 120 s and returns to Home.</span></td></tr>
+</table>
+<div class="two" style="margin-top:20px">
+  <img src="img/42_ablauf_5_spule_einstellen_842g.png" alt="" style="width:240px;image-rendering:pixelated">
+  <img src="img/43_ablauf_6_bestaetigen.png" alt="" style="width:240px;image-rendering:pixelated">
+</div>
+
+<h2 id="messung"><span data-l="de">Messung &amp; Kalibrierung</span><span data-l="en">Measuring &amp; calibration</span></h2>
+<ul>
+  <li><span data-l="de"><b>Stabilitätserkennung:</b> Der HX711 liefert 10 Werte pro Sekunde. Über ein Fenster von 10 Werten (ca. 1 s) gilt das Gewicht als stabil, wenn Maximum minus Minimum höchstens 1,0 g beträgt. Ausgegeben wird der Mittelwert.</span><span data-l="en"><b>Stability detection:</b> the HX711 delivers 10 samples per second. Over a window of 10 samples (about 1 s) the weight counts as stable when max minus min is at most 1.0 g. The mean is shown.</span></li>
+  <li><span data-l="de"><b>„Leer“</b> heißt stabil und höchstens 5 g Betrag. <b>„Objekt hinzugefügt“</b> heißt stabil und mindestens 50 g über der Referenz. Alle Schwellen sind einstellbar.</span><span data-l="en"><b>“Empty”</b> means stable and at most 5 g absolute. <b>“Object added”</b> means stable and at least 50 g above the reference. All thresholds are configurable.</span></li>
+  <li><span data-l="de"><b>Tara</b> am Gerät oder in der Weboberfläche. Beim Start wird automatisch genullt, wenn die Waage leer und stabil ist.</span><span data-l="en"><b>Tare</b> on the device or in the web UI. At boot the scale zeroes itself when empty and stable.</span></li>
+  <li><span data-l="de"><b>Kalibrierung</b> in zwei Schritten: Waage leeren und Tara, dann ein bekanntes Gewicht auflegen (Startwert 100 g) und den Wert einstellen. Der Faktor wird im Flash gespeichert.</span><span data-l="en"><b>Calibration</b> in two steps: empty the scale and tare, then place a known weight (default 100 g) and set its value. The factor is stored in flash.</span></li>
+  <li><span data-l="de"><b>Drift-Nachführung:</b> Auf dem Home-Screen wird der Nullpunkt nachgeführt, aber nur bei leerer, stabiler Waage und weniger als 2 g Abweichung.</span><span data-l="en"><b>Drift tracking:</b> on the Home screen the zero point follows slow drift, only when empty, stable and the deviation is under 2 g.</span></li>
+  <li><span data-l="de"><b>Fehlerhafte Rohwerte</b> (0, −1, Sättigung), wie sie ein nicht angeschlossener HX711 liefert, werden verworfen und im Log gemeldet.</span><span data-l="en"><b>Invalid raw readings</b> (0, −1, saturation), as produced by a disconnected HX711, are discarded and reported in the log.</span></li>
+</ul>
+
+<h2 id="geraet"><span data-l="de">Bedienung am Gerät</span><span data-l="en">On-device UI</span></h2>
+<p><span data-l="de">Das 240×320-Display ist ein Single-Touch-Panel. Buttons sind mindestens 48 px hoch, pro Screen gibt es eine Hauptaktion. Die Texte folgen der Gerätesprache oder der Sprache des angemeldeten Benutzers.</span><span data-l="en">The 240×320 display is single-touch. Buttons are at least 48 px tall and every screen has one main action. Texts follow the device language or the language of the signed-in user.</span></p>
+<div class="shots">
+  <figure><img src="img/02_home_gewicht_benutzer.png" alt="" loading="lazy"><figcaption>Home</figcaption></figure>
+  <figure><img src="img/06_menue.png" alt="" loading="lazy"><figcaption><span data-l="de">Menü</span><span data-l="en">Menu</span></figcaption></figure>
+  <figure><img src="img/20_nfc_spule_erkannt.png" alt="" loading="lazy"><figcaption>NFC</figcaption></figure>
+  <figure><img src="img/26_filament_farbe.png" alt="" loading="lazy"><figcaption><span data-l="de">Farbe wählen</span><span data-l="en">Pick colour</span></figcaption></figure>
+  <figure><img src="img/29_en_home.png" alt="" loading="lazy"><figcaption>English</figcaption></figure>
+</div>
+<ul>
+  <li><span data-l="de"><b>Home:</b> Live-Gewicht, Statusleiste (WLAN, Spoolman, ausstehende Updates, Benutzer), [Tara] und [Menü].</span><span data-l="en"><b>Home:</b> live weight, status bar (Wi-Fi, Spoolman, pending updates, user), [Tare] and [Menu].</span></li>
+  <li><span data-l="de"><b>Menü:</b> Meine Sprache, Einstellungen (Kalibrierung, WLAN, Display, Sprache, Touch-Kalibrierung) und NFC (Box-Tag und Filament-Tag schreiben). Einstellungen und NFC verlangen den Admin.</span><span data-l="en"><b>Menu:</b> My language, Settings (calibration, Wi-Fi, display, language, touch calibration) and NFC (write box and filament tags). Settings and NFC require the admin.</span></li>
+  <li><span data-l="de"><b>Admin-Anmeldung</b> mit Ziffernblock (Geräte-PIN) oder durch Auflegen des Admin-Tags. Sie endet nach 5 Minuten ohne Bedienung.</span><span data-l="en"><b>Admin sign-in</b> with a number pad (device PIN) or by placing the admin tag. It ends after 5 minutes of inactivity.</span></li>
+  <li><span data-l="de"><b>Bildschirmschoner:</b> Nach einstellbarer Zeit wird auf 10 % gedimmt und später ausgeschaltet (Standard 5/15 Minuten). Berührung, Tag-Scan oder Gewichtsänderung über 3 g wecken das Display.</span><span data-l="en"><b>Screen saver:</b> after a configurable time the display dims to 10 % and later turns off (default 5/15 minutes). Touch, a tag scan or a weight change above 3 g wakes it.</span></li>
+</ul>
+
+<h2 id="web"><span data-l="de">Weboberfläche</span><span data-l="en">Web UI</span></h2>
+<p><span data-l="de">Die Waage liefert eine eigene Webseite aus, erreichbar über <code>http://filamentwaage.local</code> oder die IP-Adresse. Sie ist zweisprachig und verlangt eine Anmeldung.</span><span data-l="en">The scale serves its own web page at <code>http://filamentwaage.local</code> or its IP address. It is bilingual and requires sign-in.</span></p>
+<div class="grid">
+  <div class="card"><h3><span data-l="de">Übersicht</span><span data-l="en">Overview</span></h3><p><span data-l="de">Live-Gewicht, Status, aufliegender Tag, Tara.</span><span data-l="en">Live weight, status, tag on the scale, tare.</span></p></div>
+  <div class="card"><h3><span data-l="de">Kalibrierung</span><span data-l="en">Calibration</span></h3><p><span data-l="de">Tara, Referenzgewicht, Schwellen.</span><span data-l="en">Tare, reference weight, thresholds.</span></p></div>
+  <div class="card"><h3><span data-l="de">Benutzer</span><span data-l="en">Users</span></h3><p><span data-l="de">Anlegen, PIN setzen, Rechte, Benutzer-Tag schreiben.</span><span data-l="en">Create, set PIN, permissions, write user tag.</span></p></div>
+  <div class="card"><h3><span data-l="de">Filament-Katalog</span><span data-l="en">Filament catalog</span></h3><p><span data-l="de">Typen, Hersteller, Farben pflegen, Abgleich mit Spoolman.</span><span data-l="en">Maintain types, vendors, colours, sync with Spoolman.</span></p></div>
+  <div class="card"><h3>Spoolman</h3><p><span data-l="de">Adresse, Status, Warteschlange senden oder verwerfen.</span><span data-l="en">Address, status, send or discard the queue.</span></p></div>
+  <div class="card"><h3><span data-l="de">WLAN, Log, System</span><span data-l="en">Wi-Fi, log, system</span></h3><p><span data-l="de">Zugangsdaten, Live-Log (160 Zeilen), Bildschirmschoner, Neustart.</span><span data-l="en">Credentials, live log (160 lines), screen saver, reboot.</span></p></div>
+</div>
+
+<h2 id="rechte"><span data-l="de">Benutzer &amp; Rechte</span><span data-l="en">Users &amp; roles</span></h2>
+<table>
+  <tr><th>Admin</th><td><span data-l="de">Darf alles: Einstellungen, Benutzer, Katalog, Sperre. Webseite mit Name <code>admin</code> und Passwort, am Gerät mit PIN oder Admin-Tag.</span><span data-l="en">Can do everything: settings, users, catalog, lock. Web sign-in as <code>admin</code> with the password, on the device with PIN or admin tag.</span></td></tr>
+  <tr><th><span data-l="de">Benutzer</span><span data-l="en">User</span></th><td><span data-l="de">Meldet sich am Gerät per NFC-Tag an (Name wird als <code>owner</code> an die Spule geschrieben), auf der Webseite mit Name und PIN (4–6 Ziffern). Darf wiegen, die eigene Sprache und PIN ändern. Der Admin kann einzelne Rechte freigeben: <b>Tara</b> und <b>Filament</b> (Katalog pflegen).</span><span data-l="en">Signs in on the device via NFC tag (the name is written to the spool as <code>owner</code>), on the web with name and PIN (4–6 digits). Can weigh and change own language and PIN. The admin can grant single permissions: <b>Tare</b> and <b>Filament</b> (maintain the catalog).</span></td></tr>
+  <tr><th>Generic</th><td><span data-l="de">Nur wiegen und NFC lesen, ohne Tara und Sprache. Der Admin kann das Konto abschalten oder mit einer PIN schützen.</span><span data-l="en">Only weigh and read NFC, no tare, no language. The admin can disable the account or protect it with a PIN.</span></td></tr>
+</table>
+<p class="note warn"><span data-l="de"><b>Wichtig:</b> Standard-Zugang ist Admin-Passwort „Filament“ und Geräte-PIN „1234“. Die Webseite warnt, solange sie aktiv sind. Bitte direkt ändern.</span><span data-l="en"><b>Important:</b> defaults are admin password “Filament” and device PIN “1234”. The web UI warns while they are active. Please change them right away.</span></p>
+<ul>
+  <li><span data-l="de">PINs und Passwort liegen nur als Salted-SHA-256-Hash im Flash.</span><span data-l="en">PINs and the password are stored only as salted SHA-256 hashes in flash.</span></li>
+  <li><span data-l="de">Sitzungen: HttpOnly-Cookie, SameSite=Strict, 30 Minuten Inaktivität, höchstens 6 gleichzeitig.</span><span data-l="en">Sessions: HttpOnly cookie, SameSite=Strict, 30 minutes of inactivity, at most 6 at a time.</span></li>
+  <li><span data-l="de">5 Fehlversuche sperren die Anmeldung für 30 Sekunden, am Gerät ebenso.</span><span data-l="en">5 failed attempts lock sign-in for 30 seconds, on the device too.</span></li>
+  <li><span data-l="de">Ein gelöschter Benutzer, eine geänderte PIN oder ein neues Passwort beenden die betroffenen Sitzungen sofort.</span><span data-l="en">A deleted user, a changed PIN or a new password ends the affected sessions at once.</span></li>
+  <li><span data-l="de">Der Admin kann die Sperre abschalten. Dann darf jeder im Netzwerk alles ändern.</span><span data-l="en">The admin can switch the lock off. Then everyone on the network may change everything.</span></li>
+</ul>
+
+<h2 id="wlan"><span data-l="de">WLAN &amp; Updates</span><span data-l="en">Wi-Fi &amp; updates</span></h2>
+<ul>
+  <li><span data-l="de"><b>Einrichtung wie bei Tasmota:</b> Ohne gespeichertes WLAN startet der Hotspot <code>Filamentwaage-Setup</code>. Ein Captive Portal leitet das Handy automatisch auf die Einrichtungsseite. Der Hotspot startet auch, wenn eine Minute lang keine Verbindung klappt, und endet nach einer Minute stabiler Verbindung.</span><span data-l="en"><b>Tasmota-style setup:</b> without stored Wi-Fi the <code>Filamentwaage-Setup</code> hotspot starts. A captive portal sends your phone to the setup page. The hotspot also starts when connecting fails for a minute and stops after a minute of stable connection.</span></li>
+  <li><span data-l="de"><b>Updates per WLAN (OTA):</b> Das erste Flashen geht per USB, danach Firmware und Dateisystem über das Netzwerk.</span><span data-l="en"><b>OTA updates:</b> first flash via USB, afterwards firmware and file system over the network.</span></li>
+  <li><span data-l="de"><b>Theme per Datei:</b> Farben, Radien, Abstände und Schriftgrößen stehen in <code>data/theme.json</code> und lassen sich ohne neue Firmware ändern.</span><span data-l="en"><b>Theme via file:</b> colours, radii, spacing and font sizes live in <code>data/theme.json</code> and can be changed without new firmware.</span></li>
+  <li><span data-l="de"><b>Serielle Notbedienung</b> (115200 Baud): <code>wifi set</code>, <code>wifi reset</code>, <code>wifi status</code>, <code>admin reset</code>, <code>reboot</code>.</span><span data-l="en"><b>Serial recovery</b> (115200 baud): <code>wifi set</code>, <code>wifi reset</code>, <code>wifi status</code>, <code>admin reset</code>, <code>reboot</code>.</span></li>
+</ul>
+
+<h2 id="weiteres"><span data-l="de">Weitere Funktionen</span><span data-l="en">More</span></h2>
+<ul>
+  <li><span data-l="de"><b>Offline-Warteschlange:</b> Fehlt das Netz oder antwortet Spoolman mit einem 5xx-Fehler, wird das Update gespeichert und später automatisch nachgeholt. Je Spule bleibt nur das neueste. Maximal 100 Einträge.</span><span data-l="en"><b>Offline queue:</b> if the network is down or Spoolman answers with a 5xx error, the update is stored and sent later. Only the newest per spool is kept, 100 entries at most.</span></li>
+  <li><span data-l="de"><b>Zeit per NTP</b> (Europe/Berlin) für Zeitstempel in der Warteschlange.</span><span data-l="en"><b>NTP time</b> (Europe/Berlin) for queue timestamps.</span></li>
+  <li><span data-l="de"><b>Unit-Tests</b> für NDEF, Tags, Warteschlange und Wiegelogik laufen am Rechner (<code>pio test -e native</code>).</span><span data-l="en"><b>Unit tests</b> for NDEF, tags, queue and weighing logic run on the host (<code>pio test -e native</code>).</span></li>
+  <li><span data-l="de"><b>Noch nicht umgesetzt:</b> Screen „Neue Box anlegen“ bei leerem Box-Tag (Box-Tags schreibst du im Menü unter NFC) und Längenanzeige in Metern.</span><span data-l="en"><b>Not implemented yet:</b> a “new box” screen for empty box tags (write box tags in the NFC menu) and length display in metres.</span></li>
+</ul>
+</main>
+
+<footer><div class="wrap">
+  <a href="index.html">← <span data-l="de">Startseite</span><span data-l="en">Home</span></a> ·
+  <a href="nfc-spoolman.html">NFC &amp; Spoolman →</a>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

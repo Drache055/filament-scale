@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFC &amp; Spoolman – Filamentwaage</title>
+<meta name="description" content="NFC-Tag-Formate der Filamentwaage und die Spoolman-Anbindung im Detail.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><div class="wrap">
+  <b><a href="index.html" style="color:inherit">Filamentwaage</a></b>
+  <div class="links">
+    <a href="funktionen.html"><span data-l="de">Funktionen</span><span data-l="en">Features</span></a>
+    <a href="nfc-spoolman.html">NFC &amp; Spoolman</a>
+    <a href="bauen.html"><span data-l="de">Bauen &amp; Flashen</span><span data-l="en">Build &amp; flash</span></a>
+  </div>
+  <span class="sp"></span>
+  <a href="https://github.com/Drache055/filamentwaage" class="gh">GitHub</a>
+  <button class="lang" id="lang" aria-label="Sprache / Language">EN</button>
+</div></nav>
+
+<main class="wrap page">
+<h1>NFC &amp; Spoolman</h1>
+<p class="muted"><span data-l="de">Welche Tags die Waage versteht und wie sie mit Spoolman spricht.</span><span data-l="en">Which tags the scale understands and how it talks to Spoolman.</span></p>
+<ul class="toc">
+  <li><a href="#tags"><span data-l="de">Tag-Formate</span><span data-l="en">Tag formats</span></a></li>
+  <li><a href="#zuordnung"><span data-l="de">Spule zuordnen</span><span data-l="en">Assigning spools</span></a></li>
+  <li><a href="#schreiben"><span data-l="de">Tags schreiben</span><span data-l="en">Writing tags</span></a></li>
+  <li><a href="#spoolman">Spoolman</a></li>
+  <li><a href="#katalog"><span data-l="de">Katalogabgleich</span><span data-l="en">Catalog sync</span></a></li>
+</ul>
+
+<h2 id="tags"><span data-l="de">Tag-Formate</span><span data-l="en">Tag formats</span></h2>
+<p><span data-l="de">Unterstützt werden NTAG215 und NTAG216. Jeder Tag enthält einen NDEF-Record vom Typ <code>application/json</code>. Die Kapazität liest die Waage aus dem Capability Container (NTAG215: 496 Byte, NTAG216: 872 Byte). Die UID wird überall als Hex in Großbuchstaben ohne Trennzeichen geführt.</span><span data-l="en">NTAG215 and NTAG216 are supported. Every tag holds one NDEF record of type <code>application/json</code>. The scale reads capacity from the capability container (NTAG215: 496 bytes, NTAG216: 872 bytes). UIDs are always uppercase hex without separators.</span></p>
+<div class="grid">
+  <div class="card"><h3><span data-l="de">Spule</span><span data-l="en">Spool</span></h3><p><span data-l="de">OpenSpool-kompatibel, dazu das Zusatzfeld <code>spoolman_id</code>. Erkennung über <code>"protocol": "openspool"</code>.</span><span data-l="en">OpenSpool compatible, plus the extra field <code>spoolman_id</code>. Detected via <code>"protocol": "openspool"</code>.</span></p></div>
+  <div class="card"><h3>Box</h3><p><span data-l="de">Eigenes Format. Der <code>name</code> wird 1:1 zum Lagerort in Spoolman.</span><span data-l="en">Own format. The <code>name</code> becomes the Spoolman location 1:1.</span></p></div>
+  <div class="card"><h3><span data-l="de">Benutzer</span><span data-l="en">User</span></h3><p><span data-l="de">Meldet am Gerät an. Maßgeblich ist die ID in der Benutzerliste.</span><span data-l="en">Signs in on the device. The ID in the user list is authoritative.</span></p></div>
+  <div class="card"><h3>Admin</h3><p><span data-l="de">Token statt PIN. Es gilt immer nur der zuletzt erzeugte.</span><span data-l="en">A token instead of the PIN. Only the most recently created one is valid.</span></p></div>
+</div>
+<h3><span data-l="de">Spulen-Tag</span><span data-l="en">Spool tag</span></h3>
+<pre><code>{
+  "protocol": "openspool",
+  "version": "1.0",
+  "type": "PLA",
+  "color_hex": "FF5733",
+  "brand": "Generic",
+  "min_temp": "190",
+  "max_temp": "220",
+  "spoolman_id": 42
+}</code></pre>
+<h3><span data-l="de">Box-, Benutzer- und Admin-Tag</span><span data-l="en">Box, user and admin tags</span></h3>
+<pre><code>{ "type": "box",   "id": "BOX-03", "name": "Box 03" }
+{ "type": "user",  "id": 3, "name": "Fabian" }
+{ "type": "admin", "token": "&lt;32 Hex&gt;" }</code></pre>
+<p class="note"><span data-l="de">Ein Tag ohne NDEF oder mit unbekanntem JSON gilt als „leer/unbekannt“. Ein Admin-Tag lässt sich kopieren, das Passwort ist sicherer.</span><span data-l="en">A tag without NDEF or with unknown JSON counts as “empty/unknown”. An admin tag can be cloned, the password is safer.</span></p>
+
+<h2 id="zuordnung"><span data-l="de">Wie eine Spule gefunden wird</span><span data-l="en">How a spool is found</span></h2>
+<ol>
+  <li><span data-l="de">Steht <code>spoolman_id</code> auf dem Tag, wird die Spule direkt geladen.</span><span data-l="en">If the tag has <code>spoolman_id</code>, the spool is loaded directly.</span></li>
+  <li><span data-l="de">Sonst sucht die Waage über die Tag-UID bei Spoolman (native NFC-Tags ab Spoolman 0.27).</span><span data-l="en">Otherwise the scale looks the tag UID up in Spoolman (native NFC tags since Spoolman 0.27).</span></li>
+  <li><span data-l="de">Kennt Spoolman den Tag nicht, öffnet sich automatisch die Auswahl „Unbekannte Spule“ mit der Spulenliste (bis 60 Einträge). Nach der Auswahl wird der Tag in Spoolman verknüpft und <code>spoolman_id</code> auf den Tag geschrieben. Vorhandene OpenSpool-Daten bleiben erhalten.</span><span data-l="en">If Spoolman does not know the tag, the “Unknown spool” picker opens with the spool list (up to 60 entries). After you pick one the tag is linked in Spoolman and <code>spoolman_id</code> is written to the tag. Existing OpenSpool data is kept.</span></li>
+</ol>
+<div class="shots"><figure><img src="img/20_nfc_spule_erkannt.png" alt="" loading="lazy"><figcaption><span data-l="de">Spule erkannt</span><span data-l="en">Spool detected</span></figcaption></figure></div>
+
+<h2 id="schreiben"><span data-l="de">Tags schreiben</span><span data-l="en">Writing tags</span></h2>
+<ul>
+  <li><span data-l="de"><b>Box-Tag</b> am Gerät: Menü → NFC → Box, Nummer wählen, Tag auflegen. Ergebnis ist z. B. <code>BOX-03</code>.</span><span data-l="en"><b>Box tag</b> on the device: Menu → NFC → Box, pick a number, place the tag. Result e.g. <code>BOX-03</code>.</span></li>
+  <li><span data-l="de"><b>Filament-Tag</b> am Gerät: Menü → NFC → Filament → Typ → Hersteller → Farbe → Schreiben. Temperaturbereich und Farbe kommen aus dem Katalog.</span><span data-l="en"><b>Filament tag</b> on the device: Menu → NFC → Filament → type → vendor → colour → write. Temperature range and colour come from the catalog.</span></li>
+  <li><span data-l="de"><b>Benutzer- und Admin-Tags</b> löst die Weboberfläche aus. Web-Aufträge schreiben nur auf einen neu aufgelegten Tag und überschreiben nie Spulen-Tags.</span><span data-l="en"><b>User and admin tags</b> are triggered from the web UI. Web jobs only write to a freshly placed tag and never overwrite spool tags.</span></li>
+  <li><span data-l="de"><b>Schreibschutz-Prüfung:</b> Vor dem Schreiben prüft die Waage Schreibzugriff, Lock-Bytes und dynamische Lock-Bytes. Nach dem Schreiben liest sie zurück und vergleicht. Gesperrte Tags werden nicht beschrieben.</span><span data-l="en"><b>Write-protection check:</b> before writing, the scale checks write access, lock bytes and dynamic lock bytes. After writing it reads back and compares. Locked tags are never written.</span></li>
+</ul>
+<div class="shots">
+  <figure><img src="img/22_box_tag_schreiben.png" alt="" loading="lazy"><figcaption>Box-Tag</figcaption></figure>
+  <figure><img src="img/27_filament_schreiben.png" alt="" loading="lazy"><figcaption>Filament-Tag</figcaption></figure>
+</div>
+
+<h2 id="spoolman">Spoolman</h2>
+<p><span data-l="de">Die Basis-URL stellst du in <code>secrets.h</code> oder später auf der Webseite ein, zum Beispiel <code>http://spoolman.local:7912</code>. Die Anbindung wurde gegen Spoolman 0.27.0 geprüft. Alle 30 Sekunden prüft die Waage die Erreichbarkeit (<code>/api/v1/info</code>), Anfragen laufen in einem eigenen Task und blockieren Oberfläche und OTA nicht.</span><span data-l="en">Set the base URL in <code>secrets.h</code> or later in the web UI, for example <code>http://spoolman.local:7912</code>. The integration was verified against Spoolman 0.27.0. Every 30 seconds the scale checks reachability (<code>/api/v1/info</code>); requests run in their own task and do not block the UI or OTA.</span></p>
+<table>
+  <tr><th><span data-l="de">Spule laden</span><span data-l="en">Load spool</span></th><td><code>GET /api/v1/spool/{id}</code></td></tr>
+  <tr><th><span data-l="de">Per UID suchen</span><span data-l="en">Find by UID</span></th><td><code>GET /api/v1/spool?tag=&lt;UID&gt;&amp;allow_archived=true&amp;limit=1</code></td></tr>
+  <tr><th><span data-l="de">Tag verknüpfen</span><span data-l="en">Link tag</span></th><td><code>POST /api/v1/spool/{id}/tag</code> <span class="muted">(409 = <span data-l="de">gehört schon einer anderen Spule</span><span data-l="en">already belongs to another spool</span>)</span></td></tr>
+  <tr><th><span data-l="de">Speichern</span><span data-l="en">Save</span></th><td><code>PATCH /api/v1/spool/{id}</code> <span class="muted">remaining_weight, location, owner</span></td></tr>
+</table>
+<h3><span data-l="de">Gut zu wissen</span><span data-l="en">Good to know</span></h3>
+<ul>
+  <li><span data-l="de"><code>remaining_weight</code> nimmt Spoolman nur an, wenn die Filamentsorte ein Füllgewicht (<code>filament.weight</code>) hat. Sonst kommt ein Fehler, den die Waage anzeigt.</span><span data-l="en">Spoolman only accepts <code>remaining_weight</code> when the filament has a net weight (<code>filament.weight</code>). Otherwise it returns an error, which the scale shows.</span></li>
+  <li><span data-l="de"><b>Besitzer:</b> Der angemeldete Benutzer wird als <code>owner</code> eingetragen. Lege dafür in Spoolman unter Einstellungen → Extra Fields → Spool ein Textfeld <code>owner</code> an. Andere Extra-Felder der Spule bleiben erhalten, die Waage führt sie beim Schreiben zusammen.</span><span data-l="en"><b>Owner:</b> the signed-in user is written as <code>owner</code>. Create a text field <code>owner</code> in Spoolman under Settings → Extra Fields → Spool. Other extra fields of the spool are preserved, the scale merges them when writing.</span></li>
+  <li><span data-l="de"><b>Offline:</b> Bei Netzwerkfehlern oder HTTP 5xx landet das Update in der Warteschlange, bei 4xx wird es verworfen und gezählt. Home zeigt „Ausstehende Updates“.</span><span data-l="en"><b>Offline:</b> on network errors or HTTP 5xx the update is queued, on 4xx it is dropped and counted. Home shows “Pending updates”.</span></li>
+</ul>
+
+<h2 id="katalog"><span data-l="de">Katalogabgleich</span><span data-l="en">Catalog sync</span></h2>
+<p><span data-l="de">Der Katalog (Typen mit Temperaturbereich, Hersteller, Farben; je höchstens 24 Einträge) steht im Flash und überlebt Dateisystem-Updates. Alle 10 Minuten und auf Knopfdruck ergänzt die Waage neue Hersteller und Materialien aus Spoolman. Vorhandenes bleibt unverändert, gelöscht wird nichts. Für neue Typen nimmt sie den kleinsten und größten Extruder-Temperaturwert der Filamente, ohne Werte übliche Standardwerte (PLA 190–220, PETG 220–250, ABS 230–260 und weitere). Farben werden nicht abgeglichen.</span><span data-l="en">The catalog (types with temperature range, vendors, colours; up to 24 entries each) lives in flash and survives file-system updates. Every 10 minutes and on demand the scale adds new vendors and materials from Spoolman. Existing entries stay untouched and nothing is deleted. For new types it takes the lowest and highest extruder temperature of those filaments, or common defaults when none are set (PLA 190–220, PETG 220–250, ABS 230–260 and more). Colours are not synced.</span></p>
+</main>
+
+<footer><div class="wrap">
+  <a href="funktionen.html">← <span data-l="de">Funktionen</span><span data-l="en">Features</span></a> ·
+  <a href="bauen.html"><span data-l="de">Bauen &amp; Flashen</span><span data-l="en">Build &amp; flash</span> →</a>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>
