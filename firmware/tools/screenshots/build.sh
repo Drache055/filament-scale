@@ -6,7 +6,7 @@ ROOT=../..
 LVGL=$ROOT/.pio/libdeps/waage/lvgl
 JSON=$ROOT/.pio/libdeps/waage/ArduinoJson/src
 BUILD=${TMPDIR:-/tmp}/shots_build
-OUT=$ROOT/screenshots
+OUT=${OUT_DIR:-$ROOT/screenshots}  # OUT_DIR=... SHOT_LANG=en sh build.sh für englische Screens
 mkdir -p "$BUILD" "$OUT/1x" "$OUT/4x"
 
 LVOBJ=$BUILD/lvgl.a
@@ -30,7 +30,7 @@ clang++ -std=gnu++17 -O1 -w -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE 
   "$LVOBJ" -o "$BUILD/shots"
 
 rm -rf "$BUILD/ppm" && mkdir -p "$BUILD/ppm"
-"$BUILD/shots" "$BUILD/ppm" > /dev/null
+SHOT_LANG=${SHOT_LANG:-de} "$BUILD/shots" "$BUILD/ppm" > /dev/null
 rm -f "$OUT"/1x/*.png "$OUT"/4x/*.png
 python3 - "$BUILD/ppm" "$OUT" <<'PY'
 import sys, glob, os

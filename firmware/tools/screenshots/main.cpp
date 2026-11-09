@@ -104,6 +104,8 @@ static void setSpoolTag() {
   mock.lookup.spool.remaining = 732;
 }
 
+static Lang baseLang = Lang::DE;
+
 int main(int argc, char **argv) {
   if (argc > 1) outDir = argv[1];
 
@@ -121,6 +123,9 @@ int main(int argc, char **argv) {
   setWeight(0);
 
   i18nBegin();
+  const char *lg = getenv("SHOT_LANG");
+  baseLang = (lg && !strcmp(lg, "en")) ? Lang::EN : Lang::DE;
+  i18nSet(baseLang);
   themeLoad();
   buildHome();
   lv_timer_create(refreshTimerCb, 200, nullptr);
@@ -251,7 +256,7 @@ int main(int argc, char **argv) {
   shot("en_menu");
 
   // --- Werbeclip (deutsch): Tara mit 3 g Drift, Box, Spule "Blaues PLA" ---
-  i18nSet(Lang::DE);
+  i18nSet(baseLang);
   uiRetranslateHome();
   uiShowHome();
   mock.adminLoggedIn = false;

@@ -95,7 +95,11 @@ void catalogGet(Catalog &out) {
   out.makerCount = 2;
   strlcpy(out.makers[0], "Elegoo", 32);
   strlcpy(out.makers[1], "Generic", 32);
-  const char *cn[] = {"Weiß", "Schwarz", "Rot", "Blau", "Grün", "Gelb"};
+  const char *lg = getenv("SHOT_LANG");
+  const bool en = lg && !strcmp(lg, "en");
+  const char *cn_de[] = {"Weiß", "Schwarz", "Rot", "Blau", "Grün", "Gelb"};
+  const char *cn_en[] = {"White", "Black", "Red", "Blue", "Green", "Yellow"};
+  const char **cn = en ? cn_en : cn_de;
   const char *ch[] = {"FFFFFF", "000000", "E11D2A", "2563EB", "16A34A", "FACC15"};
   out.colorCount = 6;
   for (int i = 0; i < 6; i++) {
