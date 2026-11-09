@@ -139,3 +139,5 @@ html[lang=de] [data-l=de],html[lang=en] [data-l=en]{display:revert}
 .kbd{display:inline-block;padding:1px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:.9em;font-weight:600}
 
 .two.tall img{aspect-ratio:1920/1760;object-fit:cover;object-position:center}
+
+.demo-video{display:block;width:100%;max-width:960px;margin:24px auto 0;border-radius:18px;border:1px solid var(--line);background:#000;box-shadow:0 30px 80px -30px rgba(0,0,0,.6)}
