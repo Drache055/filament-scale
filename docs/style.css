@@ -137,3 +137,5 @@ html[lang=de] [data-l=de],html[lang=en] [data-l=en]{display:revert}
 .gimgs{display:flex;gap:10px}
 .gimgs img{width:150px;height:200px;image-rendering:pixelated;border-radius:10px;border:2px solid #000;display:block}
 .kbd{display:inline-block;padding:1px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:.9em;font-weight:600}
+
+.two.tall img{aspect-ratio:1920/1760;object-fit:cover;object-position:center}
