@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Guide – Filament Scale</title>
+<meta name="description" content="User guide for the Filament Scale: first setup, preparing tags, weighing a spool, users, calibration and troubleshooting.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><div class="wrap">
+  <b><a href="index.html" style="color:inherit">Filament Scale</a></b>
+  <div class="links">
+    <a href="funktionen.html"><span data-l="de">Funktionen</span><span data-l="en">Features</span></a>
+    <a href="anleitung.html"><span data-l="de">Anleitung</span><span data-l="en">User guide</span></a>
+    <a href="nfc-spoolman.html">NFC &amp; Spoolman</a>
+    <a href="bauen.html"><span data-l="de">Bauen &amp; Flashen</span><span data-l="en">Build &amp; flash</span></a>
+  </div>
+  <span class="sp"></span>
+  <a href="https://github.com/Drache055/filamentwaage" class="gh">GitHub</a>
+  <button class="lang" id="lang" aria-label="Sprache / Language">DE</button>
+</div></nav>
+
+<main class="wrap page">
+<h1><span data-l="de">Benutzeranleitung</span><span data-l="en">User guide</span></h1>
+<p class="muted"><span data-l="de">Von der ersten Einrichtung bis zur täglichen Wägung. Die Waage ist schon gebaut und geflasht? Dann bist du hier richtig.</span><span data-l="en">From first setup to everyday weighing. Is your scale already built and flashed? Then you are in the right place.</span></p>
+<ul class="toc">
+  <li><a href="#setup"><span data-l="de">1 · Erste Einrichtung</span><span data-l="en">1 · First setup</span></a></li>
+  <li><a href="#spoolman"><span data-l="de">2 · Spoolman</span><span data-l="en">2 · Spoolman</span></a></li>
+  <li><a href="#tags"><span data-l="de">3 · Tags vorbereiten</span><span data-l="en">3 · Prepare tags</span></a></li>
+  <li><a href="#weigh"><span data-l="de">4 · Spule wiegen</span><span data-l="en">4 · Weigh a spool</span></a></li>
+  <li><a href="#users"><span data-l="de">5 · Benutzer</span><span data-l="en">5 · Users</span></a></li>
+  <li><a href="#calibrate"><span data-l="de">6 · Kalibrieren</span><span data-l="en">6 · Calibrate</span></a></li>
+  <li><a href="#help"><span data-l="de">7 · Hilfe</span><span data-l="en">7 · Troubleshooting</span></a></li>
+</ul>
+
+<p class="note"><span data-l="de"><b>Das Wichtigste vorweg:</b> Die Waage kennt zwei Rollen am Gerät. Wiegen darf jeder. Einstellungen und das Schreiben von Tags verlangen den <b>Admin</b> (Geräte-PIN, Standard <code>1234</code>).</span><span data-l="en"><b>Key idea first:</b> on the device anyone may weigh. Settings and writing tags require the <b>admin</b> (device PIN, default <code>1234</code>).</span></p>
+
+<h2 id="setup"><span data-l="de">1 · Erste Einrichtung</span><span data-l="en">1 · First setup</span></h2>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">WLAN verbinden</span><span data-l="en">Connect to Wi-Fi</span></h3>
+    <ol>
+      <li><span data-l="de">Schalte die Waage ein. Hat sie noch kein WLAN gespeichert, zeigt Home „WLAN einrichten“ und öffnet den Hotspot <code>Filamentwaage-Setup</code>.</span><span data-l="en">Power the scale on. If it has no Wi-Fi saved, Home shows a setup hint and opens the <code>Filamentwaage-Setup</code> hotspot.</span></li>
+      <li><span data-l="de">Verbinde dein Handy oder deinen Laptop mit diesem Hotspot. Die Einrichtungsseite öffnet sich automatisch, sonst rufe <code>http://192.168.4.1</code> auf.</span><span data-l="en">Join this hotspot with your phone or laptop. The setup page opens automatically, otherwise open <code>http://192.168.4.1</code>.</span></li>
+      <li><span data-l="de">Wähle dein WLAN, gib das Passwort ein und speichere.</span><span data-l="en">Pick your Wi-Fi, enter the password and save.</span></li>
+      <li><span data-l="de">Die IP-Adresse findest du später am Gerät unter Menü → Einstellungen → WiFi.</span><span data-l="en">Later you can find the IP address on the device under Menu → Settings → WiFi.</span></li>
+    </ol>
+    <p class="muted"><span data-l="de">Der Hotspot ist nur mit dem OTA-Passwort geschützt, wenn es mindestens 8 Zeichen hat, sonst ist er offen.</span><span data-l="en">The hotspot is password-protected only if the OTA password has at least 8 characters, otherwise it is open.</span></p>
+  </div>
+  <div class="gimgs"><img src="img/12_wlan.png" alt="WiFi status screen"></div>
+</div>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Weboberfläche öffnen und Zugang ändern</span><span data-l="en">Open the web UI and change the credentials</span></h3>
+    <ol>
+      <li><span data-l="de">Öffne <code>http://filamentwaage.local</code> oder die IP-Adresse im Browser.</span><span data-l="en">Open <code>http://filamentwaage.local</code> or the IP address in your browser.</span></li>
+      <li><span data-l="de">Melde dich an mit Name <code>admin</code> und Passwort <code>Filament</code>.</span><span data-l="en">Sign in as <code>admin</code> with password <code>Filament</code>.</span></li>
+      <li><span data-l="de">Gehe zu <b>Benutzer → Admin</b> und ändere sofort das Admin-Passwort und die Geräte-PIN. Die Seite warnt, solange die Standardwerte aktiv sind.</span><span data-l="en">Go to <b>Users → Admin</b> and change the admin password and the device PIN right away. The page warns while the defaults are active.</span></li>
+    </ol>
+  </div>
+  <div class="gimgs"><img src="img/09_admin_anmeldung.png" alt="Admin PIN pad"></div>
+</div>
+
+<h2 id="spoolman">2 · Spoolman</h2>
+<p><span data-l="de">Die Waage braucht eine laufende <a href="https://github.com/Donkie/Spoolman">Spoolman</a>-Instanz (ab Version 0.27) in deinem Netzwerk.</span><span data-l="en">The scale needs a running <a href="https://github.com/Donkie/Spoolman">Spoolman</a> instance (version 0.27 or newer) on your network.</span></p>
+<ol>
+  <li><span data-l="de"><b>Adresse eintragen:</b> Weboberfläche → <b>Spoolman</b>, z. B. <code>http://spoolman.local:7912</code>. Der Status zeigt „erreichbar“, sobald es klappt.</span><span data-l="en"><b>Enter the address:</b> web UI → <b>Spoolman</b>, e.g. <code>http://spoolman.local:7912</code>. The status shows “reachable” once it works.</span></li>
+  <li><span data-l="de"><b>Besitzer-Feld anlegen</b> (optional, für Mehrbenutzerbetrieb): In Spoolman unter Einstellungen → Extra Fields → Spool ein Textfeld mit dem Schlüssel <code>owner</code> anlegen.</span><span data-l="en"><b>Create the owner field</b> (optional, for multi-user): in Spoolman under Settings → Extra Fields → Spool add a text field with the key <code>owner</code>.</span></li>
+  <li><span data-l="de"><b>Spulen pflegen:</b> Damit das Restgewicht gespeichert werden kann, braucht jedes Filament in Spoolman ein <b>Füllgewicht</b> (net weight). Das <b>Leerspulengewicht</b> kann an der Spule, am Filament oder am Hersteller stehen.</span><span data-l="en"><b>Maintain your spools:</b> to store the remaining weight, every filament in Spoolman needs a <b>net weight</b>. The <b>empty spool weight</b> can be set on the spool, the filament or the vendor.</span></li>
+  <li><span data-l="de"><b>Katalog abgleichen:</b> Weboberfläche → Filament-Katalog → „Jetzt abgleichen“ übernimmt Hersteller und Materialien aus Spoolman. Das geschieht auch alle 10 Minuten automatisch.</span><span data-l="en"><b>Sync the catalog:</b> web UI → Filament catalog → “Sync now” imports vendors and materials from Spoolman. It also runs automatically every 10 minutes.</span></li>
+</ol>
+
+<h2 id="tags"><span data-l="de">3 · Tags vorbereiten</span><span data-l="en">3 · Prepare tags</span></h2>
+<p><span data-l="de">Du brauchst <b>einen Tag pro Spule</b> und <b>einen Tag pro Box</b> (NTAG215 oder NTAG216). Schreiben geht am Gerät nur als Admin: Menü → <b>NFC</b>, Anmeldung mit PIN.</span><span data-l="en">You need <b>one tag per spool</b> and <b>one tag per box</b> (NTAG215 or NTAG216). Writing on the device requires the admin: Menu → <b>NFC</b>, sign in with the PIN.</span></p>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Box-Tag schreiben</span><span data-l="en">Write a box tag</span></h3>
+    <ol>
+      <li><span data-l="de">Menü → NFC → <span class="kbd">Box</span>.</span><span data-l="en">Menu → NFC → <span class="kbd">Box</span>.</span></li>
+      <li><span data-l="de">Mit <span class="kbd">−5</span> <span class="kbd">−1</span> <span class="kbd">+1</span> <span class="kbd">+5</span> die Nummer wählen, z. B. BOX-03.</span><span data-l="en">Pick the number with <span class="kbd">−5</span> <span class="kbd">−1</span> <span class="kbd">+1</span> <span class="kbd">+5</span>, e.g. BOX-03.</span></li>
+      <li><span data-l="de"><span class="kbd">Write</span> tippen und den Tag auflegen. „Written“ erscheint in Grün.</span><span data-l="en">Tap <span class="kbd">Write</span> and place the tag. “Written” appears in green.</span></li>
+      <li><span data-l="de">Klebe den Tag <b>mittig auf den Boxboden</b>. Der Box-Name wird später zum Lagerort in Spoolman.</span><span data-l="en">Stick the tag to the <b>centre of the box bottom</b>. The box name later becomes the location in Spoolman.</span></li>
+    </ol>
+  </div>
+  <div class="gimgs"><img src="img/22_box_tag_schreiben.png" alt="Write box tag"><img src="img/23_box_tag_ok.png" alt="Box tag written"></div>
+</div>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Neuen Spulen-Tag schreiben</span><span data-l="en">Write a new spool tag</span></h3>
+    <ol>
+      <li><span data-l="de">Menü → NFC → <span class="kbd">Filament</span>.</span><span data-l="en">Menu → NFC → <span class="kbd">Filament</span>.</span></li>
+      <li><span data-l="de">Nacheinander Typ, Hersteller und Farbe wählen. Temperaturen kommen aus dem Katalog.</span><span data-l="en">Pick type, vendor and colour in turn. Temperatures come from the catalog.</span></li>
+      <li><span data-l="de"><span class="kbd">Write</span> tippen und den Tag auflegen.</span><span data-l="en">Tap <span class="kbd">Write</span> and place the tag.</span></li>
+      <li><span data-l="de">Lege die Spule danach auf die Waage. Sie ist Spoolman noch unbekannt und wird im nächsten Schritt zugeordnet.</span><span data-l="en">Then hold the spool to the scale. Spoolman does not know it yet, you link it in the next step.</span></li>
+    </ol>
+  </div>
+  <div class="gimgs"><img src="img/24_filament_typ.png" alt="Filament type list"><img src="img/27_filament_schreiben.png" alt="Write filament tag"></div>
+</div>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Tag einer Spule zuordnen</span><span data-l="en">Link a tag to a spool</span></h3>
+    <p><span data-l="de">Hältst du einen Tag an die Waage, den Spoolman nicht kennt, öffnet sich automatisch die Liste deiner Spoolman-Spulen. Tippe die richtige an, und die Waage verknüpft den Tag in Spoolman und schreibt die Spoolman-ID auf den Tag. Beim nächsten Mal wird die Spule sofort erkannt. Das geht auch über Menü → NFC → <span class="kbd">Assign spool</span>, solange der Tag aufliegt.</span><span data-l="en">If you hold a tag to the scale that Spoolman does not know, the list of your Spoolman spools opens automatically. Tap the right one and the scale links the tag in Spoolman and writes the Spoolman ID to the tag. Next time the spool is recognised instantly. You can also use Menu → NFC → <span class="kbd">Assign spool</span> while the tag is on the scale.</span></p>
+  </div>
+  <div class="gimgs"><img src="img/28_spule_zuordnen.png" alt="Assign spool list"><img src="img/21_nfc_spule_unbekannt.png" alt="Unknown spool in NFC screen"></div>
+</div>
+
+<h2 id="weigh"><span data-l="de">4 · Spule wiegen</span><span data-l="en">4 · Weigh a spool</span></h2>
+<p><span data-l="de">So sieht der Alltag aus. Dauert etwa eine halbe Minute.</span><span data-l="en">This is the everyday routine. It takes about half a minute.</span></p>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Schritt 1 – Spule scannen</span><span data-l="en">Step 1 – Scan the spool</span></h3>
+    <p><span data-l="de">Halte die Spule mit dem Tag an die markierte <b>Scan-Zone</b> der Waage. Die Waage zeigt Hersteller, Material, Farbe und das letzte Restgewicht. Die Waage muss dabei leer sein, sonst erscheint „Empty the scale“.</span><span data-l="en">Hold the spool with its tag to the marked <b>scan zone</b>. The scale shows vendor, material, colour and last remaining weight. The scale must be empty, otherwise it shows “Empty the scale”.</span></p>
+  </div>
+  <div class="gimgs"><img src="img/38_ablauf_1_spule_erkannt.png" alt="Spool detected"></div>
+</div>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Schritt 2 – Box auflegen</span><span data-l="en">Step 2 – Place the box</span></h3>
+    <p><span data-l="de">Stelle die <b>Lagerbox mit Tag</b> auf die Wiegeplatte, am besten so, dass der Tag mittig über der Antenne liegt. Sobald das Gewicht ruhig ist und der Box-Tag gelesen wurde, zeigt die Waage den Box-Namen in Grün. Ab hier werden Spulen-Tags ignoriert.</span><span data-l="en">Put the <b>tagged storage box</b> on the platform, ideally with the tag centred over the antenna. As soon as the weight is steady and the box tag is read, the scale shows the box name in green. From here on, spool tags are ignored.</span></p>
+  </div>
+  <div class="gimgs"><img src="img/39_ablauf_2_box_auflegen_leer.png" alt="Place the box"><img src="img/40_ablauf_3_box_erkannt.png" alt="Box detected"></div>
+</div>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Schritt 3 – Spule in die Box stellen</span><span data-l="en">Step 3 – Put the spool in the box</span></h3>
+    <p><span data-l="de">Stelle die Spule in die Box. Die Anzeige zeigt das Gewicht inklusive Box. Sobald es um mindestens 50 g gestiegen und ruhig ist, geht es automatisch weiter. Was sonst in der Box liegt, spielt keine Rolle.</span><span data-l="en">Put the spool into the box. The display shows the weight including the box. Once it rose by at least 50 g and is steady, the flow continues automatically. Anything else in the box does not matter.</span></p>
+  </div>
+  <div class="gimgs"><img src="img/42_ablauf_5_spule_einstellen_842g.png" alt="Put the spool in the box"></div>
+</div>
+
+<div class="gstep">
+  <div>
+    <h3><span data-l="de">Schritt 4 – Bestätigen und speichern</span><span data-l="en">Step 4 – Confirm and save</span></h3>
+    <ul>
+      <li><span data-l="de">Prüfe Box, Spule und <b>Restgewicht</b>.</span><span data-l="en">Check box, spool and <b>remaining weight</b>.</span></li>
+      <li><span data-l="de">Fehlt das Leerspulengewicht in Spoolman, stellst du es mit <span class="kbd">−10</span> / <span class="kbd">+10</span> ein (Start 250 g).</span><span data-l="en">If the empty spool weight is missing in Spoolman, set it with <span class="kbd">−10</span> / <span class="kbd">+10</span> (starts at 250 g).</span></li>
+      <li><span data-l="de"><span class="kbd">Save</span> sendet das Ergebnis an Spoolman. <span class="kbd">✕</span> bricht ab.</span><span data-l="en"><span class="kbd">Save</span> sends the result to Spoolman. <span class="kbd">✕</span> cancels.</span></li>
+      <li><span data-l="de">Bei „Saved“ ist alles erledigt. Ist Spoolman offline, steht „Queued“ da und die Waage schickt das Update später nach.</span><span data-l="en">“Saved” means done. If Spoolman is offline it says “Queued” and the scale sends the update later.</span></li>
+      <li><span data-l="de">Nimm zum Schluss die Box von der Waage. Dann geht sie zurück zu Home.</span><span data-l="en">Finally remove the box from the scale. It then returns to Home.</span></li>
+    </ul>
+  </div>
+  <div class="gimgs"><img src="img/43_ablauf_6_bestaetigen.png" alt="Confirm screen"><img src="img/45_ablauf_8_gespeichert.png" alt="Saved screen"></div>
+</div>
+
+<p class="note"><span data-l="de"><b>Warnungen:</b> Ist das Restgewicht unter −20 g, meldet die Waage „Check empty spool weight“ und speichert nicht. Liegt es zwischen −20 und 0 g, wird auf 0 gesetzt. Ist es über dem Anfangsgewicht + 50 g, musst du das Speichern bestätigen. Jeder Schritt bricht nach 120 s ohne Aktion ab.</span><span data-l="en"><b>Warnings:</b> if the remaining weight is below −20 g the scale reports “Check empty spool weight” and does not save. Between −20 and 0 g it is set to 0. Above the initial weight + 50 g you must confirm saving. Every step times out after 120 s of inactivity.</span></p>
+
+<h3><span data-l="de">Nur wiegen und Tara</span><span data-l="en">Just weighing and tare</span></h3>
+<p><span data-l="de">Auf Home ist die Waage eine normale Küchenwaage. <span class="kbd">Tara</span> nullt sie. Tara dürfen der Admin und Benutzer mit Tara-Recht. Über 4500 g warnt die Waage vor Überlast, die Zelle verträgt 5 kg.</span><span data-l="en">On Home the scale works like a normal kitchen scale. <span class="kbd">Tare</span> zeroes it. Tare is allowed for the admin and users with the tare permission. Above 4500 g the scale warns about overload, the cell is rated for 5 kg.</span></p>
+
+<h2 id="users"><span data-l="de">5 · Benutzer</span><span data-l="en">5 · Users</span></h2>
+<ol>
+  <li><span data-l="de"><b>Anlegen:</b> Weboberfläche → Benutzer → Name eintragen. Optional eine PIN (4 bis 6 Ziffern) für den Webzugang setzen.</span><span data-l="en"><b>Create:</b> web UI → Users → enter a name. Optionally set a PIN (4 to 6 digits) for web access.</span></li>
+  <li><span data-l="de"><b>Tag schreiben:</b> Beim Benutzer auf „Tag schreiben“ klicken und einen neuen Tag auflegen.</span><span data-l="en"><b>Write a tag:</b> click “Write tag” on the user and place a new tag.</span></li>
+  <li><span data-l="de"><b>Anmelden am Gerät:</b> Benutzer-Tag an die Waage halten. Der Name steht oben rechts. Danach wird er bei jeder Wägung als Besitzer in Spoolman eingetragen und die Oberfläche kommt in seiner Sprache.</span><span data-l="en"><b>Sign in on the device:</b> hold the user tag to the scale. The name shows at the top right. From then on they are recorded as the owner in Spoolman and the interface uses their language.</span></li>
+  <li><span data-l="de"><b>Abmelden:</b> auf den Namen oben tippen, oder die Waage meldet nach 15 Minuten ohne Aktion automatisch ab.</span><span data-l="en"><b>Sign out:</b> tap the name at the top, or the scale signs out automatically after 15 minutes of inactivity.</span></li>
+  <li><span data-l="de"><b>Rechte:</b> Der Admin kann pro Benutzer <b>Tara</b> und <b>Filament</b> (Katalog pflegen) freigeben. Das Konto <code>generic</code> darf nur wiegen und NFC lesen.</span><span data-l="en"><b>Permissions:</b> the admin can grant <b>Tare</b> and <b>Filament</b> (maintain the catalog) per user. The <code>generic</code> account may only weigh and read NFC.</span></li>
+</ol>
+
+<h2 id="calibrate"><span data-l="de">6 · Kalibrieren</span><span data-l="en">6 · Calibrate</span></h2>
+<p><span data-l="de">Beim ersten Einsatz und nach jeder mechanischen Änderung. Du brauchst ein Gewicht, dessen Masse du kennst (100 g oder mehr, je schwerer, desto besser).</span><span data-l="en">On first use and after any mechanical change. You need a weight whose mass you know (100 g or more, the heavier the better).</span></p>
+<div class="gstep">
+  <div>
+    <ol>
+      <li><span data-l="de">Menü → Einstellungen (Admin) → <span class="kbd">Calibration</span>.</span><span data-l="en">Menu → Settings (admin) → <span class="kbd">Calibration</span>.</span></li>
+      <li><span data-l="de">Wiegeplatte leeren und <span class="kbd">Tare &amp; continue</span> tippen.</span><span data-l="en">Empty the platform and tap <span class="kbd">Tare &amp; continue</span>.</span></li>
+      <li><span data-l="de">Das bekannte Gewicht auflegen, den Wert mit <span class="kbd">−50</span> <span class="kbd">−10</span> <span class="kbd">+10</span> <span class="kbd">+50</span> einstellen und <span class="kbd">Calibrate</span> tippen.</span><span data-l="en">Place the known weight, set its value with <span class="kbd">−50</span> <span class="kbd">−10</span> <span class="kbd">+10</span> <span class="kbd">+50</span> and tap <span class="kbd">Calibrate</span>.</span></li>
+      <li><span data-l="de">Prüfe zum Schluss mit einem zweiten Gewicht. Der Faktor bleibt auch nach dem Ausschalten gespeichert.</span><span data-l="en">Finally check with a second weight. The factor is kept after power-off.</span></li>
+    </ol>
+  </div>
+  <div class="gimgs"><img src="img/17_kalibrierung_1_leer.png" alt="Calibration step 1"><img src="img/18_kalibrierung_2_gewicht.png" alt="Calibration step 2"></div>
+</div>
+<p><span data-l="de">Beim Start nullt sich die Waage automatisch, wenn sie leer ist. Auf Home folgt sie außerdem langsamer Drift (nur bei leerer Waage und unter 2 g Abweichung).</span><span data-l="en">At boot the scale zeroes itself if it is empty. On Home it also follows slow drift (only when empty and under 2 g deviation).</span></p>
+
+<h2 id="help"><span data-l="de">7 · Hilfe bei Problemen</span><span data-l="en">7 · Troubleshooting</span></h2>
+<table>
+  <tr><th><span data-l="de">Tag wird nicht gelesen</span><span data-l="en">Tag is not read</span></th><td><span data-l="de">Näher an die Antenne (unter 4 cm), Metall in der Nähe vermeiden. In Menü → NFC siehst du live, was aufliegt.</span><span data-l="en">Move closer to the antenna (under 4 cm) and keep metal away. Menu → NFC shows live what is on the scale.</span></td></tr>
+  <tr><th><span data-l="de">„Nicht in Spoolman“</span><span data-l="en">“Not in Spoolman”</span></th><td><span data-l="de">Der Tag ist noch keiner Spule zugeordnet. Siehe „Tag einer Spule zuordnen“.</span><span data-l="en">The tag is not linked to a spool yet. See “Link a tag to a spool”.</span></td></tr>
+  <tr><th><span data-l="de">Speichern schlägt fehl</span><span data-l="en">Saving fails</span></th><td><span data-l="de">Meist hat das Filament in Spoolman kein Füllgewicht. Trage es dort ein. Die Fehlermeldung von Spoolman erscheint in der Weboberfläche unter Spoolman.</span><span data-l="en">Usually the filament has no net weight in Spoolman. Add it there. Spoolman’s error message shows in the web UI under Spoolman.</span></td></tr>
+  <tr><th><span data-l="de">Ausstehende Updates</span><span data-l="en">Pending updates</span></th><td><span data-l="de">Spoolman war nicht erreichbar. Die Waage sendet automatisch nach. Manuell: Weboberfläche → Spoolman → „Jetzt senden“.</span><span data-l="en">Spoolman was unreachable. The scale retries automatically. Manually: web UI → Spoolman → “Send now”.</span></td></tr>
+  <tr><th><span data-l="de">Wert springt, nie „stable“</span><span data-l="en">Reading jumps, never “stable”</span></th><td><span data-l="de">Wackelt der Tisch, steht etwas an der Waage an, oder berührt die Wiegeplatte das Gehäuse? Danach neu tarieren.</span><span data-l="en">Is the table wobbling, is something touching the scale, or does the platform rub the housing? Tare again afterwards.</span></td></tr>
+  <tr><th><span data-l="de">Gewicht stimmt nicht</span><span data-l="en">Wrong weight</span></th><td><span data-l="de">Neu kalibrieren (Abschnitt 6) und mit zwei Gewichten prüfen.</span><span data-l="en">Recalibrate (section 6) and check with two weights.</span></td></tr>
+  <tr><th><span data-l="de">Display bleibt dunkel</span><span data-l="en">Display stays dark</span></th><td><span data-l="de">Der Bildschirmschoner war aktiv. Tippe aufs Display oder halte einen Tag an die Waage.</span><span data-l="en">The screen saver was active. Tap the display or hold a tag to the scale.</span></td></tr>
+  <tr><th><span data-l="de">Passwort oder PIN vergessen</span><span data-l="en">Forgot password or PIN</span></th><td><span data-l="de">Per USB-Kabel verbinden (115200 Baud) und <code>admin reset</code> senden. Danach gelten wieder „Filament“ und „1234“.</span><span data-l="en">Connect a USB cable (115200 baud) and send <code>admin reset</code>. Password “Filament” and PIN “1234” apply again.</span></td></tr>
+  <tr><th><span data-l="de">WLAN ändern oder verloren</span><span data-l="en">Change or lose Wi-Fi</span></th><td><span data-l="de">Weboberfläche → WLAN. Ohne Verbindung startet nach einer Minute wieder der Hotspot. Per USB: <code>wifi set SSID|Passwort</code> oder <code>wifi reset</code>.</span><span data-l="en">Web UI → Wi-Fi. Without a connection the hotspot restarts after a minute. Via USB: <code>wifi set SSID|password</code> or <code>wifi reset</code>.</span></td></tr>
+</table>
+<p class="muted" style="margin-top:20px"><span data-l="de">Mehr Details zu Aufbau und Verdrahtung stehen unter „Bauen &amp; Flashen“, die technischen Hintergründe unter „Funktionen“. Fragen und Fehler gern als Issue auf GitHub.</span><span data-l="en">For build and wiring details see “Build &amp; flash”, for technical background see “Features”. Questions and bugs are welcome as issues on GitHub.</span></p>
+</main>
+
+<footer><div class="wrap">
+  <a href="index.html">← <span data-l="de">Startseite</span><span data-l="en">Home</span></a> ·
+  <a href="https://github.com/Drache055/filamentwaage/blob/main/LICENSE">GPL-3.0</a>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>
