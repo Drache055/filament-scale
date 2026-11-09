@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Filamentwaage</title>
-<meta name="description" content="Smarte Filamentwaage mit NFC und Spoolman-Anbindung, Open Source auf ESP32-S3-Basis.">
-<meta property="og:title" content="Filamentwaage">
-<meta property="og:description" content="Spule scannen, Box wiegen, Restgewicht automatisch in Spoolman.">
+<meta name="description" content="Nie wieder Spulen schütteln: Die Filamentwaage erkennt Spule und Box per NFC, wiegt automatisch und trägt das Restgewicht in Spoolman ein. Open Source.">
+<meta property="og:title" content="Filamentwaage – Spule scannen. Wiegen. Fertig.">
+<meta property="og:description" content="Smarte Filamentwaage mit NFC und Spoolman. Open Source, ohne Cloud.">
 <meta property="og:image" content="img/hero.jpg">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -23,90 +23,200 @@
   <button class="lang" id="lang" aria-label="Sprache / Language">EN</button>
 </div></nav>
 
-<main class="wrap">
-<header class="hero">
-  <div>
-    <h1><span data-l="de">Spule scannen.<br>Wiegen. Fertig.</span><span data-l="en">Scan the spool.<br>Weigh. Done.</span></h1>
-    <p class="lead">
-      <span data-l="de">Eine smarte Filamentwaage mit NFC und Touch-Display. Sie erkennt Spule und Lagerbox, ermittelt das Restgewicht per Differenzwägung und trägt es automatisch in Spoolman ein.</span>
-      <span data-l="en">A smart filament scale with NFC and a touch display. It identifies the spool and the storage box, determines the remaining filament by differential weighing and writes it to Spoolman automatically.</span>
-    </p>
-    <div class="cta">
-      <a class="btn" href="https://github.com/Drache055/filamentwaage"><span data-l="de">Projekt auf GitHub</span><span data-l="en">View on GitHub</span></a>
-      <a class="btn ghost" href="#start"><span data-l="de">Selber bauen</span><span data-l="en">Build your own</span></a>
+<!-- HERO -->
+<header class="mhero">
+  <div class="wrap mhero-in">
+    <div>
+      <span class="pill"><i></i><span data-l="de">Open Source · ESP32-S3 · Spoolman</span><span data-l="en">Open source · ESP32-S3 · Spoolman</span></span>
+      <h1><span data-l="de">Wie viel Filament ist noch auf der Spule?<br><em>Einmal scannen. Fertig.</em></span><span data-l="en">How much filament is left on the spool?<br><em>Scan once. Done.</em></span></h1>
+      <p class="lead">
+        <span data-l="de">Die Filamentwaage erkennt deine Spule und deine Lagerbox per NFC, wiegt automatisch und trägt das Restgewicht samt Lagerort in Spoolman ein. Kein Tippen, keine Zettel, keine Cloud.</span>
+        <span data-l="en">The filament scale recognises your spool and storage box via NFC, weighs automatically and writes remaining weight and location to Spoolman. No typing, no notes, no cloud.</span>
+      </p>
+      <div class="cta">
+        <a class="btn big" href="bauen.html"><span data-l="de">Selber bauen</span><span data-l="en">Build your own</span></a>
+        <a class="btn big ghost" href="https://github.com/Drache055/filamentwaage"><span data-l="de">Auf GitHub ansehen</span><span data-l="en">View on GitHub</span></a>
+      </div>
+      <ul class="ticks">
+        <li><span data-l="de">Läuft komplett lokal</span><span data-l="en">Runs fully local</span></li>
+        <li><span data-l="de">Zweisprachig DE/EN</span><span data-l="en">Bilingual DE/EN</span></li>
+        <li><span data-l="de">Updates per WLAN</span><span data-l="en">Wi-Fi updates</span></li>
+      </ul>
+    </div>
+    <div class="hero-art">
+      <img src="img/hero.jpg" alt="Filamentwaage mit Touch-Display" width="1600" height="900">
     </div>
   </div>
-  <img src="img/hero.jpg" alt="Filamentwaage, 3D-Rendering" width="1600" height="900">
 </header>
 
+<!-- ZAHLEN -->
+<section class="band">
+  <div class="wrap stats">
+    <div><b>4</b><span><span data-l="de">Schritte vom Scan bis zum Eintrag</span><span data-l="en">steps from scan to entry</span></span></div>
+    <div><b>10 Hz</b><span><span data-l="de">Messrate mit Stabilitätserkennung</span><span data-l="en">sample rate with stability detection</span></span></div>
+    <div><b>5 kg</b><span><span data-l="de">Wägezelle, auch für volle Boxen</span><span data-l="en">load cell, fits full boxes</span></span></div>
+    <div><b>0</b><span><span data-l="de">Cloud, Konten oder Abos</span><span data-l="en">clouds, accounts or subscriptions</span></span></div>
+  </div>
+</section>
+
+<main class="wrap">
+
+<!-- PROBLEM -->
+<section class="center">
+  <h2 class="xl"><span data-l="de">Die Spule ist leer – mitten im Druck.</span><span data-l="en">The spool runs out – mid-print.</span></h2>
+  <p class="sub wide"><span data-l="de">Du kennst das: eine Spule „müsste noch reichen“, ein Regal voller halber Rollen und eine Tabelle, die nie stimmt. Die Filamentwaage macht aus dem Bauchgefühl eine Zahl und hält sie in Spoolman aktuell.</span><span data-l="en">You know it: a spool “should be enough”, a shelf of half-used rolls and a spreadsheet that is never right. The filament scale turns gut feeling into a number and keeps Spoolman up to date.</span></p>
+</section>
+
+<!-- FEATURE 1 -->
+<section class="row">
+  <div class="row-text">
+    <span class="kicker">NFC</span>
+    <h2><span data-l="de">Halten statt tippen</span><span data-l="en">Tap instead of type</span></h2>
+    <p><span data-l="de">Spule an die Scan-Zone halten, und die Waage weiß, welche es ist: Hersteller, Material, Farbe und letztes Restgewicht erscheinen sofort. Die Tags sind OpenSpool-kompatibel, ein NTAG216 kostet Centbeträge.</span><span data-l="en">Hold the spool to the scan zone and the scale knows which one it is: vendor, material, colour and last remaining weight show up instantly. Tags are OpenSpool compatible, an NTAG216 costs a few cents.</span></p>
+    <ul class="check">
+      <li><span data-l="de">Neue Tags direkt am Gerät beschreiben</span><span data-l="en">Write new tags right on the device</span></li>
+      <li><span data-l="de">Unbekannte Spule? Aus der Spoolman-Liste wählen, fertig verknüpft</span><span data-l="en">Unknown spool? Pick it from the Spoolman list, linked for good</span></li>
+    </ul>
+  </div>
+  <div class="row-art phones">
+    <img src="img/38_ablauf_1_spule_erkannt.png" alt="" loading="lazy">
+    <img src="img/26_filament_farbe.png" alt="" loading="lazy">
+  </div>
+</section>
+
+<!-- FEATURE 2 -->
+<section class="row rev">
+  <div class="row-text">
+    <span class="kicker"><span data-l="de">Differenzwägung</span><span data-l="en">Differential weighing</span></span>
+    <h2><span data-l="de">Die Box darf wiegen, was sie will</span><span data-l="en">The box can weigh whatever it likes</span></h2>
+    <p><span data-l="de">Die Waage wiegt die Box einmal leer und einmal mit Spule und rechnet die Differenz aus. Das Boxgewicht, Trockenmittel oder andere Spulen darin spielen keine Rolle. Das Leerspulengewicht holt sie sich aus Spoolman.</span><span data-l="en">The scale weighs the box once without and once with the spool and takes the difference. Box weight, desiccant or other spools inside do not matter. The empty spool weight comes from Spoolman.</span></p>
+    <div class="formula">(W2 − W1) − <span data-l="de">Leerspule</span><span data-l="en">empty spool</span> = <span data-l="de">Restgewicht</span><span data-l="en">remaining</span></div>
+    <ul class="check">
+      <li><span data-l="de">Wartet, bis der Wert ruhig ist, statt zu raten</span><span data-l="en">Waits for a steady reading instead of guessing</span></li>
+      <li><span data-l="de">Warnt bei unplausiblen Werten, bevor etwas gespeichert wird</span><span data-l="en">Warns about implausible values before anything is saved</span></li>
+    </ul>
+  </div>
+  <div class="row-art phones">
+    <img src="img/42_ablauf_5_spule_einstellen_842g.png" alt="" loading="lazy">
+    <img src="img/43_ablauf_6_bestaetigen.png" alt="" loading="lazy">
+  </div>
+</section>
+
+<!-- FEATURE 3 -->
+<section class="row">
+  <div class="row-text">
+    <span class="kicker">Spoolman</span>
+    <h2><span data-l="de">Dein Inventar, immer aktuell</span><span data-l="en">Your inventory, always current</span></h2>
+    <p><span data-l="de">Restgewicht, Lagerort und Besitzer gehen direkt in deine Spoolman-Instanz. Ist der Server gerade nicht erreichbar, merkt sich die Waage das Update und schickt es später nach. Nichts geht verloren.</span><span data-l="en">Remaining weight, location and owner go straight into your Spoolman instance. If the server is unreachable the scale remembers the update and sends it later. Nothing gets lost.</span></p>
+    <ul class="check">
+      <li><span data-l="de">Offline-Warteschlange mit bis zu 100 Einträgen</span><span data-l="en">Offline queue with up to 100 entries</span></li>
+      <li><span data-l="de">Filament-Katalog gleicht sich automatisch mit Spoolman ab</span><span data-l="en">Filament catalog syncs with Spoolman automatically</span></li>
+    </ul>
+    <p><a href="nfc-spoolman.html"><span data-l="de">Mehr zu NFC &amp; Spoolman →</span><span data-l="en">More on NFC &amp; Spoolman →</span></a></p>
+  </div>
+  <div class="row-art phones">
+    <img src="img/45_ablauf_8_gespeichert.png" alt="" loading="lazy">
+    <img src="img/02_home_gewicht_benutzer.png" alt="" loading="lazy">
+  </div>
+</section>
+
+<!-- FEATURE 4 -->
+<section class="row rev">
+  <div class="row-text">
+    <span class="kicker"><span data-l="de">Für die ganze Werkstatt</span><span data-l="en">For the whole workshop</span></span>
+    <h2><span data-l="de">Mehrere Nutzer, klare Rechte</span><span data-l="en">Multiple users, clear permissions</span></h2>
+    <p><span data-l="de">Jeder bekommt einen eigenen NFC-Tag. Wer sich anmeldet, wird als Besitzer der Spule eingetragen und bekommt die Oberfläche in seiner Sprache. Einstellungen bleiben dem Admin vorbehalten, per PIN oder Admin-Tag.</span><span data-l="en">Everyone gets their own NFC tag. Whoever signs in is recorded as the owner of the spool and gets the interface in their language. Settings stay with the admin, via PIN or admin tag.</span></p>
+    <ul class="check">
+      <li><span data-l="de">Weboberfläche mit Anmeldung, Benutzerverwaltung und Log</span><span data-l="en">Web UI with sign-in, user management and log</span></li>
+      <li><span data-l="de">PINs nur als Hash gespeichert, Sperre nach Fehlversuchen</span><span data-l="en">PINs stored as hashes only, lockout after failed attempts</span></li>
+    </ul>
+    <p><a href="funktionen.html"><span data-l="de">Alle Funktionen ansehen →</span><span data-l="en">See all features →</span></a></p>
+  </div>
+  <div class="row-art phones">
+    <img src="img/06_menue.png" alt="" loading="lazy">
+    <img src="img/29_en_home.png" alt="" loading="lazy">
+  </div>
+</section>
+
+<!-- ABLAUF -->
 <section id="funktion">
-  <h2><span data-l="de">So funktioniert es</span><span data-l="en">How it works</span></h2>
-  <p class="sub"><span data-l="de">Vier Schritte, ohne Tippen und ohne Zettel.</span><span data-l="en">Four steps, no typing, no notes.</span></p>
-  <div class="grid steps">
-    <div class="card step"><h3><span data-l="de">Spule scannen</span><span data-l="en">Scan the spool</span></h3><p><span data-l="de">Spule an die Scan-Zone halten. Der NFC-Tag (OpenSpool-Format) identifiziert sie, Spoolman liefert die Daten.</span><span data-l="en">Hold the spool to the scan zone. The NFC tag (OpenSpool format) identifies it, Spoolman supplies the data.</span></p></div>
-    <div class="card step"><h3><span data-l="de">Box wiegen</span><span data-l="en">Weigh the box</span></h3><p><span data-l="de">Lagerbox mit Box-Tag auf die Waage stellen. Gewicht W1 wird gespeichert, der Box-Name wird zum Lagerort.</span><span data-l="en">Put the storage box with its tag on the scale. Weight W1 is stored, the box name becomes the location.</span></p></div>
-    <div class="card step"><h3><span data-l="de">Spule einstellen</span><span data-l="en">Insert the spool</span></h3><p><span data-l="de">Spule in die Box stellen. Gewicht W2 wird erfasst. Was sonst noch in der Box liegt, ist egal.</span><span data-l="en">Place the spool in the box. Weight W2 is recorded. Anything else in the box does not matter.</span></p></div>
-    <div class="card step"><h3><span data-l="de">Speichern</span><span data-l="en">Save</span></h3><p><span data-l="de">Rest = (W2 − W1) − Leerspule. Bestätigen, und Spoolman kennt Restgewicht und Lagerort.</span><span data-l="en">Remaining = (W2 − W1) − empty spool. Confirm, and Spoolman knows weight and location.</span></p></div>
+  <div class="center"><h2 class="xl"><span data-l="de">In vier Schritten zum Restgewicht</span><span data-l="en">Four steps to the remaining weight</span></h2></div>
+  <div class="grid steps" style="margin-top:28px">
+    <div class="card step"><h3><span data-l="de">Spule scannen</span><span data-l="en">Scan the spool</span></h3><p><span data-l="de">An die Scan-Zone halten, Spoolman liefert die Daten.</span><span data-l="en">Hold it to the scan zone, Spoolman supplies the data.</span></p></div>
+    <div class="card step"><h3><span data-l="de">Box wiegen</span><span data-l="en">Weigh the box</span></h3><p><span data-l="de">Box mit Tag auflegen. Der Box-Name wird zum Lagerort.</span><span data-l="en">Place the tagged box. Its name becomes the location.</span></p></div>
+    <div class="card step"><h3><span data-l="de">Spule einstellen</span><span data-l="en">Insert the spool</span></h3><p><span data-l="de">Spule in die Box, die Waage erfasst das neue Gewicht.</span><span data-l="en">Spool into the box, the scale captures the new weight.</span></p></div>
+    <div class="card step"><h3><span data-l="de">Speichern</span><span data-l="en">Save</span></h3><p><span data-l="de">Ergebnis bestätigen, Spoolman ist aktuell.</span><span data-l="en">Confirm the result, Spoolman is up to date.</span></p></div>
   </div>
 </section>
 
-<section id="features">
-  <h2>Features</h2>
-  <p class="sub"><span data-l="de">Alles läuft auf dem Gerät, ohne Cloud. </span><span data-l="en">Everything runs on the device, no cloud. </span><a href="funktionen.html"><span data-l="de">Alle Funktionen im Detail →</span><span data-l="en">All features in detail →</span></a></p>
-  <div class="grid">
-    <div class="card"><h3>NFC</h3><p><span data-l="de">PN532 liest und schreibt NTAG215/216. Spulen-, Box-, Benutzer- und Admin-Tags.</span><span data-l="en">PN532 reads and writes NTAG215/216. Spool, box, user and admin tags.</span></p></div>
-    <div class="card"><h3>Spoolman</h3><p><span data-l="de">Gewicht, Lagerort und Besitzer per API. Offline-Warteschlange, wenn der Server fehlt.</span><span data-l="en">Weight, location and owner via API. Offline queue when the server is unreachable.</span></p></div>
-    <div class="card"><h3><span data-l="de">Stabile Messung</span><span data-l="en">Stable readings</span></h3><p><span data-l="de">HX711 mit 10 Hz, Stabilitätsfenster, Tara, Kalibrierung und Drift-Nachführung.</span><span data-l="en">HX711 at 10 Hz, stability window, tare, calibration and drift tracking.</span></p></div>
-    <div class="card"><h3><span data-l="de">Weboberfläche</span><span data-l="en">Web UI</span></h3><p><span data-l="de">Benutzer, Rollen, Filament-Katalog, Kalibrierung, Log. Zweisprachig.</span><span data-l="en">Users, roles, filament catalog, calibration, log. Bilingual.</span></p></div>
-    <div class="card"><h3><span data-l="de">Einfache Einrichtung</span><span data-l="en">Easy setup</span></h3><p><span data-l="de">WLAN-Hotspot mit Captive Portal wie bei Tasmota. Updates per OTA.</span><span data-l="en">Tasmota-style Wi-Fi hotspot with captive portal. OTA updates.</span></p></div>
-    <div class="card"><h3><span data-l="de">Rechte & Sperre</span><span data-l="en">Roles & lock</span></h3><p><span data-l="de">Admin-PIN, Benutzer-PINs und Admin-Tag. Einstellungen sind geschützt.</span><span data-l="en">Admin PIN, user PINs and admin tag. Settings are protected.</span></p></div>
+<!-- VORHER NACHHER -->
+<section>
+  <div class="center"><h2 class="xl"><span data-l="de">Vorher und nachher</span><span data-l="en">Before and after</span></h2></div>
+  <div class="vs">
+    <div class="vs-col bad">
+      <h3><span data-l="de">Ohne Filamentwaage</span><span data-l="en">Without the scale</span></h3>
+      <ul>
+        <li><span data-l="de">Spulen schütteln und schätzen</span><span data-l="en">Shaking spools and guessing</span></li>
+        <li><span data-l="de">Küchenwaage, Zettel, Taschenrechner</span><span data-l="en">Kitchen scale, notes, calculator</span></li>
+        <li><span data-l="de">Tabelle, die selten stimmt</span><span data-l="en">A spreadsheet that is rarely right</span></li>
+        <li><span data-l="de">Wo lag die Spule nochmal?</span><span data-l="en">Where did that spool go again?</span></li>
+      </ul>
+    </div>
+    <div class="vs-col good">
+      <h3><span data-l="de">Mit Filamentwaage</span><span data-l="en">With the scale</span></h3>
+      <ul>
+        <li><span data-l="de">Ein gemessener Wert statt Schätzung</span><span data-l="en">One measured value instead of a guess</span></li>
+        <li><span data-l="de">Scannen, Box rein, bestätigen</span><span data-l="en">Scan, box in, confirm</span></li>
+        <li><span data-l="de">Spoolman immer aktuell</span><span data-l="en">Spoolman always current</span></li>
+        <li><span data-l="de">Lagerort steht in der Spule</span><span data-l="en">Location is stored with the spool</span></li>
+      </ul>
+    </div>
   </div>
 </section>
 
-<section id="screens">
-  <h2>Screens</h2>
-  <p class="sub"><span data-l="de">Direkt aus dem echten UI-Code gerendert (240×320, LVGL 9).</span><span data-l="en">Rendered straight from the real UI code (240×320, LVGL 9).</span></p>
-  <div class="shots">
-    <figure><img src="img/02_home_gewicht_benutzer.png" alt="Home" loading="lazy"><figcaption>Home</figcaption></figure>
-    <figure><img src="img/38_ablauf_1_spule_erkannt.png" alt="" loading="lazy"><figcaption><span data-l="de">Spule erkannt</span><span data-l="en">Spool detected</span></figcaption></figure>
-    <figure><img src="img/40_ablauf_3_box_erkannt.png" alt="" loading="lazy"><figcaption><span data-l="de">Box erkannt</span><span data-l="en">Box detected</span></figcaption></figure>
-    <figure><img src="img/42_ablauf_5_spule_einstellen_842g.png" alt="" loading="lazy"><figcaption><span data-l="de">Spule einstellen</span><span data-l="en">Insert spool</span></figcaption></figure>
-    <figure><img src="img/43_ablauf_6_bestaetigen.png" alt="" loading="lazy"><figcaption><span data-l="de">Bestätigen</span><span data-l="en">Confirm</span></figcaption></figure>
-    <figure><img src="img/45_ablauf_8_gespeichert.png" alt="" loading="lazy"><figcaption><span data-l="de">Gespeichert</span><span data-l="en">Saved</span></figcaption></figure>
-    <figure><img src="img/06_menue.png" alt="" loading="lazy"><figcaption><span data-l="de">Menü</span><span data-l="en">Menu</span></figcaption></figure>
-    <figure><img src="img/26_filament_farbe.png" alt="" loading="lazy"><figcaption><span data-l="de">Tag schreiben</span><span data-l="en">Write tag</span></figcaption></figure>
-    <figure><img src="img/29_en_home.png" alt="" loading="lazy"><figcaption>English</figcaption></figure>
-  </div>
-  <div class="two" style="margin-top:24px">
+<!-- RENDERS -->
+<section>
+  <div class="two">
     <img src="img/render-front.jpg" alt="Waage von vorne" loading="lazy">
     <img src="img/render-menu.jpg" alt="Waage mit Menü" loading="lazy">
   </div>
 </section>
 
+<!-- HARDWARE -->
 <section id="hardware">
-  <h2>Hardware</h2>
-  <p class="sub"><span data-l="de">Überschaubar und günstig zu beschaffen. </span><span data-l="en">Small and cheap to source. </span><a href="bauen.html"><span data-l="de">Pinbelegung und Bauanleitung →</span><span data-l="en">Pinout and build guide →</span></a></p>
-  <table>
-    <tr><th><span data-l="de">Board</span><span data-l="en">Board</span></th><td>Waveshare ESP32-S3-Touch-LCD-2 (16 MB Flash, 8 MB PSRAM, ST7789 240×320, CST816 Touch)</td></tr>
-    <tr><th><span data-l="de">Wägezelle</span><span data-l="en">Load cell</span></th><td><span data-l="de">Biegebalken 5 kg, 4 Leiter</span><span data-l="en">5 kg bar load cell, 4 wire</span></td></tr>
-    <tr><th>ADC</th><td>HX711, 3,3 V, 10 Hz</td></tr>
-    <tr><th>NFC</th><td>PN532 (SPI)</td></tr>
-    <tr><th>Tags</th><td>NTAG215 / NTAG216</td></tr>
-    <tr><th><span data-l="de">Gehäuse</span><span data-l="en">Enclosure</span></th><td><span data-l="de">3D-gedruckt, Stahlballast im Sockel. PN532 mittig unter der Wiegeplatte, mindestens 3 cm frei von Metall.</span><span data-l="en">3D printed, steel ballast in the base. PN532 centered under the platform, at least 3 cm free of metal.</span></td></tr>
-  </table>
+  <div class="center"><h2 class="xl"><span data-l="de">Günstige Teile, offene Bauweise</span><span data-l="en">Cheap parts, open design</span></h2>
+  <p class="sub wide"><span data-l="de">Alles, was du brauchst, bekommst du bei den üblichen Bastlershops.</span><span data-l="en">Everything you need is available from the usual maker shops.</span></p></div>
+  <div class="grid">
+    <div class="card"><h3>ESP32-S3 + Touch</h3><p>Waveshare ESP32-S3-Touch-LCD-2, 240×320</p></div>
+    <div class="card"><h3><span data-l="de">Wägezelle</span><span data-l="en">Load cell</span></h3><p><span data-l="de">Biegebalken 5 kg mit HX711</span><span data-l="en">5 kg bar load cell with HX711</span></p></div>
+    <div class="card"><h3>NFC</h3><p>PN532 + NTAG215/216</p></div>
+    <div class="card"><h3><span data-l="de">Gehäuse</span><span data-l="en">Enclosure</span></h3><p><span data-l="de">3D-gedruckt, Stahl als Ballast</span><span data-l="en">3D printed, steel ballast</span></p></div>
+  </div>
+  <p class="center" style="margin-top:20px"><a href="bauen.html"><span data-l="de">Teileliste, Pinbelegung und Bauanleitung →</span><span data-l="en">Parts list, pinout and build guide →</span></a></p>
 </section>
 
-<section id="start">
-  <h2><span data-l="de">Loslegen</span><span data-l="en">Get started</span></h2>
-  <p class="sub"><span data-l="de">Mit PlatformIO bauen und flashen.</span><span data-l="en">Build and flash with PlatformIO.</span></p>
-<pre><code>git clone https://github.com/Drache055/filamentwaage.git
-cd filamentwaage/firmware
-cp include/secrets.h.example include/secrets.h
-pio run -e waage -t upload     # USB
-pio run -e waage -t uploadfs
-pio test -e native             # Unit-Tests / unit tests</code></pre>
-  <p class="note"><span data-l="de">Ohne WLAN-Daten startet das Gerät den Hotspot „Filamentwaage-Setup“. Standard-Zugang: Admin-Passwort „Filament“, Geräte-PIN „1234“. Bitte sofort ändern.</span><span data-l="en">Without Wi-Fi credentials the device starts the “Filamentwaage-Setup” hotspot. Default access: admin password “Filament”, device PIN “1234”. Please change them right away.</span></p>
+<!-- FAQ -->
+<section id="faq">
+  <div class="center"><h2 class="xl">FAQ</h2></div>
+  <div class="faq">
+    <details><summary><span data-l="de">Brauche ich Spoolman?</span><span data-l="en">Do I need Spoolman?</span></summary><p><span data-l="de">Ja, die Waage ist dafür gebaut, Spulendaten aus Spoolman zu lesen und dorthin zurückzuschreiben. Spoolman ist selbst gehostet und kostenlos.</span><span data-l="en">Yes, the scale is built to read spool data from Spoolman and write results back. Spoolman is self-hosted and free.</span></p></details>
+    <details><summary><span data-l="de">Funktioniert sie ohne Internet?</span><span data-l="en">Does it work without internet?</span></summary><p><span data-l="de">Ja. Die Waage braucht nur dein WLAN und Spoolman im Heimnetz. Es gibt keine Cloud. Ist Spoolman gerade offline, werden Updates zwischengespeichert.</span><span data-l="en">Yes. The scale only needs your Wi-Fi and Spoolman on your home network. There is no cloud. If Spoolman is offline, updates are queued.</span></p></details>
+    <details><summary><span data-l="de">Welche NFC-Tags brauche ich?</span><span data-l="en">Which NFC tags do I need?</span></summary><p><span data-l="de">NTAG215 oder NTAG216, je einer pro Spule und pro Box. Die Spulen-Tags folgen dem OpenSpool-Format.</span><span data-l="en">NTAG215 or NTAG216, one per spool and one per box. Spool tags follow the OpenSpool format.</span></p></details>
+    <details><summary><span data-l="de">Wie genau wiegt sie?</span><span data-l="en">How accurate is it?</span></summary><p><span data-l="de">Sie arbeitet mit einer 5-kg-Zelle und einem HX711 und zeigt ein Gewicht erst an, wenn es sich über etwa eine Sekunde um höchstens 1 g bewegt. Die reale Genauigkeit hängt von Zelle, Aufbau und Kalibrierung ab.</span><span data-l="en">It uses a 5 kg cell and an HX711 and accepts a weight only once it moved by at most 1 g over about a second. Real accuracy depends on the cell, the build and calibration.</span></p></details>
+    <details><summary><span data-l="de">Wie ist der Projektstand?</span><span data-l="en">What is the project status?</span></summary><p><span data-l="de">Die Firmware baut und die Logik ist per Unit-Tests abgedeckt. Der komplette Ablauf mit echter Waage, Box-Tag und Spoolman ist noch nicht abschließend am Gerät geprüft. Es ist ein aktives Open-Source-Projekt, Rückmeldungen sind willkommen.</span><span data-l="en">The firmware builds and the logic is unit tested. The complete flow with a real scale, box tag and Spoolman is not fully verified on hardware yet. It is an active open-source project, feedback is welcome.</span></p></details>
+  </div>
 </section>
+
+<!-- CTA -->
+<section class="final">
+  <h2 class="xl"><span data-l="de">Bereit für Schluss mit Schätzen?</span><span data-l="en">Ready to stop guessing?</span></h2>
+  <p class="sub wide"><span data-l="de">Hol dir den Code, druck das Gehäuse, löte drei Module an und leg los.</span><span data-l="en">Grab the code, print the enclosure, wire up three modules and go.</span></p>
+  <div class="cta" style="justify-content:center">
+    <a class="btn big" href="bauen.html"><span data-l="de">Bauanleitung</span><span data-l="en">Build guide</span></a>
+    <a class="btn big ghost" href="https://github.com/Drache055/filamentwaage"><span data-l="de">Zum Repository</span><span data-l="en">Open repository</span></a>
+  </div>
+</section>
+
 </main>
 
 <footer><div class="wrap">
