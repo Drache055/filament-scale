@@ -28,7 +28,8 @@
   <li><a href="#teile"><span data-l="de">Teile</span><span data-l="en">Parts</span></a></li>
   <li><a href="#pins"><span data-l="de">Verdrahtung</span><span data-l="en">Wiring</span></a></li>
   <li><a href="#mechanik"><span data-l="de">Mechanik</span><span data-l="en">Mechanics</span></a></li>
-  <li><a href="#flashen"><span data-l="de">Flashen</span><span data-l="en">Flashing</span></a></li>
+  <li><a href="#webflash"><span data-l="de">Im Browser flashen</span><span data-l="en">Flash from browser</span></a></li>
+  <li><a href="#flashen"><span data-l="de">Selbst bauen</span><span data-l="en">Build yourself</span></a></li>
   <li><a href="#inbetrieb"><span data-l="de">Inbetriebnahme</span><span data-l="en">Commissioning</span></a></li>
   <li><a href="#tipps"><span data-l="de">Tipps &amp; Probleme</span><span data-l="en">Tips &amp; problems</span></a></li>
 </ul>
@@ -68,20 +69,43 @@
   <li><span data-l="de">Mehrere Tags können gleichzeitig in Reichweite sein. Die Software ordnet sie nach Typ und aktuellem Zustand zu und ignoriert unerwartete.</span><span data-l="en">Several tags can be in range at once. The software assigns them by type and current state and ignores unexpected ones.</span></li>
 </ul>
 
-<h2 id="flashen"><span data-l="de">Flashen</span><span data-l="en">Flashing</span></h2>
+<h2 id="webflash"><span data-l="de">Im Browser flashen</span><span data-l="en">Flash from your browser</span></h2>
+<p><span data-l="de">Der schnellste Weg: kein PlatformIO, keine Installation. Du brauchst Chrome, Edge oder Opera am Computer (nicht Firefox, Safari oder Smartphone) und ein USB-C-Kabel zur Waage.</span><span data-l="en">The fastest way: no PlatformIO, no install. You need Chrome, Edge or Opera on a computer (not Firefox, Safari or a phone) and a USB-C cable to the scale.</span></p>
+<div class="flashbox">
+  <esp-web-install-button manifest="firmware/manifest.json">
+    <button slot="activate" class="btn big"><span data-l="de">Firmware installieren</span><span data-l="en">Install firmware</span></button>
+    <span slot="unsupported" class="muted"><span data-l="de">Dieser Browser unterstützt kein Web Serial. Bitte Chrome, Edge oder Opera am Computer nutzen.</span><span data-l="en">This browser does not support Web Serial. Please use Chrome, Edge or Opera on a computer.</span></span>
+    <span slot="not-allowed" class="muted"><span data-l="de">Web Serial funktioniert nur über HTTPS. Öffne die Seite über die GitHub-Pages-Adresse.</span><span data-l="en">Web Serial only works over HTTPS. Open this page via its GitHub Pages address.</span></span>
+  </esp-web-install-button>
+</div>
+<ol>
+  <li><span data-l="de">Verbinde die Waage per USB-C mit dem Computer.</span><span data-l="en">Connect the scale to your computer via USB-C.</span></li>
+  <li><span data-l="de">Klicke auf „Firmware installieren“ und wähle den seriellen Anschluss der Waage aus.</span><span data-l="en">Click “Install firmware” and pick the scale’s serial port.</span></li>
+  <li><span data-l="de">Beim ersten Mal „Gerät löschen“ anhaken. Das entfernt alte Einstellungen und sorgt für einen sauberen Start.</span><span data-l="en">On the first install tick “Erase device”. This removes old settings and gives a clean start.</span></li>
+  <li><span data-l="de">Warte, bis der Vorgang fertig ist (ca. 1 bis 2 Minuten). Die Waage startet neu.</span><span data-l="en">Wait until it finishes (about 1 to 2 minutes). The scale restarts.</span></li>
+</ol>
+<p class="note"><span data-l="de"><b>Danach:</b> Auf dem Display steht „WLAN einrichten: Filamentwaage-Setup“ mit einem <b>Passwort</b>. Das Passwort erzeugt die Waage beim ersten Start zufällig, jede Waage hat ein eigenes. Verbinde dich damit, wie in der <a href="anleitung.html">Anleitung</a> beschrieben.</span><span data-l="en"><b>Afterwards:</b> the display shows “Set up WiFi: Filamentwaage-Setup” together with a <b>password</b>. The scale generates it randomly at first boot, every scale has its own. Join with it as described in the <a href="anleitung.html">user guide</a>.</span></p>
+<ul>
+  <li><span data-l="de">Verbindet sich der Browser nicht, halte die <b>BOOT</b>-Taste gedrückt, während du das USB-Kabel einsteckst, und versuche es noch einmal.</span><span data-l="en">If the browser cannot connect, hold the <b>BOOT</b> button while plugging in the USB cable and try again.</span></li>
+  <li><span data-l="de">Das Web-Image ist ein Standard-Build: kein voreingestelltes WLAN, die Spoolman-Adresse steht auf <code>http://spoolman.local:7912</code> und lässt sich in der Weboberfläche ändern, das Theme hat die Standardwerte.</span><span data-l="en">The web image is a stock build: no preset Wi-Fi, the Spoolman address defaults to <code>http://spoolman.local:7912</code> and can be changed in the web UI, the theme uses its defaults.</span></li>
+  <li><span data-l="de">Die Datei wird bei jedem Release automatisch aus dem Quellcode gebaut. Wer es selbst bauen will, nutzt den Weg darunter.</span><span data-l="en">The file is built automatically from the source for every release. If you prefer to build it yourself, use the route below.</span></li>
+</ul>
+
+<h2 id="flashen"><span data-l="de">Selbst bauen und flashen</span><span data-l="en">Build and flash yourself</span></h2>
 <p><span data-l="de">Du brauchst <a href="https://platformio.org/">PlatformIO</a> (VS Code oder CLI).</span><span data-l="en">You need <a href="https://platformio.org/">PlatformIO</a> (VS Code or CLI).</span></p>
 <pre><code>git clone https://github.com/Drache055/filament-scale.git
 cd filament-scale/firmware
 cp include/secrets.h.example include/secrets.h
-# secrets.h bearbeiten / edit: Spoolman-URL, OTA-Passwort
+# secrets.h bearbeiten / edit: Spoolman-URL (optional: eigenes OTA-Passwort)
 
 pio run -e waage -t upload      # Firmware per USB
 pio run -e waage -t uploadfs    # LittleFS (theme.json)</code></pre>
 <p><span data-l="de">Danach reicht das Netzwerk:</span><span data-l="en">After that the network is enough:</span></p>
-<pre><code>OTA_PASSWORD=&lt;pw&gt; pio run -e waage-ota -t upload      # Firmware
-OTA_PASSWORD=&lt;pw&gt; pio run -e waage-ota -t uploadfs    # Theme</code></pre>
+<pre><code>OTA_PASSWORD=&lt;device-password&gt; pio run -e waage-ota -t upload      # Firmware
+OTA_PASSWORD=&lt;device-password&gt; pio run -e waage-ota -t uploadfs    # Theme</code></pre>
+<p class="muted"><span data-l="de">Das Geräte-Passwort steht am Display unter Menü → Einstellungen → WiFi. Hast du in <code>secrets.h</code> ein eigenes <code>OTA_PASSWORD</code> (mindestens 8 Zeichen) gesetzt, gilt dieses.</span><span data-l="en">The device password is shown on the display under Menu → Settings → WiFi. If you set your own <code>OTA_PASSWORD</code> (at least 8 characters) in <code>secrets.h</code>, that one applies.</span></p>
 <p class="note warn"><span data-l="de"><b>Achtung:</b> <code>uploadfs</code> überschreibt das ganze LittleFS und löscht damit die Offline-Warteschlange. Vorher prüfen, ob Updates ausstehen.</span><span data-l="en"><b>Careful:</b> <code>uploadfs</code> overwrites the whole LittleFS including the offline queue. Check for pending updates first.</span></p>
-<p><span data-l="de"><b>WLAN:</b> Die Werte aus <code>secrets.h</code> werden einmalig beim ersten Start übernommen. Ohne WLAN startet der Hotspot <code>Filamentwaage-Setup</code> (Passwort = OTA-Passwort, wenn mindestens 8 Zeichen).</span><span data-l="en"><b>Wi-Fi:</b> the values in <code>secrets.h</code> are adopted once at first boot. Without Wi-Fi the <code>Filamentwaage-Setup</code> hotspot starts (password = OTA password if at least 8 characters).</span></p>
+<p><span data-l="de"><b>WLAN:</b> Die Werte aus <code>secrets.h</code> werden einmalig beim ersten Start übernommen. Ohne WLAN startet der Hotspot <code>Filamentwaage-Setup</code> (immer geschützt, das Passwort steht auf dem Display).</span><span data-l="en"><b>Wi-Fi:</b> the values in <code>secrets.h</code> are adopted once at first boot. Without Wi-Fi the <code>Filamentwaage-Setup</code> hotspot starts (always protected, the password is shown on the display).</span></p>
 <p><span data-l="de"><code>secrets.h</code> steht in der <code>.gitignore</code> und wird nie eingecheckt.</span><span data-l="en"><code>secrets.h</code> is in <code>.gitignore</code> and is never committed.</span></p>
 
 <h2 id="inbetrieb"><span data-l="de">Inbetriebnahme</span><span data-l="en">Commissioning</span></h2>
@@ -116,6 +140,7 @@ pio test -e native</code></pre>
   <a href="index.html"><span data-l="de">Startseite</span><span data-l="en">Home</span> →</a>
  · <a href="https://github.com/Drache055/filament-scale/blob/main/LICENSE">GPL-3.0</a>
 </div></footer>
+<script type="module" src="https://unpkg.com/esp-web-tools@10.1.1/dist/web/install-button.js?module"></script>
 <script src="app.js"></script>
 </body>
 </html>

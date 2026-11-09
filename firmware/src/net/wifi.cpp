@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "secrets.h"
+#include "storage/devicepw.h"
 #include "util/log.h"
 
 namespace {
@@ -191,8 +192,8 @@ void wifiStartAp() {
   }
   WiFi.mode(WIFI_AP_STA);
   WiFi.setSleep(false);
-  String pw(OTA_PASSWORD);
-  bool ok = WiFi.softAP(WIFI_AP_SSID, pw.length() >= 8 ? pw.c_str() : nullptr);
+  const String &pw = devicePassword();  // immer mindestens 8 Zeichen, der Hotspot ist also immer geschützt
+  bool ok = WiFi.softAP(WIFI_AP_SSID, pw.c_str());
   apActive = ok;
   if (ok) {
     dns.start(53, "*", WiFi.softAPIP());

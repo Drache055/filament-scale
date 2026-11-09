@@ -5,13 +5,14 @@
 #include <ArduinoOTA.h>
 
 #include "secrets.h"
+#include "storage/devicepw.h"
 #include "wifi.h"
 
 static bool otaStarted = false;
 
 static void otaStart() {
   ArduinoOTA.setHostname(OTA_HOSTNAME);
-  ArduinoOTA.setPassword(OTA_PASSWORD);
+  ArduinoOTA.setPassword(devicePassword().c_str());
 
   ArduinoOTA.onStart([]() {
     logPrintf("[OTA] Start (%s)\n",

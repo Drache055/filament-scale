@@ -13,6 +13,7 @@
 #include "scale/scale.h"
 #include <LittleFS.h>
 #include "storage/admin.h"
+#include "storage/devicepw.h"
 #include "storage/catalog.h"
 #include "storage/queue.h"
 #include "storage/users.h"
@@ -45,6 +46,7 @@ void setup() {
                 ESP.getPsramSize() / (1024 * 1024));
   logPrintf("[BOOT] Laufende Partition: %s\n", esp_ota_get_running_partition()->label);
 
+  devicePwBegin();  // vor dem net-Task: Hotspot und OTA brauchen das Geräte-Passwort
   adminBegin();  // vor dem net-Task, die Webseite fragt die Sperre ab
   xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 0);
   if (!LittleFS.begin(true)) {

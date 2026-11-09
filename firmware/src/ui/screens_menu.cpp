@@ -11,6 +11,7 @@
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "storage/catalog.h"
+#include "storage/devicepw.h"
 #include "scale/scale.h"
 #include "screens.h"
 #include "theme.h"
@@ -243,6 +244,7 @@ struct WifiInfoUi {
   lv_obj_t *quality;
   lv_obj_t *spoolman;
   lv_obj_t *ap;
+  lv_obj_t *devpw;
 };
 
 static void spoolmanRefresh(WifiInfoUi *ui);
@@ -250,6 +252,7 @@ static void spoolmanRefresh(WifiInfoUi *ui);
 static void wifiRefresh(lv_timer_t *t) {
   auto *ui = static_cast<WifiInfoUi *>(lv_timer_get_user_data(t));
   spoolmanRefresh(ui);
+  lv_label_set_text_fmt(ui->devpw, tr(Str::DevicePassword), devicePassword().c_str());
   if (wifiApActive()) {
     lv_label_set_text_fmt(ui->ap, "%s: %s (%s)", tr(Str::SetupWifi), wifiApSsid().c_str(), wifiApIp().c_str());
   } else {
@@ -316,6 +319,7 @@ void screenWifiOpen() {
   ui->quality = addLabel(card, &theme().body, true);
   ui->spoolman = addLabel(card, &theme().body, true);
   ui->ap = addLabel(card, &theme().dim, true);
+  ui->devpw = addLabel(card, &theme().dim, true);
 
   lv_timer_t *t = addScreenTimer(scr, wifiRefresh, 1000, ui);
   lv_obj_add_event_cb(scr, wifiScreenDeleted, LV_EVENT_DELETE, ui);

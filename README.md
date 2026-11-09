@@ -14,6 +14,7 @@ A smart filament scale built on the ESP32-S3: identify a spool via NFC, identify
 - **Touch display** (240×320) for tare, calibration and writing tags on the device
 - **Web UI** with user management, roles (admin / user / generic), filament catalog, log, system settings
 - **Tasmota-style Wi-Fi setup** (hotspot + captive portal), OTA updates
+- **Flash from your browser** (Chrome/Edge, no tools needed): see the [website](https://drache055.github.io/filament-scale/bauen.html#webflash)
 - German and English, language per user
 
 ## Hardware
@@ -58,6 +59,7 @@ Die Firmware spricht auf dem Gerät Deutsch und Englisch. Hier die deutsche Kurz
 - **Touch-Display** (240×320) mit Tara, Kalibrierung, Tag-Schreiben direkt am Gerät
 - **Weboberfläche** mit Benutzerverwaltung, Rollen (Admin / Benutzer / Generic), Filament-Katalog, Log, Systemeinstellungen
 - **WLAN-Einrichtung wie bei Tasmota** (Hotspot + Captive Portal), Updates per OTA
+- **Flashen im Browser** (Chrome/Edge, ohne Werkzeuge): siehe [Webseite](https://drache055.github.io/filament-scale/bauen.html#webflash)
 - Deutsch und Englisch, Sprache pro Benutzer
 
 ## Hardware

@@ -141,3 +141,8 @@ html[lang=de] [data-l=de],html[lang=en] [data-l=en]{display:revert}
 .two.tall img{aspect-ratio:1920/1760;object-fit:cover;object-position:center}
 
 .demo-video{display:block;width:100%;max-width:960px;margin:24px auto 0;border-radius:18px;border:1px solid var(--line);background:#000;box-shadow:0 30px 80px -30px rgba(0,0,0,.6)}
+
+/* Web-Flasher */
+.flashbox{margin:18px 0;padding:22px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);text-align:center}
+button.btn{border:0;cursor:pointer;font-family:inherit}
+esp-web-install-button{--esp-tools-button-color:var(--accent)}

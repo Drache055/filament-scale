@@ -67,7 +67,7 @@ bool wifiConnected() { return mock.wifiUp; }
 String wifiSsid() { return "Heimnetz"; }
 String wifiIp() { return "192.168.178.57"; }
 int wifiRssi() { return -58; }
-bool wifiApActive() { return false; }
+bool wifiApActive() { return mock.apActive; }
 String wifiApSsid() { return "Filamentwaage-Setup"; }
 String wifiApIp() { return "192.168.4.1"; }
 
@@ -134,3 +134,9 @@ void sessionPostNotice(const char *, int) {}
 void i2cBusBegin() {}
 bool i2cBusLock(uint32_t) { return true; }
 void i2cBusUnlock() {}
+
+// Geräte-Passwort (storage/devicepw)
+#include "storage/devicepw.h"
+static String stubDevicePw = "K7MQ4X9RTB";
+const String &devicePassword() { return stubDevicePw; }
+bool devicePasswordGenerated() { return true; }

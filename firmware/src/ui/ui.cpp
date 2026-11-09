@@ -14,6 +14,7 @@
 #include "nfc/nfc.h"
 #include "scale/scale.h"
 #include "storage/admin.h"
+#include "storage/devicepw.h"
 #include "screens.h"
 #include "theme.h"
 
@@ -119,6 +120,9 @@ static void buildHome() {
 
   hintLabel = lv_label_create(card);
   lv_obj_add_style(hintLabel, &theme().body, 0);
+  lv_obj_set_width(hintLabel, LV_PCT(100));  // lange Hinweise (Hotspot mit Passwort) umbrechen statt abzuschneiden
+  lv_label_set_long_mode(hintLabel, LV_LABEL_LONG_WRAP);
+  lv_obj_set_style_text_align(hintLabel, LV_TEXT_ALIGN_CENTER, 0);
 
   statusLabel = lv_label_create(card);
   lv_obj_add_style(statusLabel, &theme().dim, 0);
@@ -173,7 +177,10 @@ static void updateHint() {
     strlcpy(text, notice, sizeof(text));
     color = level ? themeColors().error : themeColors().ok;
   } else if (wifiApActive() && !wifiConnected()) {
-    snprintf(text, sizeof(text), tr(Str::HotspotHint), wifiApSsid().c_str());
+    char line1[48], line2[40];
+    snprintf(line1, sizeof(line1), tr(Str::HotspotHint), wifiApSsid().c_str());
+    snprintf(line2, sizeof(line2), tr(Str::HotspotPassword), devicePassword().c_str());
+    snprintf(text, sizeof(text), "%s\n%s", line1, line2);
     color = themeColors().warn;
   } else if (webWrite) {
     switch (ws) {

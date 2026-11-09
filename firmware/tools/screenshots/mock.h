@@ -15,6 +15,7 @@ struct MockState {
   SpoolmanStatus spoolman;
   SpoolListResult list;
   bool wifiUp = true;
+  bool apActive = false;
   bool userLoggedIn = false;
   bool adminLoggedIn = false;
   bool lockEnabled = true;

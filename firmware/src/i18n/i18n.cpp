@@ -94,6 +94,8 @@ const char *const texts[(int)Str::Count][2] = {
     /* AssignDone */ {"Spule zugeordnet", "Spool assigned"},
     /* SetupWifi */ {"Einrichtungs-WLAN", "Setup WiFi"},
     /* HotspotHint */ {"WLAN einrichten: %s", "Set up WiFi: %s"},
+    /* HotspotPassword */ {"Passwort: %s", "Password: %s"},
+    /* DevicePassword */ {"Geräte-Passwort: %s", "Device password: %s"},
     /* AdminLogin */ {"Admin-Anmeldung", "Admin login"},
     /* Password */ {"PIN", "PIN"},
     /* WrongPassword */ {"Falsche PIN", "Wrong PIN"},

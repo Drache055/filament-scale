@@ -20,6 +20,7 @@
 #include "net/websession.h"
 #include "storage/admin.h"
 #include "storage/catalog.h"
+#include "storage/devicepw.h"
 #include "storage/users.h"
 #include "web_page.h"
 #include "wifi.h"
@@ -71,7 +72,7 @@ static WebWho currentWho() {
   }
   // Wer im geschützten Einrichtungs-WLAN ist, kennt dessen Passwort (Gerätepasswort, mindestens 8 Zeichen);
   // ein offener Hotspot ist dagegen kein Ausweis
-  if (strlen(OTA_PASSWORD) >= 8 && wifiApActive() && server.client().localIP() == WiFi.softAPIP()) {
+  if (devicePassword().length() >= 8 && wifiApActive() && server.client().localIP() == WiFi.softAPIP()) {
     w.role = WebRole::Admin;
     return w;
   }
