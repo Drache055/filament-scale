@@ -204,7 +204,7 @@ h3{font-size:15px;margin:18px 0 8px}
 <section class="page" id="p-spoolman">
   <div class="card">
     <div class="label" data-i18n="server">Server</div>
-    <div class="row"><input id="smurl" placeholder="http://192.168.178.142:8000" style="width:100%;max-width:24em">
+    <div class="row"><input id="smurl" placeholder="http://spoolman.local:7912" style="width:100%;max-width:24em">
       <button id="smsave" data-i18n="save">Speichern</button><button id="smcheck" class="sec" data-i18n="check">Prüfen</button></div>
     <div id="smstate" style="margin-top:10px"></div>
   </div>

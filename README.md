@@ -71,7 +71,9 @@ Firmware baut, Logik ist per Unit-Tests abgedeckt. Der komplette Wiegeablauf mit
 
 ## Lizenz
 
-Noch nicht festgelegt. Solange keine Lizenz hinterlegt ist, gilt das Urheberrecht des Autors.
+Firmware und Software stehen unter der [GNU General Public License v3.0](LICENSE). Du darfst sie privat und kommerziell nutzen, ändern und weitergeben. Wer sie (auch verändert) weitergibt oder in einem Produkt verkauft, muss den vollständigen Quellcode unter der GPL-3.0 offenlegen. Eine abweichende kommerzielle Lizenz ist auf Anfrage beim Autor möglich.
+
+Verwendete Bibliotheken (LVGL, LovyanGFX, HX711, Adafruit PN532, ArduinoJson) behalten ihre eigenen Lizenzen. Für 3D-Dateien und Dokumentation gilt noch keine eigene Lizenz.
 
 ---
 
@@ -113,4 +115,6 @@ The firmware builds and the core logic is unit-tested. The full weighing flow wi
 
 ## License
 
-Not decided yet.
+Firmware and software are licensed under the [GNU General Public License v3.0](LICENSE). You may use, modify and redistribute them, privately and commercially. Anyone who distributes them (modified or not) or ships them in a product must release the complete source code under GPL-3.0. A different commercial license is available on request from the author.
+
+Bundled libraries (LVGL, LovyanGFX, HX711, Adafruit PN532, ArduinoJson) keep their own licenses. 3D files and documentation do not have a separate license yet.
