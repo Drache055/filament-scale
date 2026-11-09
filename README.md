@@ -1,6 +1,6 @@
 # Filament Scale
 
-**🇬🇧 English** · [🇩🇪 Deutsch](#deutsch) · [Website](https://drache055.github.io/filamentwaage/)
+**🇬🇧 English** · [🇩🇪 Deutsch](#deutsch) · [Website](https://drache055.github.io/filament-scale/)
 
 ![Filament Scale](docs/img/hero.jpg)
 
@@ -23,8 +23,8 @@ Waveshare ESP32-S3-Touch-LCD-2, 5 kg bar load cell, HX711, PN532 (SPI mode), NTA
 ## Quick start
 
 ```bash
-git clone https://github.com/Drache055/filamentwaage.git
-cd filamentwaage/firmware
+git clone https://github.com/Drache055/filament-scale.git
+cd filament-scale/firmware
 cp include/secrets.h.example include/secrets.h
 pio run -e waage -t upload
 pio run -e waage -t uploadfs
@@ -78,8 +78,8 @@ Pinbelegung: [`firmware/include/pins.h`](firmware/include/pins.h). Ausführliche
 Voraussetzung: [PlatformIO](https://platformio.org/).
 
 ```bash
-git clone https://github.com/Drache055/filamentwaage.git
-cd filamentwaage/firmware
+git clone https://github.com/Drache055/filament-scale.git
+cd filament-scale/firmware
 cp include/secrets.h.example include/secrets.h   # ausfüllen (WLAN optional, Spoolman-URL)
 pio run -e waage -t upload                       # erstes Flashen per USB
 pio run -e waage -t uploadfs                     # Theme-Daten
