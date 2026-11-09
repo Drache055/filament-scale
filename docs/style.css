@@ -90,8 +90,8 @@ html[lang=de] [data-l=de],html[lang=en] [data-l=en]{display:revert}
 .hero-art img{width:100%;height:auto;border-radius:20px;border:1px solid var(--line);box-shadow:0 30px 80px -30px rgba(0,0,0,.6);display:block;transform:perspective(1400px) rotateY(-4deg)}
 @media(max-width:860px){.hero-art img{transform:none}}
 .band{border-block:1px solid var(--line);background:var(--panel)}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding-block:26px}
-@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-block:26px}
+@media(max-width:700px){.stats{grid-template-columns:1fr}}
 .stats div{text-align:center}
 .stats b{display:block;font-size:clamp(28px,4vw,40px);letter-spacing:-.02em;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .stats span{color:var(--muted);font-size:14px}
