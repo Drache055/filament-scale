@@ -1,123 +1,141 @@
 # Filament Scale
 
-**🇬🇧 English** · [🇩🇪 Deutsch](#deutsch) · [Website](https://drache055.github.io/filament-scale/)
+English · [Deutsch](#filamentwaage) · [Website](https://drache055.github.io/filament-scale/) · [Build guide](https://drache055.github.io/filament-scale/bauen.html)
 
-![Filament Scale](docs/img/hero.jpg)
+![The scale on a workbench with a storage box on the platform](docs/img/hero.jpg)
 
-A smart filament scale built on the ESP32-S3: identify a spool via NFC, identify a storage box via NFC, determine remaining filament by differential weighing and write it to [Spoolman](https://github.com/Donkie/Spoolman) automatically.
+A filament scale built on the ESP32-S3. It reads the spool and its storage box via NFC, weighs the spool inside the box and writes the remaining weight and the box as location to [Spoolman](https://github.com/Donkie/Spoolman).
+
+## How it works
+
+1. Hold the spool to the scan zone. The scale looks it up in Spoolman.
+2. Put the storage box (with its own NFC tag) on the scale. Weight W1 is stored.
+3. Put the spool into the box. Weight W2 is stored.
+4. Confirm. Remaining weight and location go to Spoolman.
+
+The box weight never has to be known. Example from the device screens:
+
+| | |
+|---|---:|
+| W2, box with spool | 1254 g |
+| − W1, box alone | 412 g |
+| − empty spool (from Spoolman) | 250 g |
+| **= remaining weight** | **592 g** |
 
 ## Features
 
-- **NFC identification** of spools (OpenSpool compatible, NTAG215/216) and storage boxes
-- **Differential weighing:** weigh the box, put the spool in, weigh again. The box weight (and whatever else is inside) does not matter
-- **Spoolman integration:** updates `remaining_weight`, `location` (= box) and owner via API, with an offline queue
-- **Touch display** (240×320) for tare, calibration and writing tags on the device
-- **Web UI** with user management, roles (admin / user / generic), filament catalog, log, system settings
-- **Tasmota-style Wi-Fi setup** (hotspot + captive portal), OTA updates
-- **Flash from your browser** (Chrome/Edge, no tools needed): see the [website](https://drache055.github.io/filament-scale/bauen.html#webflash)
+- NFC tags NTAG215/216 in OpenSpool format; spool, box and user tags can be written on the device
+- Uses the native NFC tags of Spoolman 0.27; unknown spools are linked by picking them from the Spoolman list
+- Offline queue: up to 100 updates are kept in flash and sent when Spoolman is reachable again
+- Users sign in with their own tag and are recorded as spool owner; settings are admin only
+- Web interface for calibration, users, filament catalog, Spoolman, Wi-Fi, log and system settings
+- Wi-Fi setup through a hotspot with captive portal, firmware updates over Wi-Fi (OTA)
 - German and English, language per user
 
 ## Hardware
 
-Waveshare ESP32-S3-Touch-LCD-2, 5 kg bar load cell, HX711, PN532 (SPI mode), NTAG215/216 tags, 3D-printed enclosure. Pinout: [`firmware/include/pins.h`](firmware/include/pins.h).
-
-## Quick start
-
-```bash
-git clone https://github.com/Drache055/filament-scale.git
-cd filament-scale/firmware
-cp include/secrets.h.example include/secrets.h
-pio run -e waage -t upload
-pio run -e waage -t uploadfs
-```
-
-Unit tests run on the host: `pio test -e native`. Default credentials: admin password `Filament`, device PIN `1234`. **Change them right away.**
-
-## Status
-
-The firmware builds and the core logic is unit-tested. The full weighing flow with a real scale, box tag and Spoolman has not been fully verified on hardware yet.
-
-## License
-
-Firmware and software are licensed under the [GNU General Public License v3.0](LICENSE). You may use, modify and redistribute them, privately and commercially. Anyone who distributes them (modified or not) or ships them in a product must release the complete source code under GPL-3.0. A different commercial license is available on request from the author.
-
-Bundled libraries (LVGL, LovyanGFX, HX711, Adafruit PN532, ArduinoJson) keep their own licenses. 3D files and documentation do not have a separate license yet.
-
----
-
-<a id="deutsch"></a>
-
-# Filamentwaage (Deutsch)
-
-Die Firmware spricht auf dem Gerät Deutsch und Englisch. Hier die deutsche Kurzfassung.
-
-## Funktionen
-
-- **NFC-Erkennung** von Spulen (OpenSpool-kompatibel, NTAG215/216) und Lagerboxen
-- **Differenzwägung:** Box wiegen, Spule hineinstellen, nochmal wiegen. Das Gewicht der Box (und was sonst darin liegt) spielt keine Rolle
-- **Spoolman-Anbindung:** `remaining_weight`, `location` (= Box) und Besitzer werden per API aktualisiert, mit Offline-Warteschlange
-- **Touch-Display** (240×320) mit Tara, Kalibrierung, Tag-Schreiben direkt am Gerät
-- **Weboberfläche** mit Benutzerverwaltung, Rollen (Admin / Benutzer / Generic), Filament-Katalog, Log, Systemeinstellungen
-- **WLAN-Einrichtung wie bei Tasmota** (Hotspot + Captive Portal), Updates per OTA
-- **Flashen im Browser** (Chrome/Edge, ohne Werkzeuge): siehe [Webseite](https://drache055.github.io/filament-scale/bauen.html#webflash)
-- Deutsch und Englisch, Sprache pro Benutzer
-
-## Hardware
-
-| Teil | Details |
+| Part | Details |
 |---|---|
-| Board | Waveshare ESP32-S3-Touch-LCD-2 (ESP32-S3R8, 16 MB Flash, 8 MB PSRAM, ST7789 240×320, CST816 Touch) |
-| Wägezelle | Biegebalken 5 kg |
-| ADC | HX711 (3,3 V) |
-| NFC | PN532 im SPI-Modus |
-| Tags | NTAG215 / NTAG216 |
-| Gehäuse | 3D-gedruckt, Ballast aus Stahl im Sockel |
+| Board | Waveshare ESP32-S3-Touch-LCD-2 (16 MB flash, 8 MB PSRAM, 240×320 touch display) |
+| Load cell | 5 kg bar load cell |
+| ADC | HX711, powered with 3.3 V |
+| NFC | PN532 in SPI mode |
+| Tags | NTAG215 or NTAG216 |
+| Enclosure | 3D printed, steel ballast in the base |
 
-Pinbelegung: [`firmware/include/pins.h`](firmware/include/pins.h). Ausführliche Entwicklungsnotizen: [`firmware/CLAUDE.md`](firmware/CLAUDE.md).
+Pinout: [`firmware/include/pins.h`](firmware/include/pins.h). Wiring and mechanics: [build guide](https://drache055.github.io/filament-scale/bauen.html).
 
-## Schnellstart
+## Getting started
 
-Voraussetzung: [PlatformIO](https://platformio.org/).
+**Without a toolchain:** use the [web flasher](https://drache055.github.io/filament-scale/bauen.html#webflash) in Chrome or Edge on a computer.
+
+**With PlatformIO:**
 
 ```bash
 git clone https://github.com/Drache055/filament-scale.git
 cd filament-scale/firmware
-cp include/secrets.h.example include/secrets.h   # ausfüllen (WLAN optional, Spoolman-URL)
-pio run -e waage -t upload                       # erstes Flashen per USB
-pio run -e waage -t uploadfs                     # Theme-Daten
+cp include/secrets.h.example include/secrets.h   # Spoolman URL, Wi-Fi optional
+pio run -e waage -t upload                       # first flash over USB
+pio run -e waage -t uploadfs                     # theme data
 ```
 
-Danach geht alles per WLAN (OTA). Ohne WLAN-Daten startet das Gerät den Hotspot `Filamentwaage-Setup`.
+After that, updates go over Wi-Fi. Without Wi-Fi credentials the scale opens the hotspot `Filamentwaage-Setup`.
 
-Tests auf dem Rechner (ohne Hardware):
+Unit tests run on the host without hardware: `cd firmware && pio test -e native`
 
-```bash
-cd firmware && pio test -e native
-```
-
-Standard-Zugang: Admin-Passwort `Filament`, Geräte-PIN `1234`. **Bitte direkt ändern.**
-
-## Ablauf
-
-1. Spule ans Gerät halten, Tag wird gelesen, Spoolman liefert die Daten
-2. Box (mit Box-Tag) auf die Waage stellen, Gewicht W1 wird erfasst
-3. Spule in die Box stellen, Gewicht W2 wird erfasst
-4. Restgewicht = (W2 − W1) − Leerspulengewicht, bestätigen, an Spoolman senden
+Default login: admin password `Filament`, device PIN `1234`. Change both after the first start.
 
 ## Repository
 
 ```
-firmware/   PlatformIO-Projekt (ESP32-S3, LVGL 9, Arduino)
-docs/       Webseite (GitHub Pages)
+firmware/   PlatformIO project (ESP32-S3, Arduino, LVGL 9)
+docs/       Website (GitHub Pages) and web flasher
 ```
+
+Development notes: [`firmware/CLAUDE.md`](firmware/CLAUDE.md) (German).
 
 ## Status
 
-Firmware baut, Logik ist per Unit-Tests abgedeckt. Der komplette Wiegeablauf mit echter Waage, Box-Tag und Spoolman ist noch nicht abschließend am Gerät geprüft. Siehe Abschnitt „Offene Punkte“ in `firmware/CLAUDE.md`.
+The firmware builds and the logic is covered by unit tests. The full weighing flow with a real scale, box tag and Spoolman has not been fully tested on the device yet. Feedback and issues are welcome.
+
+## License
+
+[GPL-3.0](LICENSE). You may use, modify and redistribute the firmware, privately and commercially. If you distribute it, modified or not, or ship it in a product, you must publish the complete source code under GPL-3.0. A different commercial license is available on request.
+
+The bundled libraries (LVGL, LovyanGFX, HX711, Adafruit PN532, ArduinoJson) keep their own licenses. 3D files and documentation have no separate license yet.
+
+---
+
+<a id="filamentwaage"></a>
+
+# Filamentwaage
+
+Eine Waage auf Basis des ESP32-S3. Sie liest Spule und Lagerbox per NFC, wiegt die Spule in ihrer Box und trägt Restgewicht und Lagerort in [Spoolman](https://github.com/Donkie/Spoolman) ein. Auf dem Gerät und auf der Webseite gibt es Deutsch und Englisch.
+
+## Ablauf
+
+1. Spule an die Scan-Zone halten. Die Waage sucht sie in Spoolman.
+2. Lagerbox (mit eigenem NFC-Tag) auf die Waage stellen. Gewicht W1 wird gespeichert.
+3. Spule in die Box stellen. Gewicht W2 wird gespeichert.
+4. Bestätigen. Restgewicht und Lagerort gehen an Spoolman.
+
+Das Gewicht der Box muss niemand kennen: Rest = (W2 − W1) − Leerspule, im Beispiel (1254 g − 412 g) − 250 g = 592 g.
+
+## Funktionen
+
+- NFC-Tags NTAG215/216 im OpenSpool-Format; Spulen-, Box- und Benutzer-Tags lassen sich am Gerät beschreiben
+- Nutzt die NFC-Tags von Spoolman 0.27; unbekannte Spulen wählt man aus der Spoolman-Liste, danach ist der Tag verknüpft
+- Offline-Warteschlange: bis zu 100 Updates bleiben im Flash und werden gesendet, sobald Spoolman erreichbar ist
+- Benutzer melden sich mit ihrem Tag an und werden als Besitzer eingetragen; Einstellungen nur für den Admin
+- Weboberfläche für Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log und System
+- WLAN-Einrichtung über Hotspot mit Captive Portal, Firmware-Updates per WLAN (OTA)
+
+## Schnellstart
+
+**Ohne Entwicklungsumgebung:** [Web-Flasher](https://drache055.github.io/filament-scale/bauen.html#webflash) in Chrome oder Edge am Computer.
+
+**Mit PlatformIO:**
+
+```bash
+git clone https://github.com/Drache055/filament-scale.git
+cd filament-scale/firmware
+cp include/secrets.h.example include/secrets.h   # Spoolman-URL, WLAN optional
+pio run -e waage -t upload                       # erstes Flashen per USB
+pio run -e waage -t uploadfs                     # Theme-Daten
+```
+
+Danach geht alles per WLAN. Ohne WLAN-Daten startet das Gerät den Hotspot `Filamentwaage-Setup`.
+
+Tests auf dem Rechner (ohne Hardware): `cd firmware && pio test -e native`
+
+Standard-Zugang: Admin-Passwort `Filament`, Geräte-PIN `1234`. Beides nach dem ersten Start ändern.
+
+Teileliste, Verdrahtung und Mechanik stehen in der [Bauanleitung](https://drache055.github.io/filament-scale/bauen.html), die Bedienung in der [Anleitung](https://drache055.github.io/filament-scale/anleitung.html).
+
+## Stand
+
+Die Firmware baut, die Logik ist mit Unit-Tests abgedeckt. Der ganze Wiegeablauf mit echter Waage, Box-Tag und Spoolman ist am Gerät noch nicht vollständig geprüft.
 
 ## Lizenz
 
-Firmware und Software stehen unter der [GNU General Public License v3.0](LICENSE). Du darfst sie privat und kommerziell nutzen, ändern und weitergeben. Wer sie (auch verändert) weitergibt oder in einem Produkt verkauft, muss den vollständigen Quellcode unter der GPL-3.0 offenlegen. Eine abweichende kommerzielle Lizenz ist auf Anfrage beim Autor möglich.
-
-Verwendete Bibliotheken (LVGL, LovyanGFX, HX711, Adafruit PN532, ArduinoJson) behalten ihre eigenen Lizenzen. Für 3D-Dateien und Dokumentation gilt noch keine eigene Lizenz.
-
+[GPL-3.0](LICENSE). Du darfst die Firmware privat und kommerziell nutzen, ändern und weitergeben. Wer sie (auch verändert) weitergibt oder in einem Produkt verkauft, muss den vollständigen Quellcode unter der GPL-3.0 offenlegen. Eine abweichende kommerzielle Lizenz gibt es auf Anfrage.
