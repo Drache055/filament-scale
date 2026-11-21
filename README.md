@@ -2,7 +2,7 @@
 
 [Website](https://drache055.github.io/filament-scale/) · [Build guide](https://drache055.github.io/filament-scale/bauen.html)
 
-![The scale on a workbench with a storage box on the platform](docs/img/hero.jpg)
+![The storage box with a spool inside on the scale](docs/img/hero.jpg)
 
 A filament scale built on the ESP32-S3. It reads the spool and its storage box via NFC, weighs the spool inside the box and writes the remaining weight and the box as location to [Spoolman](https://github.com/Donkie/Spoolman).
 

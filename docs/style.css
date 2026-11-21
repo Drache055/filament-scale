@@ -78,7 +78,7 @@ section{padding-block:44px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:700px){.two{grid-template-columns:1fr}}
 .two img{width:100%;height:auto;border-radius:var(--r);display:block}
-.two.tall img{aspect-ratio:1600/1466;object-fit:cover}
+.two.tall img{aspect-ratio:16/9;object-fit:cover}
 .table-scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line)}
 td,th{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:15px;vertical-align:top}
