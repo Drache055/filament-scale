@@ -1,6 +1,6 @@
 # Filament Scale
 
-English · [Deutsch](#filamentwaage) · [Website](https://drache055.github.io/filament-scale/) · [Build guide](https://drache055.github.io/filament-scale/bauen.html)
+[Website](https://drache055.github.io/filament-scale/) · [Build guide](https://drache055.github.io/filament-scale/bauen.html)
 
 ![The scale on a workbench with a storage box on the platform](docs/img/hero.jpg)
 
@@ -72,7 +72,7 @@ firmware/   PlatformIO project (ESP32-S3, Arduino, LVGL 9)
 docs/       Website (GitHub Pages) and web flasher
 ```
 
-Development notes: [`firmware/CLAUDE.md`](firmware/CLAUDE.md) (German).
+Development notes: [`firmware/CLAUDE.md`](firmware/CLAUDE.md).
 
 ## Status
 
@@ -83,59 +83,3 @@ The firmware builds and the logic is covered by unit tests. The full weighing fl
 [GPL-3.0](LICENSE). You may use, modify and redistribute the firmware, privately and commercially. If you distribute it, modified or not, or ship it in a product, you must publish the complete source code under GPL-3.0. A different commercial license is available on request.
 
 The bundled libraries (LVGL, LovyanGFX, HX711, Adafruit PN532, ArduinoJson) keep their own licenses. 3D files and documentation have no separate license yet.
-
----
-
-<a id="filamentwaage"></a>
-
-# Filamentwaage
-
-Eine Waage auf Basis des ESP32-S3. Sie liest Spule und Lagerbox per NFC, wiegt die Spule in ihrer Box und trägt Restgewicht und Lagerort in [Spoolman](https://github.com/Donkie/Spoolman) ein. Auf dem Gerät und auf der Webseite gibt es Deutsch und Englisch.
-
-## Ablauf
-
-1. Spule an die Scan-Zone halten. Die Waage sucht sie in Spoolman.
-2. Lagerbox (mit eigenem NFC-Tag) auf die Waage stellen. Gewicht W1 wird gespeichert.
-3. Spule in die Box stellen. Gewicht W2 wird gespeichert.
-4. Bestätigen. Restgewicht und Lagerort gehen an Spoolman.
-
-Das Gewicht der Box muss niemand kennen: Rest = (W2 − W1) − Leerspule, im Beispiel (1254 g − 412 g) − 250 g = 592 g.
-
-## Funktionen
-
-- NFC-Tags NTAG215/216 im OpenSpool-Format; Spulen-, Box- und Benutzer-Tags lassen sich am Gerät beschreiben
-- Nutzt die NFC-Tags von Spoolman 0.27; unbekannte Spulen wählt man aus der Spoolman-Liste, danach ist der Tag verknüpft
-- Offline-Warteschlange: bis zu 100 Updates bleiben im Flash und werden gesendet, sobald Spoolman erreichbar ist
-- Benutzer melden sich mit ihrem Tag an und werden als Besitzer eingetragen; Einstellungen nur für den Admin
-- Weboberfläche für Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log und System
-- WLAN-Einrichtung über Hotspot mit Captive Portal, Firmware-Updates per WLAN (OTA)
-
-## Schnellstart
-
-**Ohne Entwicklungsumgebung:** [Web-Flasher](https://drache055.github.io/filament-scale/bauen.html#webflash) in Chrome oder Edge am Computer.
-
-**Mit PlatformIO:**
-
-```bash
-git clone https://github.com/Drache055/filament-scale.git
-cd filament-scale/firmware
-cp include/secrets.h.example include/secrets.h   # Spoolman-URL, WLAN optional
-pio run -e waage -t upload                       # erstes Flashen per USB
-pio run -e waage -t uploadfs                     # Theme-Daten
-```
-
-Danach geht alles per WLAN. Ohne WLAN-Daten startet das Gerät den Hotspot `Filamentwaage-Setup`.
-
-Tests auf dem Rechner (ohne Hardware): `cd firmware && pio test -e native`
-
-Standard-Zugang: Admin-Passwort `Filament`, Geräte-PIN `1234`. Beides nach dem ersten Start ändern.
-
-Teileliste, Verdrahtung und Mechanik stehen in der [Bauanleitung](https://drache055.github.io/filament-scale/bauen.html), die Bedienung in der [Anleitung](https://drache055.github.io/filament-scale/anleitung.html).
-
-## Stand
-
-Die Firmware baut, die Logik ist mit Unit-Tests abgedeckt. Der ganze Wiegeablauf mit echter Waage, Box-Tag und Spoolman ist am Gerät noch nicht vollständig geprüft.
-
-## Lizenz
-
-[GPL-3.0](LICENSE). Du darfst die Firmware privat und kommerziell nutzen, ändern und weitergeben. Wer sie (auch verändert) weitergibt oder in einem Produkt verkauft, muss den vollständigen Quellcode unter der GPL-3.0 offenlegen. Eine abweichende kommerzielle Lizenz gibt es auf Anfrage.
