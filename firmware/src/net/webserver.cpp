@@ -16,6 +16,7 @@
 #include "core/diag_core.h"
 #include "core/web_guard.h"
 #include "net/fwupdate.h"
+#include "net/ota.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "scale/scale.h"
@@ -33,6 +34,7 @@
 static WebServer server(80);
 static bool started = false;
 static uint32_t rebootAt = 0;
+static uint32_t apPwApplyAt = 0;  // neues Hotspot-Passwort übernehmen, nachdem die Antwort raus ist
 
 // ---- Anmeldung und Rollen ----
 // Admin: Benutzer "admin" mit dem Admin-Passwort (Login-Seite, Cookie "sid"; Basic-Auth für Skripte).
@@ -75,9 +77,9 @@ static WebWho currentWho() {
     w.role = WebRole::Admin;
     return w;
   }
-  // Wer im geschützten Einrichtungs-WLAN ist, kennt dessen Passwort (Gerätepasswort, mindestens 8 Zeichen);
-  // ein offener Hotspot ist dagegen kein Ausweis
-  if (devicePassword().length() >= 8 && wifiApActive() && server.client().localIP() == WiFi.softAPIP()) {
+  // Wer im geschützten Einrichtungs-WLAN ist, kennt dessen Passwort (Hotspot-Passwort, mindestens 8 Zeichen, auf dem
+  // Display nur bei der Ersteinrichtung, sonst nur für den Admin sichtbar); ein offener Hotspot ist dagegen kein Ausweis
+  if (hotspotPassword().length() >= 8 && wifiApActive() && server.client().localIP() == WiFi.softAPIP()) {
     w.role = WebRole::Admin;
     return w;
   }
@@ -1152,7 +1154,34 @@ static void handleWifiGet() {
   doc["ap_active"] = wifiApActive();
   doc["ap_ssid"] = wifiApSsid();
   doc["ap_ip"] = wifiApIp();
+  doc["ap_password"] = hotspotPassword();
+  doc["ota_password"] = otaPassword();
+  doc["ota_fixed"] = otaPasswordFixed();
   sendJson(doc);
+}
+
+// Hotspot- oder OTA-Passwort neu erzeugen (which=ap|ota)
+static void handleDevicePwRegenerate() {
+  if (!requireAdmin()) {
+    return;
+  }
+  String which = server.arg("which");
+  if (which == "ap") {
+    hotspotPasswordRegenerate();
+    if (wifiApActive()) {
+      apPwApplyAt = millis() + 800;
+    }
+  } else if (which == "ota") {
+    if (!otaPasswordRegenerate()) {
+      server.send(409, "text/plain", "OTA-Passwort kommt aus secrets.h");
+      return;
+    }
+    otaPasswordChanged();
+  } else {
+    server.send(400, "text/plain", "which=ap oder which=ota");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
 }
 
 // Blockiert einige Sekunden (Scan)
@@ -1426,6 +1455,7 @@ static void webStart() {
   route("/api/wifi/scan", HTTP_GET, handleWifiScan);
   route("/api/wifi/reset", HTTP_POST, handleWifiReset);
   route("/api/wifi/ap", HTTP_POST, handleWifiAp);
+  route("/api/devicepw/regenerate", HTTP_POST, handleDevicePwRegenerate);
   route("/api/screensaver", HTTP_GET, handleScreensaverGet);
   route("/api/screensaver", HTTP_POST, handleScreensaverSet);
   route("/api/log", HTTP_GET, handleLog);
@@ -1461,5 +1491,9 @@ void webLoop() {
   server.handleClient();
   if (rebootAt && millis() > rebootAt) {
     ESP.restart();
+  }
+  if (apPwApplyAt && millis() > apPwApplyAt) {
+    apPwApplyAt = 0;
+    wifiApApplyPassword();
   }
 }
