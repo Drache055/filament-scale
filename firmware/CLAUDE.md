@@ -335,7 +335,8 @@ src/
   scale/sensor, sensor_drivers  Treiber-Schnittstelle LoadSensor, HX711, NAU7802, ADS1232
   storage/admin, users        Admin, Benutzer, PINs
   storage/catalog             Filament-Katalog
-  storage/devicepw            Geräte-Passwort
+  storage/devicepw            Hotspot- und OTA-Passwort
+  core/devicepw_core          Passwort erzeugen, Anzeige-Regel (ohne Arduino, getestet)
   storage/drying              Trocknungs-Einstellungen (NVS), Status je Spule
   storage/devmode             Betriebsart (smart/einfach), Leerspule der einfachen Waage
   storage/queue               Offline-Warteschlange (Datei)
@@ -403,7 +404,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen.
 - `/api/status` enthält für Nicht-Admins keine Gerätedaten (IP, Speicher, Firmware) und keinen Inhalt eines Admin-Tags. Ist die Sperre aus, ist jeder Admin.
 - 5 Fehlversuche (Login oder Basic-Auth, gemeinsam gezählt) sperren die Anmeldung 30 s.
-- Wer im **geschützten** Setup-WLAN ist (Passwort mindestens 8 Zeichen), braucht keine zweite Anmeldung. Ein offener Hotspot zählt nicht als Ausweis.
+- Wer im **geschützten** Setup-WLAN ist (Hotspot-Passwort, 13.2), braucht keine zweite Anmeldung. Ein offener Hotspot zählt nicht als Ausweis.
 
 ### 11.5 Sprache pro Benutzer
 - `User.lang` (0 = Gerätesprache, 1 = Deutsch, 2 = Englisch, im Benutzer-JSON im NVS). Beim Anmelden per Tag geladen (`i18nApply`, speichert nichts), beim Abmelden kommt die Gerätesprache zurück (`i18nRestoreDefault`).
@@ -415,8 +416,8 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 12.1 WLAN-Einrichtung (wie bei Tasmota)
 - Zugangsdaten stehen nur im NVS (Webseite → WLAN oder serielle Konsole). `WIFI_SSID`/`WIFI_PASSWORD` aus `secrets.h` werden **einmalig** beim ersten Start übernommen (Platzhalter `dein-wlan` zählt nicht).
-- Ohne gespeicherte Daten startet **sofort** der Hotspot `Filamentwaage-Setup` (Passwort = Geräte-Passwort, siehe 13.2) und Home zeigt „WLAN einrichten: …“. Ein Captive Portal leitet die Prüf-URLs der Betriebssysteme und jeden fremden Host auf `http://192.168.4.1/#wifi` (Wildcard-DNS, `net/webserver.cpp`, `captiveRedirect`).
-- Kann sich das Gerät mit gespeicherten Daten eine Minute lang nicht verbinden, startet der Hotspot ebenfalls, parallel zu den Verbindungsversuchen. Er endet, sobald das Gerät eine Minute stabil verbunden ist (`WIFI_AP_STABLE_MS`) und niemand daran hängt.
+- Ohne gespeicherte Daten startet **sofort** der Hotspot `Filamentwaage-Setup` (Passwort = Hotspot-Passwort, siehe 13.2) und Home zeigt „WLAN einrichten: …“ mit dem Passwort. Ein Captive Portal leitet die Prüf-URLs der Betriebssysteme und jeden fremden Host auf `http://192.168.4.1/#wifi` (Wildcard-DNS, `net/webserver.cpp`, `captiveRedirect`).
+- Kann sich das Gerät mit gespeicherten Daten eine Minute lang nicht verbinden, startet der Hotspot ebenfalls, parallel zu den Verbindungsversuchen. Home zeigt dann das Passwort nicht (13.2). Er endet, sobald das Gerät eine Minute stabil verbunden ist (`WIFI_AP_STABLE_MS`) und niemand daran hängt.
 
 - **Einrichtung per USB (Standardweg nach dem Flashen):** Webseite `docs/bauen.html#einrichten` (`docs/setup.js`, Web Serial, 115200 Baud) schickt SSID, WLAN-Passwort und neues Admin-Passwort. Protokoll: Improv-Serial-Rahmen (`IMPROV`, Version 1, Typ, Länge, Daten, 8-Bit-Prüfsumme, `\n`) mit eigenen RPC-Befehlen `0x80` Hello (Antwort: Name, Firmware, Chip, gespeicherte SSID, Standardpasswort aktiv), `0x81` Setup (`[SSID, WLAN-Passwort, Admin-Passwort]`), `0x82` Netzwerkliste (je Netz ein Ergebnis, zum Schluss ein leeres). Logik in `core/usb_setup_core` (nativ getestet), Gerät in `net/usbsetup`, Aufruf aus `loop()` vor den Textbefehlen.
 - Ablauf Setup: Prüfung (SSID 1 bis 32, WLAN-Passwort leer oder 8 bis 63, Admin-Passwort wie 11.2 und nicht `Filament`) → Zustand „Provisioning“ → `wifiProvision` verbindet ohne Neustart (max. 20 s) → nur bei Erfolg WLAN-Daten und Admin-Passwort speichern → Zustand „Provisioned“ + Ergebnis mit `http://<IP>/`. Bei Fehler Fehlerpaket (`0x03` keine Verbindung, `0x80`–`0x82` ungültige Eingabe), nichts wird gespeichert, die alten Zugangsdaten bzw. der Hotspot bleiben. Der Hotspot endet wie üblich nach einer Minute stabiler Verbindung.
@@ -465,17 +466,22 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - **Standard: Web-Flasher** auf GitHub Pages (`docs/bauen.html`, ESP Web Tools). Er flasht das Factory-Image der gewählten Release per USB im Browser, ältere stabile Versionen per Auswahlliste.
 - Alternativ mit PlatformIO: erstes Flashen per USB `pio run -e waage -t upload`, danach per WLAN (ArduinoOTA, Hostname `filamentwaage.local`): `OTA_PASSWORD=<pw> pio run -e waage-ota -t upload`. Bricht der OTA-Build wegen eines beschädigten Build-Verzeichnisses ab, hilft `rm -rf .pio/build/waage-ota`.
 
-### 13.2 Geräte-Passwort
-- `storage/devicepw.{h,cpp}`, `devicePassword()`: Schutz für Einrichtungs-Hotspot und OTA. Steht in `secrets.h` ein eigenes `OTA_PASSWORD` (mindestens 8 Zeichen, nicht der Platzhalter `bitte-aendern`), gilt dieses. Sonst erzeugt die Waage beim ersten Start ein zufälliges Passwort (10 Zeichen, NVS-Namespace `devpw`, Schlüssel `pw`) und zeigt es auf Home im Hotspot-Betrieb sowie unter Menü → Einstellungen → WiFi an. Der Hotspot ist dadurch immer geschützt.
-- Grund: Web-Flasher-Images werden ohne eigene `secrets.h` gebaut und dürfen kein öffentlich bekanntes Passwort enthalten. Für `waage-ota` das angezeigte Passwort als `OTA_PASSWORD` übergeben.
-- `OTA_PASSWORD` gilt nur für das Flashen per WLAN und das Setup-WLAN, nicht für die Webseite.
+### 13.2 Geräte-Passwörter (Hotspot und OTA)
+- `storage/devicepw.{h,cpp}`, Logik in `core/devicepw_core` (nativ getestet, `test/test_devicepw`). Zwei **getrennte** Passwörter, beide 10 Zeichen ohne verwechselbare Zeichen:
+  - **Hotspot** (`hotspotPassword()`, NVS `devpw`/`pw`, beim ersten Start zufällig erzeugt): schützt das Einrichtungs-WLAN. Wer im Hotspot ist, gilt in der Weboberfläche als Admin (11.4). Home zeigt es **nur ohne gespeichertes WLAN** (Ersteinrichtung, `devicepw::showOnHome`). Läuft der Hotspot als Rückfall nach WLAN-Ausfall oder per Webseite gestartet, steht auf Home nur „Passwort: Einstellungen > WiFi“. Sichtbar ist es dann nur für den Admin: am Gerät unter Menü → Einstellungen → WiFi (`uiAdminGate`) und im Web unter WLAN → Geräte-Passwörter.
+  - **OTA** (`otaPassword()`): schützt ArduinoOTA. Steht in `secrets.h` ein eigenes `OTA_PASSWORD` (mindestens 8 Zeichen, nicht `bitte-aendern`), gilt dieses (`otaPasswordFixed()`). Sonst eigenes Zufallspasswort (NVS `devpw`/`ota`). Erscheint **nie** auf dem Display, nur für den Admin im Web unter WLAN → Geräte-Passwörter. Für `waage-ota` als `OTA_PASSWORD` übergeben.
+- Neu erzeugen im Web (Admin): `POST /api/devicepw/regenerate?which=ap|ota` (409, wenn das OTA-Passwort aus `secrets.h` kommt). Ein laufender Hotspot übernimmt das neue Passwort nach 0,8 s per `wifiApApplyPassword()` (`WiFi.softAP` auf dem laufenden AP, ohne Moduswechsel), ArduinoOTA per `otaPasswordChanged()`. `GET /api/wifi` liefert `ap_password`, `ota_password`, `ota_fixed` (Admin).
+- Die UI liest die Passwörter im `ui`-Task, geschrieben wird im `net`-Task: feste Puffer unter Spinlock.
+- Update von älterer Firmware: Das Hotspot-Passwort bleibt (gleicher Schlüssel `pw`, war bisher auch das OTA-Passwort). Das OTA-Passwort ist danach neu (Webseite). Wer das alte Passwort kannte, sollte das Hotspot-Passwort neu erzeugen.
+- Grund: Web-Flasher-Images werden ohne eigene `secrets.h` gebaut und dürfen kein öffentlich bekanntes Passwort enthalten. Früher war ein einziges Geräte-Passwort Hotspot- und OTA-Passwort und stand bei jedem Hotspot-Betrieb auf Home. Wer am Gerät vorbeikam, konnte nach einem WLAN-Ausfall per ArduinoOTA eigene Firmware aufspielen und war im Hotspot Admin.
+- Am Gerät nicht geprüft: Anzeige auf Home und unter Einstellungen → WiFi, Karte Geräte-Passwörter im Browser (nur `node --check`), Neu erzeugen bei laufendem Hotspot (ob verbundene Geräte getrennt werden), ArduinoOTA mit dem neuen OTA-Passwort, Übernahme nach dem Neu erzeugen ohne Neustart.
 
 ### 13.3 Releases und Web-Flasher
 - `.github/workflows/release.yml` läuft bei jedem Tag `v*`. Er baut mit der Vorlage `secrets.h.example` `firmware.factory.bin` (Bootloader 0x0, Partitionen 0x8000, boot_app0 0xe000, Firmware 0x10000, von PlatformIO zusammengesetzt) und legt eine GitHub-Release mit Factory-Image, OTA-Image (`firmware.bin`) und `docs/cad/filament-scale.step` an.
 - Tags mit Bindestrich werden Pre-Releases. Nur stabile Tags schreibt `tools/update_flasher.py` nach `docs/firmware/<tag>/` und `versions.json`; die höchste Version liegt zusätzlich als `docs/firmware/manifest.json` (Standard des Flash-Buttons). Der Workflow committet das direkt auf `main`.
 
 ### 13.4 UI-Style, Schriften, Screenshots
-- UI-Style (Farben, Radius, Abstände, Schriftgrößen, Buttonhöhe): `data/theme.json`, aufspielen mit `OTA_PASSWORD=<pw> pio run -e waage-ota -t uploadfs`. Das ersetzt nur das LittleFS-Image (**und damit die Warteschlange**, siehe 7.5). Fehlt die Datei oder ist sie ungültig, gelten die Defaults in `ui/theme.cpp`.
+- UI-Style (Farben, Radius, Abstände, Schriftgrößen, Buttonhöhe): `data/theme.json`, aufspielen mit `OTA_PASSWORD=<OTA-Passwort> pio run -e waage-ota -t uploadfs`. Das ersetzt nur das LittleFS-Image (**und damit die Warteschlange**, siehe 7.5). Fehlt die Datei oder ist sie ungültig, gelten die Defaults in `ui/theme.cpp`.
 - Schriftgrößen: 14, 20, 28, 48 (`src/ui/fonts/lv_font_app_<größe>.c`, Montserrat Medium). 14/20/28 enthalten Latin-1 (Umlaute, ß) und die LVGL-Symbole, 48 nur ASCII (Gewicht). Die eingebauten Montserrat-Größen 20/28/48 sind in `lv_conf.h` abgeschaltet.
 - Neue Schriftgröße oder weitere Zeichen: mit `lv_font_conv` (npm) neu erzeugen, Quellen in `.pio/libdeps/waage/lvgl/scripts/built_in_font/`. Beispiel für 20 px:
   `lv_font_conv --no-compress --no-prefilter --bpp 4 --size 20 --font Montserrat-Medium.ttf -r 0x20-0x7F,0xA0-0xFF,0x2022 --font FontAwesome5-Solid+Brands+Regular.woff -r <Symbolcodes aus built_in_font_gen.py> --format lvgl --force-fast-kern-format --lv-font-name lv_font_app_20 -o src/ui/fonts/lv_font_app_20.c`
@@ -501,7 +507,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 ### 14.2 Am Gerät nicht geprüft
 - **Einrichtung per USB** (12.1): Protokoll nativ getestet, `docs/setup.js` nur mit `node --check` geprüft. Nicht geprüft: Ablauf mit echter Waage und Chrome/Edge, Neuanmeldung des USB-Ports nach dem Flashen, Neustart beim Öffnen des Ports, Netzwerksuche während eines laufenden Verbindungsversuchs.
 - **Wiegeablauf** mit echter Waage, Box-Tag und Spoolman, inklusive „Neue Box anlegen“. Die Firmware baut, die Logik ist nativ getestet, die Screens sind aus dem echten UI-Code gerendert.
-- Geräte-Passwort (`devicepw`).
+- Geräte-Passwörter (`devicepw`, 13.2).
 - **QR-Code zur Spule** (5.1): Anzeige und Scannen mit einem Handy, Speicherbedarf von `lv_qrcode` auf dem ESP32. Der Screen ist gerendert, der QR-Code in der Vorschau mit OpenCV gelesen.
 - **Einfache Waage** und Rolle „Nur wiegen“ (5.4): Ablauf am Gerät, Umschalten auf der Webseite, Benutzer-Spalte. Logik nativ getestet, Screens gerendert, Webseite nur mit `node --check` geprüft.
 - **Trocknungs-Erinnerung** (7.8): Logik nativ getestet, Webseite nur mit `node --check` geprüft. Nicht gegen eine echte Spoolman-Instanz geprüft: Anlegen und Schreiben des Extra-Felds `last_dried`, Anzeige am Gerät und Webseiten-Karte.

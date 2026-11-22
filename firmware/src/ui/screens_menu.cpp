@@ -254,7 +254,7 @@ static void spoolmanRefresh(WifiInfoUi *ui);
 static void wifiRefresh(lv_timer_t *t) {
   auto *ui = static_cast<WifiInfoUi *>(lv_timer_get_user_data(t));
   spoolmanRefresh(ui);
-  lv_label_set_text_fmt(ui->devpw, tr(Str::DevicePassword), devicePassword().c_str());
+  lv_label_set_text_fmt(ui->devpw, tr(Str::DevicePassword), hotspotPassword().c_str());  // Einstellungen: nur Admin
   if (wifiApActive()) {
     lv_label_set_text_fmt(ui->ap, "%s: %s (%s)", tr(Str::SetupWifi), wifiApSsid().c_str(), wifiApIp().c_str());
   } else {

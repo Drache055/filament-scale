@@ -93,6 +93,7 @@ enum class Str : uint8_t {
   SetupWifi,
   HotspotHint,
   HotspotPassword,
+  HotspotPasswordWhere,
   DevicePassword,
   AdminLogin,
   Password,

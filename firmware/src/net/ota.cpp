@@ -12,7 +12,7 @@ static bool otaStarted = false;
 
 static void otaStart() {
   ArduinoOTA.setHostname(OTA_HOSTNAME);
-  ArduinoOTA.setPassword(devicePassword().c_str());
+  ArduinoOTA.setPassword(otaPassword().c_str());
 
   ArduinoOTA.onStart([]() {
     logPrintf("[OTA] Start (%s)\n",
@@ -31,6 +31,13 @@ static void otaStart() {
 
   ArduinoOTA.begin();
   logPrintf("[OTA] Bereit als '%s'\n", OTA_HOSTNAME);
+}
+
+void otaPasswordChanged() {
+  // ArduinoOTA übernimmt ein neues Passwort nur im Leerlauf, also nicht während eines laufenden Uploads
+  if (otaStarted) {
+    ArduinoOTA.setPassword(otaPassword().c_str());
+  }
 }
 
 void otaLoop() {
