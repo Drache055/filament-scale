@@ -1,4 +1,5 @@
 #include "users.h"
+#include "core/user_name.h"
 #include "util/log.h"
 #include "util/secret.h"
 
@@ -116,6 +117,10 @@ bool usersAdd(const char *name, String &error, uint16_t *newId) {
       error = "Name enthält Steuerzeichen";
       return false;
     }
+  }
+  if (userNameReserved(n.c_str())) {
+    error = "Name ist reserviert (admin, generic)";
+    return false;
   }
   bool ok = false;
   xSemaphoreTake(mutex, portMAX_DELAY);
