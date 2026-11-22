@@ -7,6 +7,7 @@ static const char WEB_PAGE[] = R"HTML(<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Filamentwaage</title>
+<link rel="icon" href="data:,">
 <style>
 :root{--bg:#0d100f;--surface:rgba(255,255,255,.04);--ink:#f6f6f6;--muted:rgba(246,246,246,.62);--line:rgba(255,255,255,.12);--accent:#7aa7ff;--accent-ink:#0b1220;--pill:rgba(255,255,255,.08);--warn:#f0a43c;--ok:#4cd08a;--err:#ff6b6b;--screen:#05070b;--glow1:rgba(80,120,255,.28);--glow2:rgba(190,110,255,.18);--r:14px;--card:#161a19;--dim:var(--muted);--text:var(--ink);--pri:var(--accent);--side:var(--bg);color-scheme:dark}
 @media (prefers-color-scheme:light){:root{--bg:#f6f5f0;--surface:#fff;--ink:#0d100f;--muted:rgba(13,16,15,.62);--line:rgba(13,16,15,.12);--accent:#2457d6;--accent-ink:#fff;--pill:rgba(13,16,15,.06);--warn:#b45309;--ok:#15803d;--err:#c62828;--glow1:rgba(80,120,255,.22);--glow2:rgba(190,110,255,.14);--card:#fff;color-scheme:light}}

@@ -32,9 +32,31 @@
 #include "storage/drying.h"
 #include "storage/users.h"
 #include "web_page.h"
+#include "web_page_gz.h"  // erzeugt von tools/web_page_gz.py beim Bauen
 #include "wifi.h"
 
-static WebServer server(80);
+// WebServer bedient immer nur eine Verbindung und wartet auf eine leere bis zu 5 s (HTTP_MAX_DATA_WAIT, nicht
+// einstellbar). Browser öffnen beim ersten Aufruf vorsorglich eine zweite Verbindung ohne Anfrage (Preconnect).
+// Nimmt der Server diese zuerst an, hängt die eigentliche Anfrage so lange in der Warteschlange.
+// Deshalb: wartet eine weitere Verbindung, wird eine leere nach WEB_IDLE_DROP_MS verworfen.
+class WaageWebServer : public WebServer {
+ public:
+  using WebServer::WebServer;
+  void handleClient() override {
+    if (_currentStatus == HC_WAIT_READ && _currentClient && !_currentClient.available() &&
+        millis() - _statusChange > WEB_IDLE_DROP_MS && _server.hasClient()) {
+      _currentClient.stop();
+      _currentClient = NetworkClient();
+      _currentStatus = HC_NONE;
+    }
+    WebServer::handleClient();
+  }
+
+ private:
+  static constexpr unsigned long WEB_IDLE_DROP_MS = 200;
+};
+
+static WaageWebServer server(80);
 static bool started = false;
 static uint32_t rebootAt = 0;
 static uint32_t apPwApplyAt = 0;  // neues Hotspot-Passwort übernehmen, nachdem die Antwort raus ist
@@ -1447,9 +1469,23 @@ static void route(const char *path, HTTPMethod method, WebServer::THandlerFuncti
 
 static void webStart() {
   route("/", HTTP_GET, []() {
-    // Nach einem Firmware-Update sonst alte Seite aus dem Browser-Cache (schwarze Seite bis Strg+Shift+R)
+    // no-cache: Browser fragt jedes Mal nach (sonst nach einem Firmware-Update alte Seite), mit ETag reicht dafür
+    // meist ein 304 ohne Inhalt. gzip: ~26 statt ~90 KB über das WLAN.
+    bool gz = server.header("Accept-Encoding").indexOf("gzip") >= 0;
+    const char *etag = gz ? WEB_PAGE_ETAG_GZ : WEB_PAGE_ETAG;
     server.sendHeader("Cache-Control", "no-cache");
-    server.send_P(200, "text/html; charset=utf-8", WEB_PAGE);
+    server.sendHeader("ETag", etag);
+    server.sendHeader("Vary", "Accept-Encoding");
+    if (server.header("If-None-Match").indexOf(etag) >= 0) {
+      server.send(304);
+      return;
+    }
+    if (gz) {
+      server.sendHeader("Content-Encoding", "gzip");
+      server.send_P(200, "text/html; charset=utf-8", (PGM_P)WEB_PAGE_GZ, WEB_PAGE_GZ_LEN);
+    } else {
+      server.send_P(200, "text/html; charset=utf-8", WEB_PAGE);
+    }
   });
   route("/api/status", HTTP_GET, handleStatus);
   route("/api/tare", HTTP_POST, handleTare);
@@ -1524,8 +1560,8 @@ static void webStart() {
       server.send(404, "text/plain", "nicht gefunden");
     }
   });
-  static const char *collected[] = {"Cookie", WEB_GUARD_HEADER};
-  server.collectHeaders(collected, 2);
+  static const char *collected[] = {"Cookie", WEB_GUARD_HEADER, "Accept-Encoding", "If-None-Match"};
+  server.collectHeaders(collected, 4);
   server.begin();
   logPrintf("[WEB] Server läuft auf http://%s/\n", wifiConnected() ? wifiIp().c_str() : wifiApIp().c_str());
 }
