@@ -13,6 +13,7 @@
 #include "display/display.h"
 #include "i18n/i18n.h"
 #include "util/log.h"
+#include "core/diag_core.h"
 #include "net/fwupdate.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
@@ -819,6 +820,46 @@ static void handleNfcWriteStatus() {
 }
 
 // ---- Spoolman ----
+// Selbstdiagnose (CLAUDE.md 12.7): ein Befund je Komponente, Klartext und Tipp liefert die Webseite
+static void handleDiag() {
+  if (!requireAdmin()) {
+    return;
+  }
+  ScaleReading r = scaleGet();
+  SpoolmanStatus sm = spoolmanStatus();
+  DiagInput in;
+  in.uptimeS = millis() / 1000;
+  in.simple = devModeSimple();
+  in.sensorValid = r.valid;
+  in.calibrated = r.calibrated;
+  in.overload = r.overload;
+  in.nfcReady = nfcGet().moduleReady;
+  in.wifiConnected = wifiConnected();
+  in.wifiHasCreds = wifiHasCredentials();
+  in.wifiRssi = wifiConnected() ? wifiRssi() : 0;
+  in.smChecked = sm.everChecked;
+  in.smReachable = sm.reachable;
+  in.smHttp = sm.httpCode;
+  in.queueCount = spoolmanQueueCount();
+  in.queueDropped = spoolmanQueueDropped();
+  DiagItem items[DIAG_MAX_ITEMS];
+  int n = diagRun(in, items);
+  JsonDocument doc;
+  JsonArray arr = doc["items"].to<JsonArray>();
+  for (int i = 0; i < n; i++) {
+    JsonObject o = arr.add<JsonObject>();
+    o["comp"] = diagCompName(items[i].comp);
+    o["level"] = diagLevelName(items[i].level);
+    o["code"] = items[i].code;
+  }
+  doc["http"] = sm.httpCode;
+  doc["sensor"] = sensorTypeId(scaleSensorActive().type);  // für sensorspezifische Tipps
+  String out;
+  serializeJson(doc, out);
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", out);
+}
+
 static void handleSpoolmanGet() {
   if (!requireAdmin()) {
     return;
@@ -1337,6 +1378,7 @@ static void webStart() {
   server.on("/api/admin/pin", HTTP_POST, handleAdminPin);
   server.on("/api/admin/tag", HTTP_POST, handleAdminTag);
   server.on("/api/nfc/write", HTTP_GET, handleNfcWriteStatus);
+  server.on("/api/diag", HTTP_GET, handleDiag);
   server.on("/api/spoolman", HTTP_GET, handleSpoolmanGet);
   server.on("/api/spoolman", HTTP_POST, handleSpoolmanUrl);
   server.on("/api/spoolman/check", HTTP_POST, handleSpoolmanCheck);

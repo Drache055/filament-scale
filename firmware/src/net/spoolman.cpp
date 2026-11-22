@@ -161,6 +161,7 @@ void doCheck() {
   SpoolmanStatus next;
   strlcpy(next.url, baseUrl.c_str(), sizeof(next.url));
   next.everChecked = true;
+  next.httpCode = r.code;
   if (r.code == 200) {
     JsonDocument doc;
     if (!deserializeJson(doc, r.body)) {

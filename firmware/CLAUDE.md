@@ -140,6 +140,7 @@ UPLOAD ─ fertig ────────────────────�
 - Schwellen in `config.h` (`WEIGH_*`): „hinzugefügt“ 50 g, Timeout 120 s je Wartezustand (danach zurück nach `IDLE` mit Hinweis), Mindestanzeige „Spule erkannt“ 2 s.
 - **Start:** Auf Home liegt ein Spulen-Tag (oder ein Tag ohne bekanntes Format), den Spoolman kennt (`ui.cpp`, `refreshTimerCb`). Unbekannte Tags öffnen „Unbekannte Spule“. Bis die Waage leer und stabil ist, zeigt der Screen „Waage leeren“.
 - Ab `WAIT_BOX` werden **Spulen**-Tags ignoriert, auch der bereits gescannte. Die Box wird in `WAIT_BOX` festgelegt und danach nicht mehr geändert, danach zählen nur noch Gewichte.
+- **QR-Code zur Spule (virtuelles Label):** Auf „Bestätigen“ öffnet der Button mit QR-Symbol (rechts neben dem Titel, nur wenn eine Spoolman-URL gesetzt ist) einen Vollbild-QR-Code mit dem Link `<Spoolman-URL>/spool/show/<id>` (`core/spool_url`, Test `test/test_spoolurl`) und einem ✕ zum Schließen. LVGL `lv_qrcode` ist dafür in `lv_conf.h` aktiviert (`LV_USE_QRCODE 1`). Das Symbol ist aus kleinen Quadraten gezeichnet, die Schrift hat kein QR-Zeichen. Der Link zeigt auf die Spoolman-Adresse aus den Einstellungen, das Handy muss sie erreichen können.
 - **Abbrechen:** In jedem Zustand führt [Abbrechen] (in „Bestätigen“ das ✕) zu `IDLE`. Während des Sendens ist Abbrechen nicht möglich.
 - **Sicherheitsnetz:** `uiShowHome()` bricht einen laufenden Ablauf ab (`weighFlowAbort`), damit keine gelöschten Widgets mehr benutzt werden. Admin-Ablauf und Sprachwechsel springen während des Ablaufs nicht zu Home.
 
@@ -307,6 +308,7 @@ src/
   core/simple_core            Einfache Waage, Ablauf-Logik (ohne Arduino, getestet)
   core/drying_core            Trocknungs-Erinnerung: Intervalle, Datum, Status (ohne Arduino, getestet)
   core/update_core            Online-Update: Versionsvergleich, GitHub-Release auswerten (ohne Arduino, getestet)
+  core/diag_core              Selbstdiagnose: Zustände der Komponenten → Befund-Codes (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
@@ -428,6 +430,15 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - API: `GET /api/update[?notes=1]`, `POST /api/update/check`, `POST /api/update/install`, `POST /api/update/channel?ch=stable|rc|test` (alle Admin).
 - Am Gerät nicht geprüft (Stand der Einführung).
 
+### 12.7 Selbstdiagnose
+- Webseite → System → Selbstdiagnose (nur Admin, aktualisiert sich alle 3 s): je Komponente (Wägesensor, NFC-Modul, WLAN, Spoolman, Offline-Warteschlange) eine Zeile mit Status und, bei einem Fehler, Ursache und Lösungstipp. Im Modus „Einfache Waage“ nur Wägesensor und WLAN.
+- `core/diag_core` (`diagRun`) macht aus einer Momentaufnahme (`DiagInput`) Befunde (Komponente, Stufe ok/info/warn/error, Code). Die Klartexte stehen zweisprachig in `net/web_page.h` (`dg_<komponente>_<code>`, Tipp `…_tip`). Neuer Befund = Code in `diag_core.cpp`, Test in `test/test_diag`, Texte in beiden Sprachen.
+- Sensor-unabhängig: Es zählt nur, ob der Wägesensor gültige Werte liefert (`ScaleReading.valid`), nicht welcher Wandler. Der Tipp „keine gültigen Werte“ gibt es je Sensortyp (`dg_sensor_no_data_tip_<hx711|nau7802|ads1232>`, Typ aus `scaleSensorActive()`, `GET /api/diag` → `sensor`), sonst den allgemeinen.
+- Spoolman: `SpoolmanStatus.httpCode` (HTTP-Status der letzten `/api/v1/info`-Prüfung) trennt „nicht erreichbar“ (0), falsche Adresse (404), Zugriff verweigert (401/403), Serverfehler (5xx) und „kein Spoolman“ (200 ohne gültiges JSON).
+- In den ersten 30 s nach dem Start gelten fehlende Daten als „startet noch“ (Info), danach als Fehler.
+- API: `GET /api/diag` (Admin) liefert `{"items":[{"comp","level","code"}],"http":n}`.
+- Am Gerät nicht geprüft. Eine Anzeige am Gerätedisplay gibt es noch nicht.
+
 ---
 
 ## 13. Flashen, Releases, UI-Style
@@ -472,11 +483,13 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 ### 14.2 Am Gerät nicht geprüft
 - **Wiegeablauf** mit echter Waage, Box-Tag und Spoolman, inklusive „Neue Box anlegen“. Die Firmware baut, die Logik ist nativ getestet, die Screens sind aus dem echten UI-Code gerendert.
 - Geräte-Passwort (`devicepw`).
+- **QR-Code zur Spule** (5.1): Anzeige und Scannen mit einem Handy, Speicherbedarf von `lv_qrcode` auf dem ESP32. Der Screen ist gerendert, der QR-Code in der Vorschau mit OpenCV gelesen.
 - **Einfache Waage** und Rolle „Nur wiegen“ (5.4): Ablauf am Gerät, Umschalten auf der Webseite, Benutzer-Spalte. Logik nativ getestet, Screens gerendert, Webseite nur mit `node --check` geprüft.
 - **Trocknungs-Erinnerung** (7.8): Logik nativ getestet, Webseite nur mit `node --check` geprüft. Nicht gegen eine echte Spoolman-Instanz geprüft: Anlegen und Schreiben des Extra-Felds `last_dried`, Anzeige am Gerät und Webseiten-Karte.
 - Hotspot-Start beim Boot ohne gespeicherte Daten, Beitreten mit einem Handy, automatischer Rückfall nach einer Minute ohne Verbindung.
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
 
+- **Selbstdiagnose** (12.7): Seite im Browser, Befunde mit echten Fehlern (HX711/PN532 abgesteckt, Spoolman aus, falsche URL, WLAN weg). Logik nativ getestet, JavaScript nur mit `node --check`.
 - **Wägesensor wählbar** (6.4): NAU7802 und ADS1232 ohne Hardware umgesetzt, Webseite nur mit `node --check` geprüft, HX711 nach dem Umbau auf die Treiber-Schnittstelle noch nicht am Gerät.
 
 ### 14.3 Offen
