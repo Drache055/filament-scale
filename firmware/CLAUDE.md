@@ -400,7 +400,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
   - **Benutzer** (Name + eigene **PIN**, 4 bis 6 Ziffern): Gewicht, NFC, WLAN-Status (verbunden ja/nein), Tara-Knopf nur mit Tara-Recht, eigene Sprache und PIN. Kein Log, keine Einstellungen, keine Benutzerliste (alle anderen Schnittstellen antworten 403). Die PIN setzt der Admin (`POST /api/users/pin?id=&pin=`, leer = entfernen); ohne PIN nur Anmeldung per NFC am Gerät. Eigene PIN ändern mit alter PIN (`POST /api/me/pin`).
   - Mit dem Recht **Filament** zusätzlich die Seite **Filament-Katalog** (`GET/POST /api/catalog`, `/api/catalog/sync`).
   - **Generic** (Name `generic`, am Anfang ohne PIN, vom Admin abschaltbar oder mit PIN schützbar): nur wiegen und NFC lesen, kein Tara, keine Sprache.
-- PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen.
+- PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen. Gilt auch für Admin-Passwort per USB-Einrichtung oder `admin reset` (alle Admin-Sitzungen) sowie für eine geänderte Generic-PIN und das Abschalten von Generic (Generic-Sitzungen). Am Gerät nicht geprüft.
 - `/api/status` enthält für Nicht-Admins keine Gerätedaten (IP, Speicher, Firmware) und keinen Inhalt eines Admin-Tags. Ist die Sperre aus, ist jeder Admin.
 - 5 Fehlversuche (Login oder Basic-Auth, gemeinsam gezählt) sperren die Anmeldung 30 s.
 - Wer im **geschützten** Setup-WLAN ist (Passwort mindestens 8 Zeichen), braucht keine zweite Anmeldung. Ein offener Hotspot zählt nicht als Ausweis.
