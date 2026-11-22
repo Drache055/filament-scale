@@ -28,6 +28,9 @@ struct WeighResult {
   WeighCheck check = WeighCheck::Ok;
 };
 
+// Länge in Metern aus Gewicht (g), Dichte (g/cm³) und Durchmesser (mm). 0 bei fehlenden oder ungültigen Angaben.
+float filamentLengthM(float grams, float density, float diameterMm);
+
 // emptySpool < 0 = unbekannt (dann muss der Aufrufer vorher einen Wert vorgeben). initialWeight < 0 = unbekannt.
 WeighResult weighCompute(float w1, float w2, float emptySpool, float initialWeight);
 

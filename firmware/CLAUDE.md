@@ -157,7 +157,8 @@ remaining_weight = spool_gross - empty_spool
 - `remaining_weight > initial_weight + 50 g` (falls bekannt) → Warnung, Speichern bleibt möglich.
 - Überlast: Gesamtgewicht > 4500 g (`SCALE_OVERLOAD_G`) → Warnung „Überlast“ (Zelle 5 kg).
 - **Speichern:** `spoolmanRequestUpdate(id, rest, box, owner)`. Erfolg (HTTP 2xx) oder Eintrag in die Warteschlange gilt als erledigt („Gespeichert“ bzw. „In Warteschlange“).
-- Optionale Längenberechnung (nicht umgesetzt): `laenge_m = remaining_weight / (dichte_g_cm3 * pi * (d_mm/20)^2 * 100)`, Dichte und Durchmesser aus `spool.filament`.
+- **Leere Spule archivieren:** Ist der Rest auf „Bestätigen“ ≤ `WEIGH_ARCHIVE_MAX_G` (10 g), erscheint ein Schalter „Archivieren: ja/nein“ (Standard nein). Mit „ja“ sendet [Speichern] zusätzlich `archived: true` im selben `PATCH` und löst danach den Tag der Spule (`DELETE /api/v1/spool/{id}/tag/{uid}`, 404 wird ignoriert, die Spule bleibt dann trotzdem archiviert). Beides steht auch in der Offline-Warteschlange (`archive`, `tag_uid`). Der Tag selbst wird nicht gelöscht, weil die Spule beim Wiegen nicht auf dem Leser liegt; er lässt sich über Menü → NFC neu beschreiben. Endpunkte laut Spoolman-Quelltext (0.27.0 und master) gelesen, am Gerät und gegen eine laufende Instanz nicht geprüft.
+- **Länge:** Auf „Bestätigen“ steht unter dem Restgewicht „ca. n m Filament“, wenn Spoolman Dichte und Durchmesser der Filamentsorte kennt (`filamentLengthM` in `core/weigh_core`, nativ getestet): `laenge_m = remaining_weight / (dichte_g_cm3 * pi * (d_mm/20)^2 * 100)`. Ohne diese Angaben bleibt die Zeile leer. Screen am Gerät nicht geprüft.
 
 ### 5.3 Neue Box anlegen (Zustand `NewBox`)
 - Steht in „Box auflegen“ eine Box stabil ≥ 50 g auf der Waage und liegt ein **leerer oder unbekannter** Tag auf (`tagIsBlankForBox`: kein NDEF, kein bekanntes JSON oder Box-Tag ohne `name`), öffnet sich „Neue Box anlegen“.
@@ -453,4 +454,3 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 14.3 Offen
 - Leseweite des PN532 durch Wiegeplatte und Boxboden praktisch testen.
-- Längenanzeige in m (5.2).
