@@ -298,6 +298,7 @@ src/
   core/weigh_core             Wiegeablauf-Logik (ohne Arduino, getestet)
   core/simple_core            Einfache Waage, Ablauf-Logik (ohne Arduino, getestet)
   core/update_core            Online-Update: Versionsvergleich, GitHub-Release auswerten (ohne Arduino, getestet)
+  core/diag_core              Selbstdiagnose: Zustände der Komponenten → Befund-Codes (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
@@ -417,6 +418,15 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - API: `GET /api/update[?notes=1]`, `POST /api/update/check`, `POST /api/update/install`, `POST /api/update/channel?ch=stable|rc|test` (alle Admin).
 - Am Gerät nicht geprüft (Stand der Einführung).
 
+### 12.7 Selbstdiagnose
+- Webseite → System → Selbstdiagnose (nur Admin, aktualisiert sich alle 3 s): je Komponente (Wägesensor, NFC-Modul, WLAN, Spoolman, Offline-Warteschlange) eine Zeile mit Status und, bei einem Fehler, Ursache und Lösungstipp. Im Modus „Einfache Waage“ nur Wägesensor und WLAN.
+- `core/diag_core` (`diagRun`) macht aus einer Momentaufnahme (`DiagInput`) Befunde (Komponente, Stufe ok/info/warn/error, Code). Die Klartexte stehen zweisprachig in `net/web_page.h` (`dg_<komponente>_<code>`, Tipp `…_tip`). Neuer Befund = Code in `diag_core.cpp`, Test in `test/test_diag`, Texte in beiden Sprachen.
+- Sensor-unabhängig: Es zählt nur, ob der Wägesensor gültige Werte liefert (`ScaleReading.valid`), nicht welcher Wandler. Der Tipp „keine gültigen Werte“ gibt es je Sensortyp (`dg_sensor_no_data_tip_<hx711|nau7802|ads1232>`, Typ aus `scaleSensorActive()`, `GET /api/diag` → `sensor`), sonst den allgemeinen.
+- Spoolman: `SpoolmanStatus.httpCode` (HTTP-Status der letzten `/api/v1/info`-Prüfung) trennt „nicht erreichbar“ (0), falsche Adresse (404), Zugriff verweigert (401/403), Serverfehler (5xx) und „kein Spoolman“ (200 ohne gültiges JSON).
+- In den ersten 30 s nach dem Start gelten fehlende Daten als „startet noch“ (Info), danach als Fehler.
+- API: `GET /api/diag` (Admin) liefert `{"items":[{"comp","level","code"}],"http":n}`.
+- Am Gerät nicht geprüft. Eine Anzeige am Gerätedisplay gibt es noch nicht.
+
 ---
 
 ## 13. Flashen, Releases, UI-Style
@@ -465,6 +475,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Hotspot-Start beim Boot ohne gespeicherte Daten, Beitreten mit einem Handy, automatischer Rückfall nach einer Minute ohne Verbindung.
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
 
+- **Selbstdiagnose** (12.7): Seite im Browser, Befunde mit echten Fehlern (HX711/PN532 abgesteckt, Spoolman aus, falsche URL, WLAN weg). Logik nativ getestet, JavaScript nur mit `node --check`.
 - **Wägesensor wählbar** (6.4): NAU7802 und ADS1232 ohne Hardware umgesetzt, Webseite nur mit `node --check` geprüft, HX711 nach dem Umbau auf die Treiber-Schnittstelle noch nicht am Gerät.
 
 ### 14.3 Offen
