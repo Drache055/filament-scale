@@ -239,8 +239,7 @@ void wifiApApplyPassword() {
   // Verbindung zum Heim-WLAN) anzufassen
   String pw = hotspotPassword();
   bool ok = WiFi.softAP(WIFI_AP_SSID, pw.c_str());
-  logPrintf("[NET] Hotspot mit neuem Passwort %s
-", ok ? "aktiv" : "konnte nicht starten");
+  logPrintf("[NET] Hotspot mit neuem Passwort %s\n", ok ? "aktiv" : "konnte nicht starten");
 }
 
 void wifiStopAp() {
