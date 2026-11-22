@@ -6,6 +6,7 @@
 #include <lvgl.h>
 
 #include "bus/i2c_bus.h"
+#include "core/devicepw_core.h"
 #include "app/session.h"
 #include "display/display.h"
 #include "i18n/i18n.h"
@@ -193,7 +194,12 @@ static void updateHint() {
   } else if (wifiApActive() && !wifiConnected()) {
     char line1[48], line2[40];
     snprintf(line1, sizeof(line1), tr(Str::HotspotHint), wifiApSsid().c_str());
-    snprintf(line2, sizeof(line2), tr(Str::HotspotPassword), devicePassword().c_str());
+    // Passwort nur bei der Ersteinrichtung offen zeigen, beim Rückfall nach WLAN-Ausfall nur den Weg dorthin (Admin)
+    if (devicepw::showOnHome(wifiHasCredentials())) {
+      snprintf(line2, sizeof(line2), tr(Str::HotspotPassword), hotspotPassword().c_str());
+    } else {
+      strlcpy(line2, tr(Str::HotspotPasswordWhere), sizeof(line2));
+    }
     snprintf(text, sizeof(text), "%s\n%s", line1, line2);
     color = themeColors().warn;
   } else if (webWrite) {
