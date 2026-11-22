@@ -1446,7 +1446,11 @@ static void route(const char *path, HTTPMethod method, WebServer::THandlerFuncti
 }
 
 static void webStart() {
-  route("/", HTTP_GET, []() { server.send_P(200, "text/html; charset=utf-8", WEB_PAGE); });
+  route("/", HTTP_GET, []() {
+    // Nach einem Firmware-Update sonst alte Seite aus dem Browser-Cache (schwarze Seite bis Strg+Shift+R)
+    server.sendHeader("Cache-Control", "no-cache");
+    server.send_P(200, "text/html; charset=utf-8", WEB_PAGE);
+  });
   route("/api/status", HTTP_GET, handleStatus);
   route("/api/tare", HTTP_POST, handleTare);
   route("/api/calibrate", HTTP_POST, handleCalibrate);
