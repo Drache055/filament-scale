@@ -132,6 +132,7 @@ const char *const texts[(int)Str::Count][2] = {
     /* WfSaveFailed */ {"Speichern fehlgeschlagen", "Saving failed"},
     /* WfNewBox */ {"Neue Box anlegen", "Set up new box"},
     /* WfNewBoxHint */ {"Der Tag der Box ist leer oder unbekannt.", "The box tag is empty or unknown."},
+    /* WfQrHint */ {"QR-Code scannen", "Scan QR code"},
     /* SwWeigh */ {"Filament wiegen", "Weigh filament"},
     /* SwChoose */ {"Was kommt auf die Waage?", "What goes on the scale?"},
     /* SwSpoolOnly */ {"Nur Spule", "Spool only"},
