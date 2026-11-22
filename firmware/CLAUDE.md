@@ -179,7 +179,7 @@ MEASURE ─ Spule lag stabil ≥ 50 g auf, danach Waage leer ─► IDLE;  [Fert
 ```
 - Anzeige in MEASURE live: groß das Filament = Spule gesamt − Leerspule (nie < 0), klein das Gesamtgewicht der Spule (mit Box auch das Boxgewicht). Leerspule mit −10/+10 einstellbar (0 bis 2000 g, 0 = ganze Spule), Start `WEIGH_DEFAULT_EMPTY_G` (250 g), der zuletzt eingestellte Wert steht im NVS (`devmode`/`empty`). Nicht stabile Werte erscheinen gedimmt.
 - Timeout 120 s in CLEAR, WAIT_BOX und in MEASURE, solange noch keine Spule gewogen wurde. Abbrechen jederzeit. `uiShowHome()` bricht auch diesen Ablauf ab (`simpleFlowAbort`).
-- Annahmen (mit Fabian zu klären): Leerspulengewicht wird abgezogen (einstellbar); die Webseite verlangt weiterhin eine Anmeldung; der einfache Ablauf steht in der smarten Waage nur Benutzern mit „Nur wiegen“ offen, nicht allen.
+- Von Fabian bestätigt (22.11.2026): Leerspulengewicht wird abgezogen (einstellbar); die Webseite verlangt weiterhin eine Anmeldung; der einfache Ablauf steht in der smarten Waage nur Benutzern mit „Nur wiegen“ offen, nicht allen.
 
 ---
 
