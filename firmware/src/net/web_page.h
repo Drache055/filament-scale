@@ -253,6 +253,14 @@ h3{font-size:15px;margin:18px 0 8px}
     <div class="row"><button class="sec" id="apon" data-i18n="ap_start">Hotspot starten</button><button class="sec" id="apoff" data-i18n="ap_stop">Hotspot beenden</button></div>
   </div>
   <div class="card">
+    <div class="label" data-i18n="devpw_title">Geräte-Passwörter</div>
+    <p class="hint" data-i18n="devpw_hint"></p>
+    <table>
+      <tr><td data-i18n="pw_ap">Hotspot</td><td><code id="w_appw">-</code></td><td><button class="sec" id="appwnew" data-i18n="regenerate">Neu erzeugen</button></td></tr>
+      <tr><td data-i18n="pw_ota">WLAN-Flashen (OTA)</td><td><code id="w_otapw">-</code></td><td><button class="sec" id="otapwnew" data-i18n="regenerate">Neu erzeugen</button></td></tr>
+    </table>
+  </div>
+  <div class="card">
     <div class="label" data-i18n="change_wifi">WLAN ändern</div>
     <p class="hint" data-i18n="wifi_hint"></p>
     <div class="row" style="margin-bottom:10px"><button class="sec" id="scan" data-i18n="scan">Netzwerke suchen</button><span id="scanmsg" style="color:var(--dim)"></span></div>
@@ -354,7 +362,7 @@ server:'Server',save:'Speichern',check:'Prüfen',checking:'Prüfe ...',reachable
 queue:'Offline-Warteschlange',queue_hint:'Updates, die ohne WLAN oder Spoolman nicht gesendet werden können, werden gespeichert und automatisch nachgeholt. Je Spule bleibt nur das neueste Update.',queue_info:'{0} ausstehend',queue_dropped:', {0} verworfen (dauerhafter Fehler)',send_now:'Jetzt senden',discard_all:'Alle verwerfen',confirm_clear_queue:'Alle ausstehenden Updates verwerfen?',
 scan_unknown:'Tag ist in Spoolman nicht bekannt ({0})',scan_error:'Spoolman-Fehler: {0}',owner:'Besitzer',url_saved:'Spoolman-URL gespeichert',
 connection:'Verbindung',connected_to:'Verbunden mit',credentials_from:'Zugangsdaten aus',src_nvs:'Gespeichert',src_none:'Keine gespeichert (Hotspot)',setup_wifi:'Hotspot',ap_active:'Hotspot aktiv: {0} ({1})',ap_inactive:'aus',
-ap_hint:'Sind keine WLAN-Daten gespeichert oder kann sich das Gerät eine Minute lang nicht verbinden, öffnet es einen eigenen Hotspot. Das Passwort zeigt die Waage auf dem Display an (auch unter Einstellungen → WiFi). Nach dem Verbinden öffnet sich die Einrichtungsseite von selbst, sonst unter http://192.168.4.1 aufrufen.',ap_start:'Hotspot starten',ap_stop:'Hotspot beenden',
+ap_hint:'Sind keine WLAN-Daten gespeichert oder kann sich das Gerät eine Minute lang nicht verbinden, öffnet es einen eigenen Hotspot. Das Passwort steht unten unter Geräte-Passwörter und am Gerät unter Einstellungen → WiFi, auf Home nur bei der Ersteinrichtung. Nach dem Verbinden öffnet sich die Einrichtungsseite von selbst, sonst unter http://192.168.4.1 aufrufen.',ap_start:'Hotspot starten',devpw_title:'Geräte-Passwörter',devpw_hint:'Wer im Hotspot ist, hat Admin-Rechte auf dieser Seite. Mit dem OTA-Passwort lässt sich per WLAN Firmware aufspielen (PlatformIO, waage-ota). Beide nur Vertrauten geben.',pw_ap:'Hotspot',pw_ota:'WLAN-Flashen (OTA)',regenerate:'Neu erzeugen',ota_fixed:'aus secrets.h',confirm_appw:'Neues Hotspot-Passwort erzeugen? Wer gerade im Hotspot ist, muss sich mit dem neuen Passwort neu verbinden.',confirm_otapw:'Neues OTA-Passwort erzeugen? Das alte gilt dann nicht mehr.',pw_new:'Neues Passwort erzeugt',ap_stop:'Hotspot beenden',
 change_wifi:'WLAN ändern',wifi_hint:'Das Gerät speichert die Zugangsdaten und startet neu. Falsche Daten sind unproblematisch: Nach einer Minute ohne Verbindung öffnet das Gerät wieder den Hotspot.',scan:'Netzwerke suchen',scanning:'Suche ...',ssid:'Netzwerkname (SSID)',password:'Passwort',save_restart:'Speichern & neu starten',wifi_reset:'WLAN-Daten löschen',
 wifi_saved:'Gespeichert, Gerät startet neu und verbindet sich ...',confirm_wifi_reset:'Gespeicherte WLAN-Daten löschen? Das Gerät startet neu und öffnet den Hotspot, bis ein WLAN eingerichtet ist.',no_networks:'Keine Netzwerke gefunden',ssid_missing:'Bitte einen Netzwerknamen eingeben',
 pause:'Pause',resume:'Weiter',clear_view:'Anzeige leeren',download:'Herunterladen',
@@ -384,7 +392,7 @@ server:'Server',save:'Save',check:'Check',checking:'Checking ...',reachable:'Rea
 queue:'Offline queue',queue_hint:'Updates that cannot be sent without WiFi or Spoolman are stored and sent automatically later. Only the latest update per spool is kept.',queue_info:'{0} pending',queue_dropped:', {0} discarded (permanent error)',send_now:'Send now',discard_all:'Discard all',confirm_clear_queue:'Discard all pending updates?',
 scan_unknown:'Tag is not known to Spoolman ({0})',scan_error:'Spoolman error: {0}',owner:'owner',url_saved:'Spoolman URL saved',
 connection:'Connection',connected_to:'Connected to',credentials_from:'Credentials from',src_nvs:'Saved',src_none:'None saved (hotspot)',setup_wifi:'Hotspot',ap_active:'Hotspot active: {0} ({1})',ap_inactive:'off',
-ap_hint:'If no WiFi credentials are saved, or the device cannot connect for a minute, it opens its own hotspot. The password is shown on the scale\'s display (also under Settings → WiFi). After joining, the setup page opens by itself, otherwise browse to http://192.168.4.1.',ap_start:'Start hotspot',ap_stop:'Stop hotspot',
+ap_hint:'If no WiFi credentials are saved, or the device cannot connect for a minute, it opens its own hotspot. The password is listed below under Device passwords and on the device under Settings → WiFi, on Home only during first setup. After joining, the setup page opens by itself, otherwise browse to http://192.168.4.1.',ap_start:'Start hotspot',devpw_title:'Device passwords',devpw_hint:'Anyone in the hotspot has admin rights on this page. The OTA password allows flashing firmware over WiFi (PlatformIO, waage-ota). Share both only with people you trust.',pw_ap:'Hotspot',pw_ota:'WiFi flashing (OTA)',regenerate:'Regenerate',ota_fixed:'from secrets.h',confirm_appw:'Generate a new hotspot password? Anyone in the hotspot right now has to reconnect with the new password.',confirm_otapw:'Generate a new OTA password? The old one stops working.',pw_new:'New password generated',ap_stop:'Stop hotspot',
 change_wifi:'Change WiFi',wifi_hint:'The device stores the credentials and restarts. Wrong credentials are not a problem: after a minute without a connection the device opens the hotspot again.',scan:'Scan networks',scanning:'Scanning ...',ssid:'Network name (SSID)',password:'Password',save_restart:'Save & restart',wifi_reset:'Delete WiFi credentials',
 wifi_saved:'Saved, device restarts and connects ...',confirm_wifi_reset:'Delete saved WiFi credentials? The device restarts and opens the hotspot until a WiFi is set up.',no_networks:'No networks found',ssid_missing:'Please enter a network name',
 pause:'Pause',resume:'Resume',clear_view:'Clear view',download:'Download',
@@ -677,9 +685,13 @@ async function loadWifi(){
     $('w_ssid').textContent=d.connected?d.ssid:'-';
     $('w_source').textContent=d.source==='nvs'?t('src_nvs')+(d.saved?' ('+d.saved+')':''):t('src_none');
     $('w_ap').textContent=d.ap_active?t('ap_active',d.ap_ssid,d.ap_ip):t('ap_inactive');
+    $('w_appw').textContent=d.ap_password||'-';$('w_otapw').textContent=(d.ota_password||'-')+(d.ota_fixed?' ('+t('ota_fixed')+')':'');$('otapwnew').disabled=!!d.ota_fixed;
     if(!$('wssid').value&&d.saved)$('wssid').value=d.saved}catch(e){}
 }
 $('apon').onclick=async()=>{try{await post('/api/wifi/ap?on=1','');await sleep(800);loadWifi()}catch(e){say(e.message,'err')}};
+async function pwRegen(which,q){if(!confirm(t(q)))return;try{await post('/api/devicepw/regenerate?which='+which,'');say(t('pw_new'),'ok');loadWifi()}catch(e){say(t('err',e.message),'err')}}
+$('appwnew').onclick=()=>pwRegen('ap','confirm_appw');
+$('otapwnew').onclick=()=>pwRegen('ota','confirm_otapw');
 $('apoff').onclick=async()=>{try{await post('/api/wifi/ap?on=0','');await sleep(800);loadWifi()}catch(e){say(e.message,'err')}};
 $('scan').onclick=async()=>{
   $('scanmsg').textContent=t('scanning');$('nets').innerHTML='';

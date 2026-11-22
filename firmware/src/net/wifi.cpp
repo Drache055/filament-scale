@@ -221,7 +221,7 @@ void wifiStartAp() {
   }
   WiFi.mode(WIFI_AP_STA);
   WiFi.setSleep(false);
-  const String &pw = devicePassword();  // immer mindestens 8 Zeichen, der Hotspot ist also immer geschützt
+  String pw = hotspotPassword();  // immer mindestens 8 Zeichen, der Hotspot ist also immer geschützt
   bool ok = WiFi.softAP(WIFI_AP_SSID, pw.c_str());
   apActive = ok;
   if (ok) {
@@ -229,6 +229,17 @@ void wifiStartAp() {
   }
   logPrintf("[NET] Einrichtungs-WLAN '%s' %s, IP %s\n", WIFI_AP_SSID, ok ? "aktiv" : "konnte nicht starten",
             WiFi.softAPIP().toString().c_str());
+}
+
+void wifiApApplyPassword() {
+  if (!apActive) {
+    return;
+  }
+  // softAP() auf einem laufenden Hotspot übernimmt die neue Konfiguration, ohne die Betriebsart (und damit die
+  // Verbindung zum Heim-WLAN) anzufassen
+  String pw = hotspotPassword();
+  bool ok = WiFi.softAP(WIFI_AP_SSID, pw.c_str());
+  logPrintf("[NET] Hotspot mit neuem Passwort %s\n", ok ? "aktiv" : "konnte nicht starten");
 }
 
 void wifiStopAp() {
