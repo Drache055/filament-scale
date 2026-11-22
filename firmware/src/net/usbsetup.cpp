@@ -75,21 +75,29 @@ void handleSetup(std::vector<std::string> &s) {
   }
   send(buildState(StateProvisioning));
   String error;
-  if (!wifiProvision(s[0].c_str(), s[1].c_str(), kConnectTimeoutMs, error)) {
-    send(buildError(ErrConnect));
+  WifiFail fail = WifiFail::None;
+  ProvResult r = wifiProvision(s[0].c_str(), s[1].c_str(), kConnectTimeoutMs, error, fail);
+  if (r == ProvResult::Rejected) {
+    logPrintf("[SETUP] WLAN-Daten nicht gespeichert: %s\n", error.c_str());
+    send(buildError(ErrUnknown));
     send(buildState(StateReady));
     return;
   }
-  // Admin-Passwort erst nach erfolgreicher WLAN-Verbindung, damit ein Fehlversuch nichts halb einrichtet
+  // WLAN-Daten sind gespeichert (auch ohne Verbindung), also gehört das Admin-Passwort dazu
   if (!adminSetPassword(s[2].c_str(), error)) {
     send(buildError(ErrBadAdminPw));
     send(buildState(StateReady));
     return;
   }
   webSessionsDropAdmin();  // Anmeldungen mit dem alten Admin-Passwort enden
-  logPrintln("[SETUP] USB-Einrichtung abgeschlossen");
   send(buildState(StateProvisioned));
-  send(buildResult(CmdSetup, {(String("http://") + wifiIp() + "/").c_str()}));
+  if (r == ProvResult::Connected) {
+    logPrintln("[SETUP] USB-Einrichtung abgeschlossen");
+    send(buildResult(CmdSetup, {(String("http://") + wifiIp() + "/").c_str()}));
+  } else {
+    logPrintln("[SETUP] USB-Einrichtung gespeichert, WLAN noch nicht verbunden");
+    send(buildResult(CmdSetup, {"", wifiFailName(fail)}));
+  }
 }
 
 }  // namespace

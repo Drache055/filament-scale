@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-// WLAN-Aufträge (CLAUDE.md 8.1): Scan und USB-Einrichtung laufen nur im net-Task. Webseite und USB-Einrichtung stellen
-// Anfragen, der net-Task führt sie in wifiLoop() aus. Reine Logik ohne Hardwarezugriff, nativ getestet.
+// WLAN-Aufträge (CLAUDE.md 8.1): Scan, USB-Einrichtung und Wiederverbindung laufen nur im net-Task. Webseite und
+// USB-Einrichtung stellen Anfragen, der net-Task führt sie in wifiLoop() aus. Reine Logik ohne Hardwarezugriff, nativ getestet.
 
 struct WifiNet {
   std::string ssid;
@@ -66,4 +66,36 @@ class ProvisionJob {
   ProvState state_ = ProvState::Idle;
   uint32_t timeoutMs_ = 0;
   uint32_t startedAt_ = 0;
+};
+
+// Grund der letzten Trennung (ESP-IDF wifi_err_reason_t) grob eingeordnet, für die Meldung der USB-Einrichtung.
+// NotFound: WLAN nicht gefunden oder zu schwach. Auth: gefunden, Anmeldung gescheitert (meist falsches Passwort, selten
+// schwaches Signal). Other: alles andere. None: kein Grund bekannt.
+enum class WifiFail : uint8_t { None, NotFound, Auth, Other };
+WifiFail wifiClassifyReason(uint8_t reason);
+const char *wifiFailName(WifiFail f);  // "notfound", "auth", "other", "" (Protokoll der USB-Einrichtung)
+
+// Wiederverbindung mit gespeicherten Zugangsdaten (CLAUDE.md 12.1). Die Arduino-Automatik gibt bei manchen
+// Trennungsgründen auf (z. B. AUTH_FAIL), deshalb versucht es der net-Task selbst, ohne Ende: Versuch (attemptMs), dann
+// Pause mit wachsender Länge (2 s, 5 s, 10 s, 20 s, 30 s, danach immer 60 s). Hängt jemand am Hotspot, mindestens
+// clientPauseMs Pause, weil jeder Versuch alle Kanäle absucht und den Hotspot kurz stört.
+class ReconnectPolicy {
+ public:
+  explicit ReconnectPolicy(uint32_t attemptMs = 15000, uint32_t clientPauseMs = 120000)
+      : attemptMs_(attemptMs), clientPauseMs_(clientPauseMs) {}
+
+  // Regelmäßig aufrufen. true = jetzt einen Versuch starten (danach started()).
+  bool due(uint32_t now, bool connected, bool apHasClients);
+  void started(uint32_t now);
+  void failed(uint32_t now);  // Versuch gescheitert (auch von außen, z. B. USB-Einrichtung), die Pause beginnt jetzt
+  uint32_t failures() const { return failures_; }
+  uint32_t pauseMs(bool apHasClients) const;
+
+ private:
+  uint32_t attemptMs_, clientPauseMs_;
+  bool attempting_ = false;
+  bool wasConnected_ = false;
+  uint32_t startedAt_ = 0;
+  uint32_t pauseFrom_ = 0;
+  uint32_t failures_ = 0;
 };

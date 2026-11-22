@@ -21,7 +21,7 @@ enum Error : uint8_t {
   ErrNone = 0x00,
   ErrInvalidPacket = 0x01,
   ErrUnknownCommand = 0x02,
-  ErrConnect = 0x03,     // WLAN-Verbindung gescheitert
+  ErrConnect = 0x03,     // WLAN-Verbindung gescheitert (nur Firmware bis v0.2, danach Ergebnis ["", Grund])
   ErrBadSsid = 0x80,     // SSID leer oder länger als 32 Zeichen
   ErrBadWifiPw = 0x81,   // WLAN-Passwort nicht leer und nicht 8 bis 63 Zeichen
   ErrBadAdminPw = 0x82,  // Admin-Passwort ungültig oder noch das Standardpasswort
@@ -30,7 +30,9 @@ enum Error : uint8_t {
 
 enum Command : uint8_t {
   CmdHello = 0x80,  // Antwort: Ergebnis mit [Name, Firmware, Chip, gespeicherte SSID, "1"/"0" Standardpasswort aktiv]
-  CmdSetup = 0x81,  // Daten: [SSID, WLAN-Passwort, Admin-Passwort]; Antwort: Zustand + Ergebnis mit [URL]
+  // Daten: [SSID, WLAN-Passwort, Admin-Passwort]; Antwort: Zustand Provisioned + Ergebnis [URL] (verbunden) oder
+  // ["", Grund] (gespeichert, noch nicht verbunden; Grund "notfound", "auth", "other" oder "", siehe wifiFailName).
+  CmdSetup = 0x81,
   CmdScan = 0x82,   // Antwort: je Netz ein Ergebnis [SSID, RSSI, "YES"/"NO" geschützt], zum Schluss ein leeres
 };
 

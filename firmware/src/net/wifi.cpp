@@ -20,13 +20,16 @@ volatile bool hasCredentials = false;
 uint32_t lastConnectedMs = 0;   // letzter Zeitpunkt, an dem verbunden war (bzw. Start)
 uint32_t connectedSinceMs = 0;  // seit wann ohne Unterbrechung verbunden
 bool wasConnected = false;
+volatile uint8_t lastReason = 0;  // Grund der letzten Trennung (wifi_err_reason_t), 0 = keiner
+ReconnectPolicy reconnect;        // nur im net-Task
 
 // Scan und USB-Einrichtung: Anfragen kommen aus anderen Tasks (Webserver, loop), ausgeführt wird nur im net-Task
 // (wifiLoop). Alles hier drunter nur mit jobsMutex.
 std::mutex jobsMutex;
 ScanJob scanJob;
 ProvisionJob provJob;
-String provSsid, provPass, provError;
+String provSsid, provPass;
+WifiFail provFail = WifiFail::None;
 
 void wipe(String &s) {
   for (size_t i = 0; i < s.length(); i++) s.setCharAt(i, 0);
@@ -42,6 +45,7 @@ void onWifiEvent(arduino_event_id_t event, arduino_event_info_t info) {
       logPrintf("[NET] IP %s\n", WiFi.localIP().toString().c_str());
       break;
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+      lastReason = info.wifi_sta_disconnected.reason;
       logPrintf("[NET] Getrennt, Grund %u\n", info.wifi_sta_disconnected.reason);
       break;
     default:
@@ -71,17 +75,19 @@ void loadCredentials(String &ssid, String &pass) {
   prefs.end();
 }
 
-void restoreOldConnection() {
-  WiFi.disconnect(false, false);
-  String oldSsid, oldPass;
-  loadCredentials(oldSsid, oldPass);
-  if (oldSsid.length()) {
-    WiFi.begin(oldSsid.c_str(), oldPass.c_str());
+// Verbindungsversuch mit den gespeicherten Zugangsdaten (Wiederverbindung)
+void connectSaved() {
+  String ssid, pass;
+  loadCredentials(ssid, pass);
+  if (ssid.length()) {
+    WiFi.disconnect(false, false);
+    WiFi.begin(ssid.c_str(), pass.c_str());
   }
-  wipe(oldPass);
+  wipe(pass);
 }
 
-// Verbindungsversuch der USB-Einrichtung. Gibt true zurück, solange er läuft (dann ruhen Scan und Hotspot-Automatik).
+// Verbindungsversuch der USB-Einrichtung. Gibt true zurück, solange er läuft (dann ruhen Scan, Wiederverbindung und
+// Hotspot-Automatik). Die Zugangsdaten sind schon gespeichert (wifiProvision).
 bool runProvision(uint32_t now) {
   std::lock_guard<std::mutex> lock(jobsMutex);
   if (provJob.wantsStart()) {
@@ -89,6 +95,7 @@ bool runProvision(uint32_t now) {
       return true;  // laufenden Scan abwarten, sonst scheitert die Verbindung
     }
     logPrintf("[NET] USB-Einrichtung: verbinde mit '%s' ...\n", provSsid.c_str());
+    lastReason = 0;
     WiFi.disconnect(false, false);
     WiFi.begin(provSsid.c_str(), provPass.c_str());
     provJob.started(now);
@@ -102,19 +109,20 @@ bool runProvision(uint32_t now) {
     return true;
   }
   if (st == ProvState::Connected) {
-    if (wifiSaveCredentials(provSsid.c_str(), provPass.c_str(), provError)) {
-      lastConnectedMs = now;
-      hasCredentials = true;  // der Hotspot endet wie gewohnt, sobald die Verbindung eine Minute steht
-    } else {
-      provJob.fail();
-    }
+    lastConnectedMs = now;  // der Hotspot endet wie gewohnt, sobald die Verbindung eine Minute steht
   } else {
-    provError = "Keine Verbindung mit diesem WLAN";
-    logPrintf("[NET] USB-Einrichtung: keine Verbindung mit '%s'\n", provSsid.c_str());
-    restoreOldConnection();
+    provFail = wifiClassifyReason(lastReason);
+    logPrintf("[NET] USB-Einrichtung: noch keine Verbindung mit '%s' (Grund %u), versuche es weiter\n", provSsid.c_str(),
+              lastReason);
+    reconnect.failed(now);  // weiter mit der Wiederverbindung, die Zugangsdaten bleiben gespeichert
   }
   wipe(provPass);
   return false;
+}
+
+bool scanBusy() {
+  std::lock_guard<std::mutex> lock(jobsMutex);
+  return scanJob.state() == ScanState::Pending || scanJob.state() == ScanState::Running;
 }
 
 // allowStart = false: nur einen laufenden Scan zu Ende bringen (während der USB-Einrichtung)
@@ -163,7 +171,9 @@ void runScan(uint32_t now, bool allowStart) {
 void wifiBegin() {
   WiFi.onEvent(onWifiEvent);
   WiFi.setHostname(OTA_HOSTNAME);
-  WiFi.setAutoReconnect(true);
+  // Die Arduino-Automatik gibt bei manchen Gründen (z. B. AUTH_FAIL) auf und wiederholt NO_AP_FOUND ohne Pause
+  // (dann scheitert jede Netzwerksuche). Die Wiederverbindung macht deshalb wifiLoop selbst (ReconnectPolicy).
+  WiFi.setAutoReconnect(false);
   configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "time.nist.gov");  // Zeitstempel für die Warteschlange
   lastConnectedMs = millis();
 
@@ -180,6 +190,8 @@ void wifiBegin() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);  // Energiesparmodus aus (erst nach mode(), sonst wirkungslos)
   WiFi.begin(ssid.c_str(), pass.c_str());
+  reconnect.started(millis());
+  wipe(pass);
   logPrintf("[NET] Verbinde mit WLAN '%s' ...\n", ssid.c_str());
 }
 
@@ -207,6 +219,15 @@ void wifiLoop() {
   } else if (hasCredentials && connected && apActive && now - connectedSinceMs > WIFI_AP_STABLE_MS && WiFi.softAPgetStationNum() == 0) {
     logPrintln("[NET] Verbunden, beende Einrichtungs-WLAN");
     wifiStopAp();
+  }
+  // Wiederverbindung: nicht während der USB-Einrichtung und nicht während einer Netzwerksuche
+  if (!provisioning && hasCredentials && !scanBusy()) {
+    bool apClients = apActive && WiFi.softAPgetStationNum() > 0;
+    if (reconnect.due(now, connected, apClients)) {
+      logPrintf("[NET] Neuer Verbindungsversuch (%u. Wiederholung)\n", (unsigned)reconnect.failures() + 1);
+      connectSaved();
+      reconnect.started(now);
+    }
   }
 }
 
@@ -246,18 +267,26 @@ bool wifiSaveCredentials(const char *ssid, const char *password, String &error) 
   return true;
 }
 
-bool wifiProvision(const char *ssid, const char *password, uint32_t timeoutMs, String &error) {
+ProvResult wifiProvision(const char *ssid, const char *password, uint32_t timeoutMs, String &error, WifiFail &fail) {
+  fail = WifiFail::None;
   String s(ssid ? ssid : "");
   s.trim();
   {
     std::lock_guard<std::mutex> lock(jobsMutex);
-    if (!provJob.request(timeoutMs)) {
+    if (provJob.busy()) {
       error = "Verbindungsversuch läuft bereits";
-      return false;
+      return ProvResult::Rejected;
     }
+    // Sofort speichern: Auch wenn die Waage das WLAN jetzt nicht erreicht (z. B. außer Reichweite), versucht sie es
+    // danach weiter. Bei einem Tippfehler die Einrichtung wiederholen (USB, Hotspot oder `wifi set`).
+    if (!wifiSaveCredentials(s.c_str(), password, error)) {
+      return ProvResult::Rejected;
+    }
+    hasCredentials = true;
+    provJob.request(timeoutMs);
     provSsid = s;
     provPass = password ? password : "";
-    provError = "";
+    provFail = WifiFail::None;
   }
   // Der net-Task verbindet (wifiLoop), hier nur warten. Sicherheitsgrenze, falls der net-Task hängt.
   uint32_t start = millis();
@@ -266,16 +295,16 @@ bool wifiProvision(const char *ssid, const char *password, uint32_t timeoutMs, S
       std::lock_guard<std::mutex> lock(jobsMutex);
       ProvState st = provJob.state();
       if (st == ProvState::Connected) {
-        return true;
+        return ProvResult::Connected;
       }
       if (st == ProvState::Failed) {
-        error = provError;
-        return false;
+        fail = provFail;
+        return ProvResult::Saved;
       }
     }
     if (millis() - start > timeoutMs + 10000) {
-      error = "Keine Antwort vom WLAN-Task";
-      return false;
+      fail = WifiFail::Other;
+      return ProvResult::Saved;
     }
     delay(100);
   }
