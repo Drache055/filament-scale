@@ -7,7 +7,7 @@
 
 // WLAN-Verbindung. Zugangsdaten liegen im NVS (Weboberfläche oder serielle Konsole). Beim allerersten Start nach einer
 // Firmware ohne diese Funktion werden WIFI_SSID/WIFI_PASSWORD aus secrets.h einmalig übernommen.
-// Sind keine Zugangsdaten gespeichert, startet sofort ein Hotspot (WIFI_AP_SSID, Passwort = Geräte-Passwort aus
+// Sind keine Zugangsdaten gespeichert, startet sofort ein Hotspot (WIFI_AP_SSID, Passwort = Hotspot-Passwort aus
 // storage/devicepw.h, immer geschützt) mit Captive Portal: Die Einrichtungsseite öffnet sich beim Verbinden von selbst, sonst unter
 // http://192.168.4.1. Gelingt die Verbindung mit gespeicherten Daten nicht (WIFI_AP_FALLBACK_MS), startet der Hotspot ebenfalls.
 void wifiBegin();
@@ -37,3 +37,4 @@ String wifiApSsid();
 String wifiApIp();
 void wifiStartAp();
 void wifiStopAp();
+void wifiApApplyPassword();  // laufenden Hotspot auf das aktuelle Hotspot-Passwort umstellen 

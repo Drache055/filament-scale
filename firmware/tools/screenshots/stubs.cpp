@@ -71,6 +71,7 @@ String wifiSsid() { return "Heimnetz"; }
 String wifiIp() { return "192.168.178.57"; }
 int wifiRssi() { return -58; }
 bool wifiApActive() { return mock.apActive; }
+bool wifiHasCredentials() { return mock.wifiCreds; }
 String wifiApSsid() { return "Filamentwaage-Setup"; }
 String wifiApIp() { return "192.168.4.1"; }
 
@@ -149,8 +150,8 @@ void i2cBusBegin() {}
 bool i2cBusLock(uint32_t) { return true; }
 void i2cBusUnlock() {}
 
-// Geräte-Passwort (storage/devicepw)
+// Geräte-Passwörter (storage/devicepw)
 #include "storage/devicepw.h"
-static String stubDevicePw = "K7MQ4X9RTB";
-const String &devicePassword() { return stubDevicePw; }
-bool devicePasswordGenerated() { return true; }
+String hotspotPassword() { return "K7MQ4X9RTB"; }
+String otaPassword() { return "P3WZ8HNC2D"; }
+bool otaPasswordFixed() { return false; }
