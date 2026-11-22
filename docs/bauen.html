@@ -72,11 +72,19 @@
 <h2 id="webflash"><span data-l="de">Im Browser flashen</span><span data-l="en">Flash from your browser</span></h2>
 <p><span data-l="de">Der schnellste Weg: kein PlatformIO, keine Installation. Du brauchst Chrome, Edge oder Opera am Computer (nicht Firefox, Safari oder Smartphone) und ein USB-C-Kabel zur Waage.</span><span data-l="en">The fastest way: no PlatformIO, no install. You need Chrome, Edge or Opera on a computer (not Firefox, Safari or a phone) and a USB-C cable to the scale.</span></p>
 <div class="flashbox">
-  <esp-web-install-button manifest="firmware/manifest.json">
+  <div class="cta">
+  <esp-web-install-button id="fw-install" manifest="firmware/manifest.json">
     <button slot="activate" class="btn big"><span data-l="de">Firmware installieren</span><span data-l="en">Install firmware</span></button>
     <span slot="unsupported" class="muted"><span data-l="de">Dieser Browser unterstützt kein Web Serial. Bitte Chrome, Edge oder Opera am Computer nutzen.</span><span data-l="en">This browser does not support Web Serial. Please use Chrome, Edge or Opera on a computer.</span></span>
     <span slot="not-allowed" class="muted"><span data-l="de">Web Serial funktioniert nur über HTTPS. Öffne die Seite über die GitHub-Pages-Adresse.</span><span data-l="en">Web Serial only works over HTTPS. Open this page via its GitHub Pages address.</span></span>
   </esp-web-install-button>
+  <a class="btn big ghost" href="cad/filament-scale.step" download="Filament-Scale-V1.0.step"><span data-l="de">3D-Modell herunterladen (STEP)</span><span data-l="en">Download 3D model (STEP)</span></a>
+  </div>
+  <p class="fwver muted" id="fw-versions" hidden>
+    <label for="fw-select"><span data-l="de">Firmware-Version:</span><span data-l="en">Firmware version:</span></label>
+    <select id="fw-select"></select>
+  </p>
+  <p class="muted"><span data-l="de">Standard ist die neueste stabile Version. Alle Versionen mit Änderungen und Dateien stehen unter <a href="https://github.com/Drache055/filament-scale/releases">Releases auf GitHub</a>. Das 3D-Modell (Gehäuse V1.0 mit Komponenten) lässt sich in Fusion, FreeCAD und anderen CAD-Programmen öffnen.</span><span data-l="en">The default is the latest stable version. All versions with changes and files are listed under <a href="https://github.com/Drache055/filament-scale/releases">Releases on GitHub</a>. The 3D model (enclosure V1.0 with components) opens in Fusion, FreeCAD and other CAD tools.</span></p>
 </div>
 <ol>
   <li><span data-l="de">Verbinde die Waage per USB-C mit dem Computer.</span><span data-l="en">Connect the scale to your computer via USB-C.</span></li>
@@ -88,7 +96,7 @@
 <ul>
   <li><span data-l="de">Verbindet sich der Browser nicht, halte die <b>BOOT</b>-Taste gedrückt, während du das USB-Kabel einsteckst, und versuche es noch einmal.</span><span data-l="en">If the browser cannot connect, hold the <b>BOOT</b> button while plugging in the USB cable and try again.</span></li>
   <li><span data-l="de">Das Web-Image ist ein Standard-Build: kein voreingestelltes WLAN, die Spoolman-Adresse steht auf <code>http://spoolman.local:7912</code> und lässt sich in der Weboberfläche ändern, das Theme hat die Standardwerte.</span><span data-l="en">The web image is a stock build: no preset Wi-Fi, the Spoolman address defaults to <code>http://spoolman.local:7912</code> and can be changed in the web UI, the theme uses its defaults.</span></li>
-  <li><span data-l="de">Die Datei wird bei jedem Release automatisch aus dem Quellcode gebaut. Wer es selbst bauen will, nutzt den Weg darunter.</span><span data-l="en">The file is built automatically from the source for every release. If you prefer to build it yourself, use the route below.</span></li>
+  <li><span data-l="de">Die Datei wird bei jeder stabilen Release automatisch aus dem Quellcode gebaut. Wer es selbst bauen will, nutzt den Weg darunter.</span><span data-l="en">The file is built automatically from the source for every stable release. If you prefer to build it yourself, use the route below.</span></li>
 </ul>
 
 <h2 id="flashen"><span data-l="de">Selbst bauen und flashen</span><span data-l="en">Build and flash yourself</span></h2>
@@ -142,5 +150,21 @@ pio test -e native</code></pre>
 </div></footer>
 <script type="module" src="https://unpkg.com/esp-web-tools@10.1.1/dist/web/install-button.js?module"></script>
 <script src="app.js"></script>
+<script>
+(function(){
+  var box=document.getElementById('fw-versions'),sel=document.getElementById('fw-select'),btn=document.getElementById('fw-install');
+  fetch('firmware/versions.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():[]}).then(function(list){
+    if(!list.length)return;
+    list.forEach(function(v,i){
+      var o=document.createElement('option');
+      o.value=i?'firmware/'+v.tag+'/manifest.json':'firmware/manifest.json';
+      o.textContent=v.tag+(v.date?' · '+v.date:'');
+      sel.appendChild(o);
+    });
+    sel.onchange=function(){btn.setAttribute('manifest',sel.value);btn.manifest=sel.value};
+    box.hidden=false;
+  }).catch(function(){});
+})();
+</script>
 </body>
 </html>
