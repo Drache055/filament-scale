@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
   sp.initialWeight = 1000;
   setWeight(0);
   setBoxTag(false);
-  weighFlowStart(sp, "Fabian");
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
   advance(400);
   shot("ablauf_1_spule_erkannt");
   advance(2400);
@@ -333,7 +333,7 @@ int main(int argc, char **argv) {
   // Box: Live-Gewicht zählt mit Zittern von 0 auf 412 g, Box-Tag noch nicht gelesen.
   setWeight(0);
   setBoxTag(false);
-  weighFlowStart(sp, "Fabian");
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
   advance(400);
   advance(2400);
   {
@@ -372,6 +372,33 @@ int main(int argc, char **argv) {
   shot("home_hotspot");
   mock.apActive = false;
   mock.wifiUp = true;
+
+  // --- Neue Box anlegen: Box mit leerem Tag (hinten angehängt, Nummern der älteren Bilder bleiben) ---
+  setWeight(0);
+  setBoxTag(false);
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
+  advance(2800);
+  setWeight(412);
+  mock.nfc.moduleReady = mock.nfc.tagPresent = true;
+  strlcpy(mock.nfc.uid, "04EE11FF22AA33", sizeof(mock.nfc.uid));
+  mock.nfc.capacity = 872;
+  mock.nfc.seq = mock.nfc.readSeq = 3;
+  advance(400);
+  shot("neue_box_1_leerer_tag");
+  clickRowButton(2, 3);  // +5
+  clickRowButton(2, 2);  // +1
+  clickRowButton(3, 0);  // Schreiben
+  mock.nfcWrite = NfcWrite::Ok;
+  advance(400);
+  shot("neue_box_2_geschrieben");
+  mock.nfcWrite = NfcWrite::Idle;
+  setBoxTag(true);
+  strlcpy(mock.nfc.content.box.id, "BOX-07", 16);
+  strlcpy(mock.nfc.content.box.name, "Box 07", 32);
+  advance(400);
+  advance(400);
+  shot("neue_box_3_spule_einstellen");
+  uiShowHome();
 
   return 0;
 }

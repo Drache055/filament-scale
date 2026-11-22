@@ -127,6 +127,8 @@ const char *const texts[(int)Str::Count][2] = {
     /* WfRetry */ {"Nochmal", "Retry"},
     /* WfDone */ {"Fertig", "Done"},
     /* WfSaveFailed */ {"Speichern fehlgeschlagen", "Saving failed"},
+    /* WfNewBox */ {"Neue Box anlegen", "Set up new box"},
+    /* WfNewBoxHint */ {"Der Tag der Box ist leer oder unbekannt.", "The box tag is empty or unknown."},
 };
 
 Lang current = Lang::DE;

@@ -616,10 +616,10 @@ void screenNfcOpen() {
 // ---- Gemeinsamer Statustext für Schreibvorgänge ----
 static lv_obj_t *writeStatus = nullptr;
 
-static void writeStatusRefresh(lv_timer_t *) {
+const char *uiNfcWriteText(NfcWrite st, lv_color_t *color) {
   const char *text = nullptr;
   lv_color_t col = themeColors().error;
-  switch (nfcWriteStatus()) {
+  switch (st) {
     case NfcWrite::Writing: text = tr(Str::Writing); col = themeColors().warn; break;
     case NfcWrite::Ok: text = tr(Str::WriteOk); col = themeColors().ok; break;
     case NfcWrite::ErrLocked: text = tr(Str::WriteLocked); break;
@@ -630,6 +630,15 @@ static void writeStatusRefresh(lv_timer_t *) {
     case NfcWrite::ErrOccupied: text = tr(Str::WriteOccupied); break;
     default: break;  // Idle und WaitingForTag: Text bleibt wie gesetzt
   }
+  if (color) {
+    *color = col;
+  }
+  return text;
+}
+
+static void writeStatusRefresh(lv_timer_t *) {
+  lv_color_t col;
+  const char *text = uiNfcWriteText(nfcWriteStatus(), &col);
   if (text) {
     lv_label_set_text(writeStatus, text);
     lv_obj_set_style_text_color(writeStatus, col, 0);
@@ -658,10 +667,8 @@ static void onBoxStep(lv_event_t *e) {
 }
 
 static void onBoxWriteStart(lv_event_t *) {
-  char id[16], name[32], json[128];
-  snprintf(id, sizeof(id), "BOX-%02d", boxNumber);
-  snprintf(name, sizeof(name), "Box %02d", boxNumber);
-  if (tagBuildBox(id, name, json, sizeof(json)) != 0) {
+  char json[128];
+  if (tagBuildBoxNumber(boxNumber, json, sizeof(json)) != 0) {
     startWrite(json);
   }
 }

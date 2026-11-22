@@ -1,6 +1,7 @@
 #include "tags.h"
 
 #include <ArduinoJson.h>
+#include <cstdio>
 #include <cstring>
 
 static void copyStr(char *dst, size_t cap, JsonVariantConst v) {
@@ -51,6 +52,20 @@ size_t tagBuildBox(const char *id, const char *name, char *out, size_t cap) {
     return 0;
   }
   return serializeJson(doc, out, cap);
+}
+
+size_t tagBuildBoxNumber(int number, char *out, size_t cap) {
+  if (number < 1 || number > 99) {
+    return 0;
+  }
+  char id[16], name[16];
+  snprintf(id, sizeof(id), "BOX-%02d", number);
+  snprintf(name, sizeof(name), "Box %02d", number);
+  return tagBuildBox(id, name, out, cap);
+}
+
+bool tagIsBlankForBox(const TagContent &tag) {
+  return tag.kind == TagKind::Unknown || (tag.kind == TagKind::Box && tag.box.name[0] == '\0');
 }
 
 size_t tagBuildSpool(const SpoolTag &spool, char *out, size_t cap) {

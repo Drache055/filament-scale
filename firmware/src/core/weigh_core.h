@@ -2,11 +2,12 @@
 #include <cstdint>
 
 // Ablauf der Differenzwägung (CLAUDE.md 5 und 6.1). Reine Logik ohne Hardwarezugriff.
-// Zustände: Spule erkannt -> Box auflegen -> Spule in die Box -> Bestätigen -> Speichern -> Box entnehmen.
+// Zustände: Spule erkannt -> Box auflegen [-> Neue Box anlegen] -> Spule in die Box -> Bestätigen -> Speichern -> Box entnehmen.
 enum class WeighState : uint8_t {
   Idle,
   SpoolIdentified,  // Spule erkannt, Waage muss leer und stabil sein
   WaitBox,          // Box auf die Waage stellen (Gewicht > Schwelle, stabil, Box-Tag gelesen)
+  NewBox,           // Box steht auf der Waage, ihr Tag ist leer oder unbekannt: Nummer wählen, Tag beschreiben
   WaitSpool,        // Spule in die Box stellen (Gewicht >= W1 + Schwelle, stabil)
   Confirm,          // Ergebnis anzeigen
   Upload,           // an Spoolman senden
@@ -36,6 +37,7 @@ struct WeighInput {
   bool stable = false;
   bool empty = false;     // stabil und |Gewicht| <= Schwelle "leer"
   bool boxTag = false;    // Box-Tag liegt gelesen auf
+  bool blankTag = false;  // leerer/unbekannter Tag liegt gelesen auf (nicht der Spulen-Tag), siehe tagIsBlankForBox
   bool cancel = false;
   bool save = false;      // [Speichern] wurde getippt (nur in Confirm)
   bool uploadDone = false;   // nur in Upload
