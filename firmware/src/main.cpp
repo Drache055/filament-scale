@@ -50,7 +50,7 @@ void setup() {
                 ESP.getPsramSize() / (1024 * 1024));
   logPrintf("[BOOT] Laufende Partition: %s\n", esp_ota_get_running_partition()->label);
 
-  devicePwBegin();  // vor dem net-Task: Hotspot und OTA brauchen das Geräte-Passwort
+  devicePwBegin();  // vor dem net-Task: Hotspot und OTA brauchen ihre Passwörter
   adminBegin();  // vor dem net-Task, die Webseite fragt die Sperre ab
   devModeBegin();  // vor dem net-Task und session/spoolman/ui: alle fragen die Betriebsart ab
   fwUpdateBegin();  // vor dem net-Task, die Webseite fragt den Update-Zustand ab
