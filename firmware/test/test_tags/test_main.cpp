@@ -116,6 +116,33 @@ void test_spool_build_roundtrip() {
   TEST_ASSERT_EQUAL(17, t.spool.spoolmanId);
 }
 
+void test_box_number_build() {
+  char buf[128];
+  size_t n = tagBuildBoxNumber(7, buf, sizeof(buf));
+  TEST_ASSERT_TRUE(n > 0);
+  TagContent t = tagParse(buf, n);
+  TEST_ASSERT_EQUAL(TagKind::Box, t.kind);
+  TEST_ASSERT_EQUAL_STRING("BOX-07", t.box.id);
+  TEST_ASSERT_EQUAL_STRING("Box 07", t.box.name);
+  TEST_ASSERT_EQUAL(0, tagBuildBoxNumber(0, buf, sizeof(buf)));
+  TEST_ASSERT_EQUAL(0, tagBuildBoxNumber(100, buf, sizeof(buf)));
+  TEST_ASSERT_EQUAL(0, tagBuildBoxNumber(5, buf, 10));  // passt nicht
+}
+
+void test_blank_for_box() {
+  TEST_ASSERT_TRUE(tagIsBlankForBox(TagContent()));  // kein NDEF
+  const char *noName = "{\"type\":\"box\",\"id\":\"BOX-01\"}";
+  TEST_ASSERT_TRUE(tagIsBlankForBox(tagParse(noName, strlen(noName))));
+  const char *box = "{\"type\":\"box\",\"id\":\"BOX-01\",\"name\":\"Box 01\"}";
+  TEST_ASSERT_FALSE(tagIsBlankForBox(tagParse(box, strlen(box))));
+  const char *spool = "{\"protocol\":\"openspool\",\"type\":\"PLA\"}";
+  TEST_ASSERT_FALSE(tagIsBlankForBox(tagParse(spool, strlen(spool))));
+  const char *user = "{\"type\":\"user\",\"id\":1,\"name\":\"A\"}";
+  TEST_ASSERT_FALSE(tagIsBlankForBox(tagParse(user, strlen(user))));
+  const char *other = "{\"foo\":1}";
+  TEST_ASSERT_TRUE(tagIsBlankForBox(tagParse(other, strlen(other))));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_openspool_tag);
@@ -127,5 +154,7 @@ int main() {
   RUN_TEST(test_admin_tag_roundtrip);
   RUN_TEST(test_unknown_content);
   RUN_TEST(test_spool_build_roundtrip);
+  RUN_TEST(test_box_number_build);
+  RUN_TEST(test_blank_for_box);
   return UNITY_END();
 }

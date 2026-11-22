@@ -9,6 +9,9 @@
 void sessionBegin();
 bool sessionCurrentUser(User &out);
 bool sessionUserMayTare();  // angemeldeter Benutzer mit Tara-Recht (vom Admin vergeben)
+bool sessionUserWeighOnly();  // angemeldeter Benutzer mit der Rolle "Nur wiegen"
+// Einfacher Wiegeablauf erlaubt: Betriebsart "Einfache Waage" oder angemeldeter Benutzer mit "Nur wiegen"
+bool sessionSimpleWeighAllowed();
 void sessionLogout();  // meldet den Benutzer ab und stellt die Gerätesprache wieder her
 
 // Eigene Sprache des angemeldeten Benutzers speichern und anwenden. false, wenn niemand angemeldet ist.

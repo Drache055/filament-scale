@@ -12,6 +12,7 @@ struct SpoolInfo {
   char colorHex[10] = "";
   char location[65] = "";
   char owner[24] = "";
+  char lastDried[11] = "";   // Extra-Feld "last_dried" (JJJJ-MM-TT), leer = nie eingetragen
   float remaining = -1;      // g, -1 = unbekannt
   float initialWeight = -1;  // Nettogewicht der vollen Spule
   float emptySpool = -1;     // Leerspulengewicht: Spule, sonst Filament, sonst Hersteller (-1 = unbekannt)
@@ -39,6 +40,7 @@ struct SpoolmanStatus {
   char url[96] = "";
   uint32_t checkedSecondsAgo = 0;
   bool everChecked = false;
+  int httpCode = 0;  // HTTP-Status der letzten Prüfung (0 = keine Verbindung)
 };
 
 void spoolmanBegin();
@@ -53,7 +55,13 @@ SpoolmanResult spoolmanLookupResult();
 
 // Spule aktualisieren. remaining < 0 = nicht ändern, location/owner nullptr = nicht ändern.
 // owner wird im Extra-Feld "owner" gespeichert (das Feld wird bei Bedarf angelegt, andere Extra-Felder bleiben erhalten).
-void spoolmanRequestUpdate(int spoolId, float remaining, const char *location, const char *owner);
+// archive = Spule zusätzlich archivieren (archived=true); tagUid (nur mit archive) wird dabei von der Spule gelöst
+// (DELETE /spool/{id}/tag/{uid}). Beides bleibt auch in der Offline-Warteschlange erhalten.
+void spoolmanRequestUpdate(int spoolId, float remaining, const char *location, const char *owner, bool archive = false,
+                           const char *tagUid = nullptr);
+// "Zuletzt getrocknet" (Extra-Feld "last_dried", Format JJJJ-MM-TT) an der Spule setzen; das Feld wird bei Bedarf angelegt.
+// Dieser Auftrag wird bei Netzwerkfehlern nicht in die Warteschlange gestellt (Ergebnis über spoolmanWriteResult).
+void spoolmanRequestMarkDried(int spoolId, const char *date);
 // Tag (UID) mit der Spule verknüpfen.
 void spoolmanRequestLinkTag(int spoolId, const char *uid);
 SpoolmanResult spoolmanWriteResult();  // Ergebnis des letzten Update-/Link-Auftrags

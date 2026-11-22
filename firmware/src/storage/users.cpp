@@ -30,6 +30,7 @@ void save() {
     o["lang"] = users[i].lang;
     o["tare"] = users[i].canTare;
     o["cat"] = users[i].canCatalog;
+    o["wo"] = users[i].weighOnly;
   }
   String out;
   serializeJson(doc, out);
@@ -61,6 +62,7 @@ void usersBegin() {
         users[count].lang = lang <= 2 ? lang : 0;
         users[count].canTare = o["tare"] | false;
         users[count].canCatalog = o["cat"] | false;
+        users[count].weighOnly = o["wo"] | false;
         if (users[count].id && users[count].name[0]) {
           count++;
         }
@@ -175,6 +177,21 @@ bool usersSetCatalog(uint16_t id, bool allowed) {
   for (int i = 0; i < count; i++) {
     if (users[i].id == id) {
       users[i].canCatalog = allowed;
+      save();
+      found = true;
+      break;
+    }
+  }
+  xSemaphoreGive(mutex);
+  return found;
+}
+
+bool usersSetWeighOnly(uint16_t id, bool on) {
+  bool found = false;
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  for (int i = 0; i < count; i++) {
+    if (users[i].id == id) {
+      users[i].weighOnly = on;
       save();
       found = true;
       break;
@@ -350,6 +367,7 @@ String usersJson() {
     o["lang"] = list[i].lang == 1 ? "de" : list[i].lang == 2 ? "en" : "";
     o["tare"] = list[i].canTare;
     o["catalog"] = list[i].canCatalog;
+    o["weigh_only"] = list[i].weighOnly;
     o["pin"] = usersHasPin(list[i].id);
     o["tag"] = usersHasTagToken(list[i].id);
   }

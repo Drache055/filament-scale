@@ -14,6 +14,7 @@
 #include "nfc/nfc.h"
 #include "scale/scale.h"
 #include "storage/admin.h"
+#include "storage/devmode.h"
 #include "storage/devicepw.h"
 #include "screens.h"
 #include "theme.h"
@@ -29,6 +30,8 @@ static uint32_t seenLanguageGeneration = 0;
 static lv_obj_t *hintLabel = nullptr;
 static lv_obj_t *taraLabel = nullptr;
 static lv_obj_t *menuLabel = nullptr;
+static lv_obj_t *simpleBtn = nullptr;    // "Filament wiegen" (einfache Waage)
+static lv_obj_t *simpleLabel = nullptr;
 
 lv_obj_t *uiMakeButton(lv_obj_t *parent, const char *text, lv_event_cb_t cb, bool fullWidth, void *userData) {
   lv_obj_t *btn = lv_button_create(parent);
@@ -66,6 +69,7 @@ void uiNavigate(lv_obj_t *scr) {
 
 void uiShowHome() {
   weighFlowAbort();  // der Ablauf liegt auf eigenen Screens, die hier verlassen werden
+  simpleFlowAbort();
   uiNavigate(homeScreen);
 }
 
@@ -74,7 +78,11 @@ static void onMenu(lv_event_t *) { screenMenuOpen(); }
 void uiRetranslateHome() {
   lv_label_set_text(taraLabel, tr(Str::Tare));
   lv_label_set_text(menuLabel, tr(Str::Menu));
+  lv_label_set_text(simpleLabel, tr(Str::SwWeigh));
 }
+
+// Läuft ein Wiegeablauf (smart oder einfach)? Dann springt die Anzeige nicht von selbst zu Home.
+static bool flowActive() { return weighFlowActive() || simpleFlowActive(); }
 
 static void buildHome() {
   lv_obj_t *scr = uiNewScreen();
@@ -132,6 +140,11 @@ static void buildHome() {
   lv_obj_add_style(queueLabel, &theme().dim, 0);
   lv_label_set_text(queueLabel, "");
 
+  // Einfache Waage: "Filament wiegen" (sichtbar nur, wenn erlaubt, siehe refreshTimerCb)
+  simpleBtn = uiMakeButton(scr, "", [](lv_event_t *) { screenSimpleWeighOpen(); }, true);
+  simpleLabel = lv_obj_get_child(simpleBtn, 0);
+  lv_obj_add_flag(simpleBtn, LV_OBJ_FLAG_HIDDEN);
+
   // Buttons
   lv_obj_t *row = lv_obj_create(scr);
   lv_obj_remove_style_all(row);
@@ -145,14 +158,15 @@ static void buildHome() {
   lv_screen_load(scr);
 }
 
-// Tara: mit Admin-Sperre nur für den angemeldeten Admin oder einen Benutzer mit Tara-Recht
+// Tara: mit Admin-Sperre nur für den angemeldeten Admin oder einen Benutzer mit Tara-Recht.
+// Die einfache Waage kennt keine Anmeldung, dort darf jeder tarieren.
 static void tareAfterLogin() {
   scaleTare();
   uiShowHome();
 }
 
 void uiOnTare() {
-  if (adminAllowed() || sessionUserMayTare()) {
+  if (adminAllowed() || sessionUserMayTare() || devModeSimple()) {
     scaleTare();
   } else {
     screenAdminLoginOpen(tareAfterLogin);
@@ -206,6 +220,10 @@ static void updateHint() {
     } else {
       webResultSince = 0;
     }
+  } else if (devModeSimple()) {
+    strlcpy(text, tr(Str::SwReady), sizeof(text));
+  } else if (sessionUserWeighOnly()) {
+    text[0] = '\0';  // "Filament wiegen" steht auf dem Button
   } else {
     strlcpy(text, tr(Str::ScanSpool), sizeof(text));
   }
@@ -244,7 +262,7 @@ static void refreshTimerCb(lv_timer_t *) {
   if (i18nGeneration() != seenLanguageGeneration) {
     seenLanguageGeneration = i18nGeneration();
     uiRetranslateHome();
-    if (lv_screen_active() != homeScreen && !weighFlowActive()) {
+    if (lv_screen_active() != homeScreen && !flowActive()) {
       uiShowHome();
     }
   }
@@ -252,7 +270,7 @@ static void refreshTimerCb(lv_timer_t *) {
   static uint32_t lastQueueCheck = 0;
   if (millis() - lastQueueCheck > 2000) {  // LittleFS nicht im 200-ms-Takt lesen
     lastQueueCheck = millis();
-    int pending = spoolmanQueueCount();
+    int pending = devModeSimple() ? 0 : spoolmanQueueCount();  // einfache Waage: Spoolman ruht
     if (pending > 0) {
       lv_label_set_text_fmt(queueLabel, tr(Str::QueuePending), pending);
       lv_obj_set_style_text_color(queueLabel, themeColors().warn, 0);
@@ -262,8 +280,15 @@ static void refreshTimerCb(lv_timer_t *) {
   }
 
   // Unbekannter Spulen-Tag (in Spoolman nicht gefunden): Zuordnen-Screen anbieten, einmal je Tag-Erkennung
+  // (nicht in der einfachen Waage und nicht für Benutzer mit "Nur wiegen")
+  bool simpleOnly = sessionSimpleWeighAllowed();
+  if (simpleOnly) {
+    lv_obj_remove_flag(simpleBtn, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(simpleBtn, LV_OBJ_FLAG_HIDDEN);
+  }
   static uint32_t assignHandledSeq = 0;
-  if (lv_screen_active() == homeScreen && nfcWriteStatus() == NfcWrite::Idle) {
+  if (!simpleOnly && lv_screen_active() == homeScreen && nfcWriteStatus() == NfcWrite::Idle) {
     NfcState n = nfcGet();
     if (n.tagPresent && n.readSeq == n.seq && n.seq != assignHandledSeq &&
         (n.content.kind == TagKind::Spool || n.content.kind == TagKind::Unknown)) {
@@ -277,7 +302,7 @@ static void refreshTimerCb(lv_timer_t *) {
 
   // Bekannte Spule aufgelegt: Wiegeablauf starten (einmal je Tag-Erkennung)
   static uint32_t flowHandledSeq = 0;
-  if (lv_screen_active() == homeScreen && !weighFlowActive() && nfcWriteStatus() == NfcWrite::Idle) {
+  if (!simpleOnly && lv_screen_active() == homeScreen && !weighFlowActive() && nfcWriteStatus() == NfcWrite::Idle) {
     NfcState n = nfcGet();
     if (n.tagPresent && n.readSeq == n.seq && n.seq != flowHandledSeq &&
         (n.content.kind == TagKind::Spool || n.content.kind == TagKind::Unknown)) {
@@ -285,7 +310,7 @@ static void refreshTimerCb(lv_timer_t *) {
       if (r.state == SpoolmanState::Found && strcmp(r.uid, n.uid) == 0 && r.spool.id >= 0) {
         flowHandledSeq = n.seq;
         User u;
-        weighFlowStart(r.spool, sessionCurrentUser(u) ? u.name : "");
+        weighFlowStart(r.spool, n.uid, sessionCurrentUser(u) ? u.name : "");
       }
     }
   }
@@ -297,7 +322,7 @@ static void refreshTimerCb(lv_timer_t *) {
     if (admin && lv_display_get_inactive_time(nullptr) < 1000) {
       adminSessionTouch();
     }
-    if (wasAdmin && !admin && lv_screen_active() != homeScreen && !weighFlowActive()) {
+    if (wasAdmin && !admin && lv_screen_active() != homeScreen && !flowActive()) {
       uiShowHome();
     }
     wasAdmin = admin;

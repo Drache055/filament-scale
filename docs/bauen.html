@@ -38,7 +38,7 @@
 <table>
   <tr><th>Board</th><td>Waveshare ESP32-S3-Touch-LCD-2 (ESP32-S3R8, 16 MB Flash, 8 MB Octal-PSRAM, ST7789T3 240×320, Touch CST816)</td></tr>
   <tr><th><span data-l="de">Wägezelle</span><span data-l="en">Load cell</span></th><td><span data-l="de">Biegebalken 5 kg, 4 Leiter (E+, E−, A+, A−)</span><span data-l="en">5 kg bar load cell, 4 wires (E+, E−, A+, A−)</span></td></tr>
-  <tr><th>ADC</th><td>HX711-Modul, <span data-l="de">mit <b>3,3 V</b> versorgen, DOUT darf keine 5 V führen</span><span data-l="en">powered with <b>3.3 V</b>, DOUT must not carry 5 V</span></td></tr>
+  <tr><th>ADC</th><td>HX711-Modul, <span data-l="de">mit <b>3,3 V</b> versorgen, DOUT darf keine 5 V führen. Alternativ NAU7802 oder ADS1232, siehe <a href="#sensor">Anderer Wägesensor</a>.</span><span data-l="en">powered with <b>3.3 V</b>, DOUT must not carry 5 V. Alternatively NAU7802 or ADS1232, see <a href="#sensor">Other load sensor</a>.</span></td></tr>
   <tr><th>NFC</th><td>PN532 <span data-l="de">im SPI-Modus (DIP: SW1 = OFF, SW2 = ON), 3,3 V</span><span data-l="en">in SPI mode (DIP: SW1 = OFF, SW2 = ON), 3.3 V</span></td></tr>
   <tr><th>Tags</th><td>NTAG215 / NTAG216</td></tr>
   <tr><th><span data-l="de">Gehäuse</span><span data-l="en">Enclosure</span></th><td><span data-l="de">3D-gedruckt, Stahl als Ballast im Sockel</span><span data-l="en">3D printed, steel as ballast in the base</span></td></tr>
@@ -48,13 +48,24 @@
 
 <h2 id="pins"><span data-l="de">Verdrahtung</span><span data-l="en">Wiring</span></h2>
 <p><span data-l="de">Alle Pins stehen zentral in <code>firmware/include/pins.h</code>. Display und Touch sind auf dem Waveshare-Board fest verdrahtet. Extern kommen nur HX711 und PN532 an die Header.</span><span data-l="en">All pins are defined in <code>firmware/include/pins.h</code>. Display and touch are wired on the Waveshare board. Only the HX711 and PN532 connect to the headers.</span></p>
+<figure class="wiring"><a href="img/wiring.svg"><img src="img/wiring.svg" alt="Wiring diagram: load cell to HX711, HX711 and PN532 to headers P1 and P2 of the Waveshare ESP32-S3-Touch-LCD-2" width="960" height="740"></a><figcaption><span data-l="de">Verkabelungsplan, Board von hinten gesehen (Display zeigt nach unten). Klicken zum Vergrößern. Kabelfarben der Wägezelle sind typisch, bitte am eigenen Exemplar prüfen.</span><span data-l="en">Wiring diagram, board seen from the back (display facing down). Click to enlarge. Load cell wire colours are typical, check your own cell.</span></figcaption></figure>
+<p><span data-l="de">Die Tabelle nennt die Beschriftung, die auf der Rückseite des Boards neben jedem Pin aufgedruckt ist (Zahl = GPIO, „G“ = GND). P1 ist die linke, P2 die rechte Stiftleiste, von hinten gesehen.</span><span data-l="en">The table lists the label printed next to each pin on the back of the board (number = GPIO, “G” = GND). P1 is the left, P2 the right pin header, seen from the back.</span></p>
 <table>
-  <tr><th>HX711</th><td>SCK = GPIO17 (Header P1 Pin 5)<br>DOUT = GPIO18 (Header P1 Pin 6)<br>VCC = 3V3 (P2 Pin 1), GND</td></tr>
-  <tr><th>PN532 (SPI)</th><td>SCK = GPIO15 (P2 Pin 7)<br>MISO = GPIO13 (P2 Pin 8)<br>MOSI = GPIO11 (P2 Pin 9)<br>SS = GPIO12 (P2 Pin 10)<br>3V3 = P2 Pin 1, GND = P2 Pin 2</td></tr>
+  <tr><th>HX711</th><td>SCK → <code>17</code> (P1)<br>DT/DOUT → <code>18</code> (P1)<br>VCC → <code>3V3</code> (P2)<br>GND → <code>G</code></td></tr>
+  <tr><th>PN532 (SPI)</th><td>SCK → <code>15</code> (P2)<br>MISO → <code>13</code> (P2)<br>MOSI → <code>11</code> (P2)<br>SS → <code>12</code> (P2)<br>VCC → <code>3V3</code> (P2), GND → <code>G</code> (P2)</td></tr>
   <tr><th>Touch (I²C)</th><td>SDA = GPIO48, SCL = GPIO47, <span data-l="de">Adresse</span><span data-l="en">address</span> 0x15</td></tr>
   <tr><th>Display</th><td>SCLK 39, MOSI 38, MISO 40, DC 42, CS 45, BL 1</td></tr>
 </table>
 <p class="note warn"><span data-l="de"><b>Warum SPI statt I²C beim PN532?</b> Im I²C-Modus blieb SCL am Waagen-Board dauerhaft auf low, an allen getesteten Pins. Dasselbe Modul lief an einem NodeMCU-ESP32 fehlerfrei, die Ursache ist nicht geklärt. Per Software-SPI an eigenen Pins läuft es. Ob GPIO11 bis 15 sonst belegt sind (vermutlich SD-Slot, ungenutzt), ist am Schaltplan nicht geprüft.</span><span data-l="en"><b>Why SPI instead of I²C for the PN532?</b> In I²C mode SCL stayed low on the scale board on every pin tested. The same module worked flawlessly on a NodeMCU-ESP32; the cause is unknown. Software SPI on dedicated pins works. Whether GPIO11 to 15 are otherwise used (probably the unused SD slot) has not been checked against the schematic.</span></p>
+
+<h3 id="sensor"><span data-l="de">Anderer Wägesensor</span><span data-l="en">Other load sensor</span></h3>
+<p><span data-l="de">Sensortyp und Pins stellst du auf der Webseite unter <b>Kalibrierung → Wägesensor</b> ein (nur Admin). Das Gerät startet danach neu. Pins von Display, Touch, NFC und USB lassen sich nicht wählen. Die Kalibrierung wird pro Sensortyp gespeichert, nach dem ersten Wechsel einmal neu kalibrieren.</span><span data-l="en">Choose sensor type and pins in the web UI under <b>Calibration → Load sensor</b> (admin only). The device restarts afterwards. Pins used by display, touch, NFC and USB cannot be selected. Calibration is stored per sensor type; calibrate once after switching for the first time.</span></p>
+<table>
+  <tr><th>HX711 / HX710B</th><td><span data-l="de">Standard, siehe oben.</span><span data-l="en">Default, see above.</span></td></tr>
+  <tr><th>NAU7802 (I²C)</th><td><span data-l="de">z. B. SparkFun Qwiic Scale, 3,3 V, Adresse 0x2A. Ohne weitere Pins am Touch-Bus: SCL → <code>47</code>, SDA → <code>48</code> (P2). Andere freie Pins bekommen einen eigenen Bus. <b>Am Gerät nicht geprüft.</b></span><span data-l="en">e.g. SparkFun Qwiic Scale, 3.3 V, address 0x2A. Without extra pins on the touch bus: SCL → <code>47</code>, SDA → <code>48</code> (P2). Other free pins get a bus of their own. <b>Not tested on the device.</b></span></td></tr>
+  <tr><th>ADS1232 / ADS1231</th><td><span data-l="de">Wie HX711: SCLK → <code>17</code>, DOUT → <code>18</code>, PDWN optional an einen freien Pin oder fest auf 3,3 V. Datenrate 10 SPS und Verstärkung per Lötbrücke am Modul. <b>Am Gerät nicht geprüft.</b></span><span data-l="en">Like the HX711: SCLK → <code>17</code>, DOUT → <code>18</code>, PDWN optionally to a free pin or tied to 3.3 V. Data rate 10 SPS and gain via solder jumpers on the module. <b>Not tested on the device.</b></span></td></tr>
+  <tr><th><span data-l="de">Freie Pins</span><span data-l="en">Free pins</span></th><td>2, 4, 6, 7, 8, 10, 16, 17, 18, 21 (P1), 9, 14 (P2)</td></tr>
+</table>
 
 <h2 id="mechanik"><span data-l="de">Mechanik</span><span data-l="en">Mechanics</span></h2>
 <div class="two">
@@ -72,24 +83,53 @@
 <h2 id="webflash"><span data-l="de">Im Browser flashen</span><span data-l="en">Flash from your browser</span></h2>
 <p><span data-l="de">Der schnellste Weg: kein PlatformIO, keine Installation. Du brauchst Chrome, Edge oder Opera am Computer (nicht Firefox, Safari oder Smartphone) und ein USB-C-Kabel zur Waage.</span><span data-l="en">The fastest way: no PlatformIO, no install. You need Chrome, Edge or Opera on a computer (not Firefox, Safari or a phone) and a USB-C cable to the scale.</span></p>
 <div class="flashbox">
-  <esp-web-install-button manifest="firmware/manifest.json">
+  <div class="cta">
+  <esp-web-install-button id="fw-install" manifest="firmware/manifest.json">
     <button slot="activate" class="btn big"><span data-l="de">Firmware installieren</span><span data-l="en">Install firmware</span></button>
     <span slot="unsupported" class="muted"><span data-l="de">Dieser Browser unterstützt kein Web Serial. Bitte Chrome, Edge oder Opera am Computer nutzen.</span><span data-l="en">This browser does not support Web Serial. Please use Chrome, Edge or Opera on a computer.</span></span>
     <span slot="not-allowed" class="muted"><span data-l="de">Web Serial funktioniert nur über HTTPS. Öffne die Seite über die GitHub-Pages-Adresse.</span><span data-l="en">Web Serial only works over HTTPS. Open this page via its GitHub Pages address.</span></span>
   </esp-web-install-button>
+  <a class="btn big ghost" href="cad/filament-scale.step" download="Filament-Scale-V1.0.step"><span data-l="de">3D-Modell herunterladen (STEP)</span><span data-l="en">Download 3D model (STEP)</span></a>
+  </div>
+  <p class="fwver muted" id="fw-versions" hidden>
+    <label for="fw-select"><span data-l="de">Firmware-Version:</span><span data-l="en">Firmware version:</span></label>
+    <select id="fw-select"></select>
+  </p>
+  <p class="muted"><span data-l="de">Standard ist die neueste stabile Version. Alle Versionen mit Änderungen und Dateien stehen unter <a href="https://github.com/Drache055/filament-scale/releases">Releases auf GitHub</a>. Das 3D-Modell (Gehäuse V1.0 mit Komponenten) lässt sich in Fusion, FreeCAD und anderen CAD-Programmen öffnen.</span><span data-l="en">The default is the latest stable version. All versions with changes and files are listed under <a href="https://github.com/Drache055/filament-scale/releases">Releases on GitHub</a>. The 3D model (enclosure V1.0 with components) opens in Fusion, FreeCAD and other CAD tools.</span></p>
 </div>
 <ol>
   <li><span data-l="de">Verbinde die Waage per USB-C mit dem Computer.</span><span data-l="en">Connect the scale to your computer via USB-C.</span></li>
   <li><span data-l="de">Klicke auf „Firmware installieren“ und wähle den seriellen Anschluss der Waage aus.</span><span data-l="en">Click “Install firmware” and pick the scale’s serial port.</span></li>
   <li><span data-l="de">Beim ersten Mal „Gerät löschen“ anhaken. Das entfernt alte Einstellungen und sorgt für einen sauberen Start.</span><span data-l="en">On the first install tick “Erase device”. This removes old settings and gives a clean start.</span></li>
   <li><span data-l="de">Warte, bis der Vorgang fertig ist (ca. 1 bis 2 Minuten). Die Waage startet neu.</span><span data-l="en">Wait until it finishes (about 1 to 2 minutes). The scale restarts.</span></li>
+  <li><span data-l="de">Schließe das Installationsfenster und richte die Waage mit der Maske darunter ein.</span><span data-l="en">Close the install dialog and set up the scale with the form below.</span></li>
 </ol>
-<p class="note"><span data-l="de"><b>Danach:</b> Auf dem Display steht „WLAN einrichten: Filamentwaage-Setup“ mit einem <b>Passwort</b>. Das Passwort erzeugt die Waage beim ersten Start zufällig, jede Waage hat ein eigenes. Verbinde dich damit, wie in der <a href="anleitung.html">Anleitung</a> beschrieben.</span><span data-l="en"><b>Afterwards:</b> the display shows “Set up WiFi: Filamentwaage-Setup” together with a <b>password</b>. The scale generates it randomly at first boot, every scale has its own. Join with it as described in the <a href="anleitung.html">user guide</a>.</span></p>
+<h3 id="einrichten"><span data-l="de">Waage einrichten (WLAN und Admin-Passwort)</span><span data-l="en">Set up the scale (Wi-Fi and admin password)</span></h3>
+<p><span data-l="de">Direkt nach dem Flashen, über dasselbe USB-Kabel. Schließe zuerst das Installationsfenster. Ein Hotspot ist dafür nicht nötig.</span><span data-l="en">Right after flashing, over the same USB cable. Close the install dialog first. No hotspot needed.</span></p>
+<div class="flashbox">
+  <form id="setup-form" class="setup" autocomplete="off">
+    <label><span data-l="de">WLAN-Name (SSID)</span><span data-l="en">Wi-Fi name (SSID)</span>
+      <span class="row"><input name="ssid" list="setup-ssids" required maxlength="32" autocomplete="off"><button type="button" id="setup-scan" class="btn ghost"><span data-l="de">Netzwerke suchen</span><span data-l="en">Scan networks</span></button></span></label>
+    <datalist id="setup-ssids"></datalist>
+    <label><span data-l="de">WLAN-Passwort (leer bei offenem WLAN)</span><span data-l="en">Wi-Fi password (empty for an open network)</span>
+      <input name="wifipw" type="password" maxlength="63" autocomplete="off"></label>
+    <label><span data-l="de">Neues Admin-Passwort (4 bis 32 Zeichen)</span><span data-l="en">New admin password (4 to 32 characters)</span>
+      <input name="adminpw" type="password" required minlength="4" maxlength="32" autocomplete="new-password"></label>
+    <label><span data-l="de">Admin-Passwort wiederholen</span><span data-l="en">Repeat admin password</span>
+      <input name="adminpw2" type="password" required minlength="4" maxlength="32" autocomplete="new-password"></label>
+    <p><button type="submit" id="setup-go" class="btn big"><span data-l="de">Waage einrichten</span><span data-l="en">Set up scale</span></button></p>
+    <p id="setup-status" class="setup-status" role="status" aria-live="polite"></p>
+  </form>
+  <p id="setup-unsupported" class="muted" hidden><span data-l="de">Dieser Browser unterstützt kein Web Serial. Bitte Chrome, Edge oder Opera am Computer nutzen oder den Hotspot verwenden.</span><span data-l="en">This browser does not support Web Serial. Please use Chrome, Edge or Opera on a computer, or use the hotspot.</span></p>
+  <p class="muted"><span data-l="de">Die Waage verbindet sich sofort mit dem WLAN und speichert die Daten erst, wenn das klappt. Die Passwörter gehen nur per USB an die Waage, werden nirgends gespeichert und nicht protokolliert. Fragt der Browser erneut nach dem Anschluss, wähle wieder die Waage. Antwortet sie nicht, Stecker kurz ziehen und erneut versuchen.</span><span data-l="en">The scale connects to the Wi-Fi right away and only saves the data once that works. The passwords only go to the scale over USB, are not stored anywhere and not logged. If the browser asks for the port again, pick the scale again. If it does not answer, unplug it briefly and retry.</span></p>
+</div>
+<p class="note"><span data-l="de"><b>Ohne USB-Einrichtung (Rückfall):</b> Hat die Waage kein WLAN gespeichert, steht auf dem Display „WLAN einrichten: Filamentwaage-Setup“ mit einem <b>Passwort</b>. Das Passwort erzeugt die Waage beim ersten Start zufällig, jede Waage hat ein eigenes. Verbinde dich damit, wie in der <a href="anleitung.html">Anleitung</a> beschrieben, und ändere danach das Admin-Passwort.</span><span data-l="en"><b>Without USB setup (fallback):</b> if the scale has no Wi-Fi saved, the display shows “Set up WiFi: Filamentwaage-Setup” together with a <b>password</b>. The scale generates it randomly at first boot, every scale has its own. Join with it as described in the <a href="anleitung.html">user guide</a> and change the admin password afterwards.</span></p>
 <ul>
   <li><span data-l="de">Verbindet sich der Browser nicht, halte die <b>BOOT</b>-Taste gedrückt, während du das USB-Kabel einsteckst, und versuche es noch einmal.</span><span data-l="en">If the browser cannot connect, hold the <b>BOOT</b> button while plugging in the USB cable and try again.</span></li>
   <li><span data-l="de">Das Web-Image ist ein Standard-Build: kein voreingestelltes WLAN, die Spoolman-Adresse steht auf <code>http://spoolman.local:7912</code> und lässt sich in der Weboberfläche ändern, das Theme hat die Standardwerte.</span><span data-l="en">The web image is a stock build: no preset Wi-Fi, the Spoolman address defaults to <code>http://spoolman.local:7912</code> and can be changed in the web UI, the theme uses its defaults.</span></li>
-  <li><span data-l="de">Die Datei wird bei jedem Release automatisch aus dem Quellcode gebaut. Wer es selbst bauen will, nutzt den Weg darunter.</span><span data-l="en">The file is built automatically from the source for every release. If you prefer to build it yourself, use the route below.</span></li>
+  <li><span data-l="de">Die Datei wird bei jeder stabilen Release automatisch aus dem Quellcode gebaut. Wer es selbst bauen will, nutzt den Weg darunter.</span><span data-l="en">The file is built automatically from the source for every stable release. If you prefer to build it yourself, use the route below.</span></li>
 </ul>
+<p class="note"><span data-l="de"><b>Nur einmal flashen:</b> Neue Versionen installierst du danach direkt in der Weboberfläche der Waage unter <b>System → Firmware-Update</b> („Nach Updates suchen“, „Jetzt aktualisieren“). Kabel und Web-Flasher brauchst du dafür nicht mehr. Gilt ab der ersten Firmware mit dieser Funktion.</span><span data-l="en"><b>Flash only once:</b> after that you install new versions right in the scale’s web UI under <b>System → Firmware update</b> (“Check for updates”, “Update now”). No cable or web flasher needed any more. Applies from the first firmware with this feature.</span></p>
 
 <h2 id="flashen"><span data-l="de">Selbst bauen und flashen</span><span data-l="en">Build and flash yourself</span></h2>
 <p><span data-l="de">Du brauchst <a href="https://platformio.org/">PlatformIO</a> (VS Code oder CLI).</span><span data-l="en">You need <a href="https://platformio.org/">PlatformIO</a> (VS Code or CLI).</span></p>
@@ -116,12 +156,12 @@ OTA_PASSWORD=&lt;device-password&gt; pio run -e waage-ota -t uploadfs    # Theme
   <li><span data-l="de"><b>NFC:</b> Menü → NFC zeigt den aufliegenden Tag. Einen Box-Tag und einen Filament-Tag schreiben.</span><span data-l="en"><b>NFC:</b> Menu → NFC shows the tag on the scale. Write a box tag and a filament tag.</span></li>
   <li><span data-l="de"><b>Spoolman:</b> URL eintragen, Status auf der Webseite prüfen, Spule zuordnen.</span><span data-l="en"><b>Spoolman:</b> enter the URL, check the status in the web UI, assign a spool.</span></li>
   <li><span data-l="de"><b>Erster Durchlauf</b> mit einer Testspule, bevor du echte Bestände aktualisierst.</span><span data-l="en"><b>First run</b> with a test spool before you update real inventory.</span></li>
-  <li><span data-l="de"><b>Zugang ändern:</b> Admin-Passwort und Geräte-PIN auf der Webseite unter Benutzer → Admin setzen.</span><span data-l="en"><b>Change credentials:</b> set admin password and device PIN in the web UI under Users → Admin.</span></li>
+  <li><span data-l="de"><b>Zugang ändern:</b> Geräte-PIN (und, falls nicht per USB eingerichtet, das Admin-Passwort) auf der Webseite unter Benutzer → Admin setzen.</span><span data-l="en"><b>Change credentials:</b> set the device PIN (and, if not set up via USB, the admin password) in the web UI under Users → Admin.</span></li>
 </ol>
 
 <h2 id="tipps"><span data-l="de">Tipps &amp; Probleme</span><span data-l="en">Tips &amp; problems</span></h2>
 <table>
-  <tr><th><span data-l="de">Feste Anzeige wie −67 g</span><span data-l="en">Fixed reading like −67 g</span></th><td><span data-l="de">HX711 liefert keine Daten (nicht angeschlossen). Im Log erscheint „ungültige Lesungen verworfen“. Tritt das mit angeschlossenem HX711 auf, ist die Versorgung gestört: Kondensatoren ergänzen, Verdrahtung prüfen.</span><span data-l="en">The HX711 delivers no data (not connected). The log shows “invalid readings discarded”. If it happens while connected, power is unstable: add capacitors, check wiring.</span></td></tr>
+  <tr><th><span data-l="de">Feste Anzeige wie −67 g</span><span data-l="en">Fixed reading like −67 g</span></th><td><span data-l="de">Der Wägesensor liefert keine Daten (nicht angeschlossen, falscher Sensortyp oder falsche Pins). Im Log erscheint „ungültige Lesungen verworfen“. Tritt das mit angeschlossenem HX711 auf, ist die Versorgung gestört: Kondensatoren ergänzen, Verdrahtung prüfen.</span><span data-l="en">The load sensor delivers no data (not connected, wrong sensor type or wrong pins). The log shows “invalid readings discarded”. If it happens while connected, power is unstable: add capacitors, check wiring.</span></td></tr>
   <tr><th><span data-l="de">Gewicht negativ beim Auflegen</span><span data-l="en">Weight goes negative when loading</span></th><td><span data-l="de">Zelle falsch herum eingebaut. Pfeil muss in Lastrichtung zeigen.</span><span data-l="en">Cell mounted the wrong way. The arrow must point in load direction.</span></td></tr>
   <tr><th><span data-l="de">Tag wird nicht gelesen</span><span data-l="en">Tag is not read</span></th><td><span data-l="de">Abstand zur Antenne unter 4 cm halten, Metall in der Nähe vermeiden. Meldet das Log „Firmware-Abfrage fehlgeschlagen“, antwortet das Modul nicht: DIP-Schalter (SPI) und Verdrahtung prüfen. Die Waage versucht es alle 15 s erneut.</span><span data-l="en">Keep the distance to the antenna under 4 cm and avoid nearby metal. If the log says “Firmware-Abfrage fehlgeschlagen” the module does not answer: check DIP switches (SPI) and wiring. The scale retries every 15 s.</span></td></tr>
   <tr><th><span data-l="de">Meldung „Invalid IO 255“</span><span data-l="en">“Invalid IO 255” message</span></th><td><span data-l="de">Kommt von der Adafruit-Bibliothek (kein IRQ-/Reset-Pin) und ist harmlos.</span><span data-l="en">Comes from the Adafruit library (no IRQ/reset pin) and is harmless.</span></td></tr>
@@ -142,5 +182,22 @@ pio test -e native</code></pre>
 </div></footer>
 <script type="module" src="https://unpkg.com/esp-web-tools@10.1.1/dist/web/install-button.js?module"></script>
 <script src="app.js"></script>
+<script src="setup.js"></script>
+<script>
+(function(){
+  var box=document.getElementById('fw-versions'),sel=document.getElementById('fw-select'),btn=document.getElementById('fw-install');
+  fetch('firmware/versions.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():[]}).then(function(list){
+    if(!list.length)return;
+    list.forEach(function(v,i){
+      var o=document.createElement('option');
+      o.value=i?'firmware/'+v.tag+'/manifest.json':'firmware/manifest.json';
+      o.textContent=v.tag+(v.date?' · '+v.date:'');
+      sel.appendChild(o);
+    });
+    sel.onchange=function(){btn.setAttribute('manifest',sel.value);btn.manifest=sel.value};
+    box.hidden=false;
+  }).catch(function(){});
+})();
+</script>
 </body>
 </html>

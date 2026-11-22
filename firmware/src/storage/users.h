@@ -11,6 +11,7 @@ struct User {
   uint8_t lang = 0;  // eigene Sprache: 0 = Gerätesprache, 1 = Deutsch, 2 = Englisch
   bool canTare = false;  // Recht, die Waage am Gerät zu tarieren (vergibt der Admin)
   bool canCatalog = false;  // Recht, Filament-Typen und Hersteller zu pflegen (vergibt der Admin)
+  bool weighOnly = false;   // Rolle "Nur wiegen": am Gerät nur der einfache Wiegeablauf, kein Spoolman (vergibt der Admin)
 };
 
 void usersBegin();
@@ -20,6 +21,7 @@ bool usersAdd(const char *name, String &error, uint16_t *newId = nullptr);
 bool usersRemove(uint16_t id);
 bool usersSetTare(uint16_t id, bool allowed);
 bool usersSetCatalog(uint16_t id, bool allowed);
+bool usersSetWeighOnly(uint16_t id, bool on);
 bool usersSetLang(uint16_t id, uint8_t lang);  // 0 = Gerätesprache, 1 = Deutsch, 2 = Englisch
 // Web-PIN (4 bis 6 Ziffern), nur als Salted-SHA-256-Hash im NVS. ID 0 = Generic-Zugang (nur wiegen und NFC lesen).
 bool usersSetPin(uint16_t id, const char *pin, String &error);  // leerer Text entfernt die PIN
@@ -33,4 +35,4 @@ bool usersFindByName(const char *name, User &out);  // Groß-/Kleinschreibung eg
 bool usersGenericEnabled();
 void usersSetGenericEnabled(bool on);
 
-String usersJson();                         // [{"id":1,"name":"Fabian","lang":"de","tare":false}], lang "" = Gerätesprache, tag false = Tag neu schreiben
+String usersJson();                         // [{"id":1,"name":"Fabian","lang":"de","tare":false,"catalog":false,"weigh_only":false,"pin":false,"tag":true}], lang "" = Gerätesprache, tag false = Tag neu schreiben

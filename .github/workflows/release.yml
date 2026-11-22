@@ -1,0 +1,86 @@
+name: Release
+
+# Ein Tag wie v0.1 oder v1.2 erzeugt eine GitHub-Release mit Firmware und STEP-Datei als Assets.
+# Tags mit Bindestrich (z. B. v1.2-beta) werden Pre-Releases und landen nicht im Web-Flasher.
+# Stabile Versionen kommen nach docs/firmware/<tag>/; die höchste ist der Standard im Web-Flasher.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+      FW_VERSION: ${{ github.ref_name }}  # eingebettete Version (tools/version.py), Grundlage für das Online-Update
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install platformio
+
+      - name: Firmware bauen (Standard-Vorlage, Geräte-Passwort wird beim ersten Start erzeugt)
+        working-directory: firmware
+        run: |
+          cp include/secrets.h.example include/secrets.h
+          pio run -e waage
+
+      - name: Assets zusammenstellen
+        run: |
+          mkdir -p out
+          cp firmware/.pio/build/waage/firmware.factory.bin "out/filament-scale-${TAG}-factory.bin"
+          cp firmware/.pio/build/waage/firmware.bin "out/filament-scale-${TAG}-ota.bin"
+          cp docs/cad/filament-scale.step "out/filament-scale-${TAG}.step"
+
+      - name: Pre-Release?
+        id: kind
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            pre=$(gh release view "$TAG" --json isPrerelease -q .isPrerelease)
+          elif [[ "$TAG" == *-* ]]; then
+            pre=true
+          else
+            pre=false
+          fi
+          echo "prerelease=$pre" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub-Release anlegen oder ergänzen
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber
+          else
+            flags="--generate-notes --verify-tag"
+            [ "${{ steps.kind.outputs.prerelease }}" = "true" ] && flags="$flags --prerelease"
+            gh release create "$TAG" out/* --title "$TAG" $flags
+          fi
+
+      - name: Web-Flasher aktualisieren (nur stabile Versionen)
+        if: steps.kind.outputs.prerelease == 'false'
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          python3 tools/update_flasher.py "$TAG" firmware/.pio/build/waage/firmware.factory.bin
+          git config user.name "Drache055"
+          git config user.email "98689959+Drache055@users.noreply.github.com"
+          git add docs/firmware
+          if git diff --cached --quiet; then
+            echo "Keine Änderung"
+          else
+            git commit -m "Web-Flasher: Firmware $TAG"
+            git push origin main
+          fi
+
+      - name: Pages neu bauen
+        if: steps.kind.outputs.prerelease == 'false'
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true

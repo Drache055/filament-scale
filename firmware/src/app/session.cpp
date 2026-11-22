@@ -8,6 +8,7 @@
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "storage/admin.h"
+#include "storage/devmode.h"
 
 namespace {
 
@@ -48,6 +49,9 @@ void handleTag(const NfcState &n) {
       setNotice(tr(Str::AdminTagUnknown), 1);
       logPrintln("[ADMIN] Unbekannter oder ungültiger Admin-Tag");
     }
+  } else if (n.content.kind == TagKind::User && devModeSimple()) {
+    // Einfache Waage: keine Anmeldung, Benutzer-Tags werden ignoriert
+    logPrintln("[USER] Einfache Waage: Benutzer-Tag ignoriert");
   } else if (n.content.kind == TagKind::User) {
     User u;
     bool known = n.content.user.id > 0 && usersFind((uint16_t)n.content.user.id, u);
@@ -75,7 +79,9 @@ void handleTag(const NfcState &n) {
     }
   } else {
     // Spulen-Tags (und Tags ohne bekanntes Format, z. B. eine Spule mit fremdem Tag) in Spoolman nachschlagen
-    if (n.content.kind == TagKind::Spool || n.content.kind == TagKind::Unknown) {
+    // Nicht in der einfachen Waage und nicht für Benutzer mit "Nur wiegen" (kein Spoolman)
+    if ((n.content.kind == TagKind::Spool || n.content.kind == TagKind::Unknown) && !devModeSimple() &&
+        !sessionUserWeighOnly()) {
       spoolmanRequestLookup(n.uid, n.content.kind == TagKind::Spool ? n.content.spool.spoolmanId : -1);
     }
   }
@@ -104,7 +110,10 @@ void sessionTask(void *) {
     uint16_t id = current.id;
     bool wasActive = active;
     xSemaphoreGive(mutex);
-    if (expire) {
+    if (wasActive && devModeSimple()) {
+      logPrintln("[USER] Abgemeldet (Einfache Waage)");
+      sessionLogout();
+    } else if (expire) {
       logPrintln("[USER] Abgemeldet (Zeitüberschreitung)");
       sessionLogout();
     } else if (wasActive) {
@@ -141,6 +150,15 @@ bool sessionUserMayTare() {
   xSemaphoreGive(mutex);
   return v;
 }
+
+bool sessionUserWeighOnly() {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  bool v = active && current.weighOnly;
+  xSemaphoreGive(mutex);
+  return v;
+}
+
+bool sessionSimpleWeighAllowed() { return devModeSimple() || sessionUserWeighOnly(); }
 
 void sessionLogout() {
   xSemaphoreTake(mutex, portMAX_DELAY);

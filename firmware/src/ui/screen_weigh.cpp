@@ -5,11 +5,13 @@
 
 #include "app/session.h"
 #include "config.h"
+#include "core/spool_url.h"
 #include "core/weigh_core.h"
 #include "i18n/i18n.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "scale/scale.h"
+#include "storage/drying.h"
 #include "screens.h"
 #include "theme.h"
 #include "ui.h"
@@ -18,13 +20,22 @@
 // Ein Timer (200 ms) wertet Waage und Tag aus und baut bei jedem Zustandswechsel den Screen neu auf.
 namespace {
 
+// Vorschlag für die Nummer auf "Neue Box anlegen": nach jedem erfolgreich beschriebenen Box-Tag die nächste.
+// Annahme: Es gibt keine Liste vorhandener Boxen, der Wert gilt nur bis zum Neustart.
+int newBoxSuggestion = 1;
+
 struct Ctx {
   WeighFlow flow;
   SpoolInfo spool;
+  char spoolUid[21] = "";     // Tag, der den Ablauf gestartet hat (nie als neue Box anbieten)
+  char newBoxUid[21] = "";    // leerer/unbekannter Tag, für den "Neue Box anlegen" offen ist
+  int newBoxNumber = 1;
+  bool newBoxWriting = false;  // ein Schreibauftrag von "Neue Box anlegen" wurde gestellt
   char owner[24] = "";
   char boxName[65] = "";
   float emptySpool = -1;      // aus Spoolman oder manuell
   bool emptyManual = false;
+  bool archive = false;       // leere Spule beim Speichern archivieren und Tag lösen
   WeighState shown = WeighState::Idle;
   lv_timer_t *timer = nullptr;
   uint32_t writeSeq = 0;      // Ergebnis-Zähler vor dem Senden
@@ -39,8 +50,14 @@ struct Ctx {
   lv_obj_t *weight = nullptr;
   lv_obj_t *info = nullptr;
   lv_obj_t *hint = nullptr;
+  lv_obj_t *length = nullptr;  // Länge in m (nur wenn Dichte und Durchmesser bekannt)
   lv_obj_t *emptyLabel = nullptr;
   lv_obj_t *saveBtn = nullptr;
+  lv_obj_t *qrOverlay = nullptr;  // QR-Code zur Spule (Kind des Screens, verschwindet mit ihm)
+  lv_obj_t *archiveRow = nullptr;  // nur sichtbar bei (fast) leerer Spule
+  lv_obj_t *archiveLabel = nullptr;
+  lv_obj_t *boxNumber = nullptr;  // Neue Box: gewählte Nummer
+  lv_obj_t *writeInfo = nullptr;  // Neue Box: Schreibstatus
 };
 
 Ctx *ctx = nullptr;
@@ -78,7 +95,128 @@ lv_obj_t *makeRow(lv_obj_t *scr) {
 }
 
 void onCancel(lv_event_t *) { if (ctx) ctx->reqCancel = true; }
+
+// ---- Neue Box anlegen ----
+void newBoxShowNumber() {
+  if (ctx && ctx->boxNumber) {
+    lv_label_set_text_fmt(ctx->boxNumber, "BOX-%02d", ctx->newBoxNumber);
+  }
+}
+
+// Eigenen Schreibauftrag beim Verlassen von "Neue Box anlegen" beenden und quittieren, damit Home wieder Tags
+// auswertet (dort nur bei Idle). Fremde Aufträge (Webseite) bleiben unberührt.
+void newBoxReleaseWrite() {
+  if (!ctx || !ctx->newBoxWriting) return;
+  nfcCancelWrite();
+  nfcAcknowledgeWrite();
+  ctx->newBoxWriting = false;
+}
+
+void onNewBoxStep(lv_event_t *e) {
+  if (!ctx) return;
+  newBoxReleaseWrite();  // ein noch wartender Auftrag gehört zur alten Nummer
+  int n = ctx->newBoxNumber + (int)(intptr_t)lv_event_get_user_data(e);
+  ctx->newBoxNumber = n < 1 ? 1 : (n > 99 ? 99 : n);
+  newBoxShowNumber();
+  if (ctx->writeInfo) lv_label_set_text(ctx->writeInfo, "");
+}
+
+void onNewBoxWrite(lv_event_t *) {
+  if (!ctx || !ctx->writeInfo) return;
+  // Geräte-Aufträge schreiben sofort auf den aufliegenden Tag: nur, wenn es noch der Tag der Box ist
+  NfcState n = nfcGet();
+  if (!n.tagPresent || strcmp(n.uid, ctx->newBoxUid) != 0) {
+    lv_label_set_text(ctx->writeInfo, tr(Str::PlaceTag));
+    lv_obj_set_style_text_color(ctx->writeInfo, themeColors().warn, 0);
+    return;
+  }
+  char json[128];
+  if (tagBuildBoxNumber(ctx->newBoxNumber, json, sizeof(json)) == 0 || !nfcRequestWrite(json)) {
+    return;
+  }
+  logPrintf("[FLOW] Neue Box BOX-%02d auf Tag %s\n", ctx->newBoxNumber, ctx->newBoxUid);
+  ctx->newBoxWriting = true;
+  lv_label_set_text(ctx->writeInfo, tr(Str::Writing));
+  lv_obj_set_style_text_color(ctx->writeInfo, themeColors().warn, 0);
+}
+
+// ---- Virtuelles Spulen-Label: QR-Code mit dem Link zur Spule in Spoolman ----
+void onQrClose(lv_event_t *) {
+  if (!ctx || !ctx->qrOverlay) return;
+  lv_obj_delete_async(ctx->qrOverlay);
+  ctx->qrOverlay = nullptr;
+}
+
+void onQrOpen(lv_event_t *) {
+  if (!ctx || ctx->qrOverlay) return;
+  char url[128];
+  if (spoolShowUrl(spoolmanUrl().c_str(), ctx->spool.id, url, sizeof(url)) == 0) return;
+  lv_obj_t *ov = lv_obj_create(lv_screen_active());
+  ctx->qrOverlay = ov;
+  lv_obj_remove_style_all(ov);
+  lv_obj_add_style(ov, &theme().screen, 0);
+  lv_obj_add_flag(ov, LV_OBJ_FLAG_FLOATING);
+  lv_obj_set_size(ov, LV_PCT(100), LV_PCT(100));
+  lv_obj_set_pos(ov, 0, 0);
+  lv_obj_set_flex_flow(ov, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(ov, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_all(ov, themePadding(), 0);
+  lv_obj_set_style_pad_row(ov, themePadding(), 0);
+  lv_obj_remove_flag(ov, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_label_set_text(makeLabel(ov, &theme().body), tr(Str::WfQrHint));
+  lv_obj_t *qr = lv_qrcode_create(ov);
+  lv_qrcode_set_size(qr, 136);
+  lv_qrcode_set_dark_color(qr, lv_color_black());
+  lv_qrcode_set_light_color(qr, lv_color_white());
+  lv_qrcode_update(qr, url, strlen(url));
+  lv_obj_set_style_border_color(qr, lv_color_white(), 0);  // ruhige Zone um den Code
+  lv_obj_set_style_border_width(qr, 6, 0);
+  lv_obj_t *u = makeLabel(ov, &theme().dim);
+  lv_label_set_text(u, url);
+  lv_obj_t *row = makeRow(ov);
+  lv_obj_set_flex_grow(row, 0);
+  uiMakeButton(row, LV_SYMBOL_CLOSE, onQrClose);
+  lv_obj_set_style_margin_top(row, 0, 0);
+}
+
+// Kleines QR-Symbol (drei Positionsmarken und ein paar Punkte), da die Schrift keins mitbringt.
+void drawQrIcon(lv_obj_t *btn) {
+  const lv_color_t fg = themeColors().text;
+  int u = themeButtonHeight() / 10;
+  if (u < 2) u = 2;
+  lv_obj_t *icon = lv_obj_create(btn);
+  lv_obj_remove_style_all(icon);
+  lv_obj_set_size(icon, 7 * u, 7 * u);
+  lv_obj_center(icon);
+  lv_obj_remove_flag(icon, LV_OBJ_FLAG_CLICKABLE);
+  auto block = [&](int gx, int gy, int n, bool hollow) {
+    lv_obj_t *b = lv_obj_create(icon);
+    lv_obj_remove_style_all(b);
+    lv_obj_remove_flag(b, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_pos(b, gx * u, gy * u);
+    lv_obj_set_size(b, n * u, n * u);
+    if (hollow) {
+      lv_obj_set_style_border_color(b, fg, 0);
+      lv_obj_set_style_border_width(b, u, 0);
+      lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
+    } else {
+      lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+      lv_obj_set_style_bg_color(b, fg, 0);
+    }
+  };
+  block(0, 0, 3, true);
+  block(4, 0, 3, true);
+  block(0, 4, 3, true);
+  block(4, 4, 1, false);
+  block(6, 4, 1, false);
+  block(5, 5, 1, false);
+  block(4, 6, 1, false);
+  block(6, 6, 1, false);
+}
+
 void onSave(lv_event_t *) { if (ctx) ctx->reqSave = true; }
+void onArchiveToggle(lv_event_t *) { if (ctx) ctx->archive = !ctx->archive; }
 
 void adjustEmpty(int delta) {
   if (!ctx) return;
@@ -110,7 +248,9 @@ void setTitle(lv_obj_t *scr, const char *text, lv_color_t color) {
 // Baut den Screen zum aktuellen Zustand
 void build() {
   WeighState st = ctx->flow.state();
-  ctx->weight = ctx->info = ctx->hint = ctx->emptyLabel = ctx->saveBtn = nullptr;
+  ctx->weight = ctx->info = ctx->hint = ctx->length = ctx->emptyLabel = ctx->saveBtn = ctx->archiveRow = ctx->archiveLabel = nullptr;
+  ctx->boxNumber = ctx->writeInfo = nullptr;
+  ctx->qrOverlay = nullptr;
   lv_obj_t *scr = uiNewScreen();
   const ThemeColors &c = themeColors();
   char buf[96];
@@ -130,6 +270,11 @@ void build() {
       if (ctx->spool.remaining >= 0) {
         lv_label_set_text_fmt(makeLabel(card, &theme().dim), tr(Str::WfLastRemaining), (int)lroundf(ctx->spool.remaining));
       }
+      if (dryingStatusFor(ctx->spool).state == DryingState::Due) {
+        lv_obj_t *dry = makeLabel(card, &theme().body);
+        lv_label_set_text(dry, tr(Str::DryDue));
+        lv_obj_set_style_text_color(dry, c.warn, 0);
+      }
       ctx->hint = makeLabel(card, &theme().body);
       break;
     }
@@ -139,6 +284,28 @@ void build() {
       ctx->weight = makeLabel(card, &theme().weight);
       ctx->info = makeLabel(card, &theme().body);
       break;
+    }
+    case WeighState::NewBox: {
+      setTitle(scr, tr(Str::WfNewBox), c.text);
+      lv_obj_t *card = makeCard(scr);
+      lv_label_set_text(makeLabel(card, &theme().dim), tr(Str::WfNewBoxHint));
+      lv_label_set_text(makeLabel(card, &theme().dim), tr(Str::BoxNumber));
+      ctx->boxNumber = makeLabel(card, &theme().title);
+      newBoxShowNumber();
+      ctx->writeInfo = makeLabel(card, &theme().body);
+      lv_label_set_text(ctx->writeInfo, "");
+      lv_obj_t *steps = makeRow(scr);
+      uiMakeButton(steps, "-5", onNewBoxStep, false, (void *)(intptr_t)-5);
+      uiMakeButton(steps, "-1", onNewBoxStep, false, (void *)(intptr_t)-1);
+      uiMakeButton(steps, "+1", onNewBoxStep, false, (void *)(intptr_t)1);
+      uiMakeButton(steps, "+5", onNewBoxStep, false, (void *)(intptr_t)5);
+      lv_obj_t *row = makeRow(scr);
+      uiMakeButton(row, tr(Str::Write), onNewBoxWrite);
+      lv_obj_t *cancel = uiMakeButton(row, LV_SYMBOL_CLOSE, onCancel);  // wie in "Bestätigen": eine Hauptaktion
+      lv_obj_set_flex_grow(cancel, 0);
+      lv_obj_set_width(cancel, themeButtonHeight());
+      uiNavigate(scr);
+      return;
     }
     case WeighState::WaitSpool: {
       setTitle(scr, tr(Str::WfPlaceSpool), c.text);
@@ -157,6 +324,7 @@ void build() {
       lv_label_set_text(makeLabel(card, &theme().body), buf);
       lv_label_set_text(makeLabel(card, &theme().dim), tr(Str::WfRemaining));
       ctx->weight = makeLabel(card, &theme().weight);
+      ctx->length = makeLabel(card, &theme().dim);
       ctx->hint = makeLabel(card, &theme().dim);
       if (ctx->emptyManual) {  // kein Leerspulengewicht in Spoolman: Wert von Hand einstellen
         lv_obj_t *row = makeRow(scr);
@@ -169,11 +337,21 @@ void build() {
         ctx->emptyLabel = mid;
         uiMakeButton(row, "+10", onEmptyPlus);
       }
+      ctx->archiveRow = makeRow(scr);
+      ctx->archiveLabel = lv_obj_get_child(uiMakeButton(ctx->archiveRow, "", onArchiveToggle), 0);
+      lv_obj_add_flag(ctx->archiveRow, LV_OBJ_FLAG_HIDDEN);
       lv_obj_t *row = makeRow(scr);
       ctx->saveBtn = uiMakeButton(row, tr(Str::Save), onSave);
       lv_obj_t *cancel = uiMakeButton(row, LV_SYMBOL_CLOSE, onCancel);  // schmal, damit "Speichern" Platz hat
       lv_obj_set_flex_grow(cancel, 0);
       lv_obj_set_width(cancel, themeButtonHeight());
+      if (ctx->spool.id >= 0 && spoolmanUrl().length() > 0) {  // QR-Code zur Spule (virtuelles Label), rechts neben dem Titel
+        lv_obj_t *qr = uiMakeButton(scr, "", onQrOpen);
+        lv_obj_add_flag(qr, LV_OBJ_FLAG_FLOATING);
+        lv_obj_set_size(qr, themeButtonHeight(), themeButtonHeight());
+        lv_obj_align(qr, LV_ALIGN_TOP_RIGHT, 0, 0);
+        drawQrIcon(qr);
+      }
       uiNavigate(scr);
       return;
     }
@@ -247,6 +425,15 @@ void refreshLive(const ScaleReading &r, const NfcState &n) {
         lv_obj_set_style_text_color(ctx->info, c.dim, 0);
       }
       break;
+    case WeighState::NewBox: {
+      lv_color_t col;
+      const char *text = ctx->newBoxWriting ? uiNfcWriteText(nfcWriteStatus(), &col) : nullptr;
+      if (text && ctx->writeInfo) {
+        lv_label_set_text(ctx->writeInfo, text);
+        lv_obj_set_style_text_color(ctx->writeInfo, col, 0);
+      }
+      break;
+    }
     case WeighState::WaitSpool: {
       long rel = lroundf(r.grams - ctx->flow.w1());
       lv_label_set_text_fmt(ctx->weight, "%ld g", rel < 0 ? 0L : rel);
@@ -255,6 +442,14 @@ void refreshLive(const ScaleReading &r, const NfcState &n) {
     case WeighState::Confirm: {
       WeighResult res = currentResult();
       lv_label_set_text_fmt(ctx->weight, "%d g", (int)lroundf(res.remaining));
+      if (ctx->length) {
+        float m = filamentLengthM(res.remaining, ctx->spool.density, ctx->spool.diameter);
+        if (m >= 0.5f) {
+          lv_label_set_text_fmt(ctx->length, tr(Str::WfLength), (int)lroundf(m));
+        } else {
+          lv_label_set_text(ctx->length, "");
+        }
+      }
       lv_obj_set_style_text_color(ctx->weight, res.check == WeighCheck::EmptyTooBig ? c.error : c.text, 0);
       switch (res.check) {
         case WeighCheck::EmptyTooBig: setHint(tr(Str::WfCheckEmpty), c.error); break;
@@ -269,6 +464,16 @@ void refreshLive(const ScaleReading &r, const NfcState &n) {
           lv_obj_remove_flag(ctx->saveBtn, LV_OBJ_FLAG_HIDDEN);
         }
       }
+      if (ctx->archiveRow) {
+        bool low = res.check != WeighCheck::EmptyTooBig && res.remaining <= WEIGH_ARCHIVE_MAX_G;
+        if (!low) ctx->archive = false;
+        if (low) {
+          lv_obj_remove_flag(ctx->archiveRow, LV_OBJ_FLAG_HIDDEN);
+        } else {
+          lv_obj_add_flag(ctx->archiveRow, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ctx->archiveLabel) lv_label_set_text(ctx->archiveLabel, tr(ctx->archive ? Str::WfArchiveOn : Str::WfArchiveOff));
+      }
       if (ctx->emptyLabel) {
         lv_label_set_text_fmt(ctx->emptyLabel, "%s: %d g", tr(Str::WfEmptySpool), (int)lroundf(ctx->emptySpool));
       }
@@ -280,6 +485,7 @@ void refreshLive(const ScaleReading &r, const NfcState &n) {
 }
 
 void endFlow(WeighEnd why) {
+  newBoxReleaseWrite();
   lv_timer_delete(ctx->timer);
   delete ctx;
   ctx = nullptr;
@@ -299,6 +505,7 @@ void tick(lv_timer_t *) {
   in.stable = r.valid && r.calibrated && r.stable;
   in.empty = in.stable && fabsf(r.grams) <= SCALE_EMPTY_G;
   in.boxTag = n.tagPresent && n.readSeq == n.seq && n.content.kind == TagKind::Box && n.content.box.name[0];
+  in.blankTag = n.tagPresent && n.readSeq == n.seq && tagIsBlankForBox(n.content) && strcmp(n.uid, ctx->spoolUid) != 0;
   in.cancel = ctx->reqCancel;
   in.save = ctx->reqSave;
   ctx->reqCancel = ctx->reqSave = false;
@@ -326,6 +533,18 @@ void tick(lv_timer_t *) {
     endFlow(ctx->flow.end());
     return;
   }
+  if (after != before && after == WeighState::NewBox) {
+    strlcpy(ctx->newBoxUid, n.uid, sizeof(ctx->newBoxUid));
+    ctx->newBoxNumber = newBoxSuggestion;
+    logPrintf("[FLOW] Box-Tag %s leer/unbekannt: Neue Box anlegen\n", n.uid);
+  }
+  if (after != before && before == WeighState::NewBox) {
+    if (ctx->newBoxWriting && nfcWriteStatus() == NfcWrite::Ok) {
+      newBoxSuggestion = ctx->newBoxNumber < 99 ? ctx->newBoxNumber + 1 : 1;
+    }
+    newBoxReleaseWrite();
+    ctx->newBoxUid[0] = '\0';
+  }
   if (after != before) {
     if (after == WeighState::Confirm) {
       ctx->emptyManual = ctx->spool.emptySpool < 0;
@@ -335,7 +554,8 @@ void tick(lv_timer_t *) {
       WeighResult res = currentResult();
       ctx->savedRemaining = res.remaining;
       ctx->writeSeq = spoolmanWriteResult().seq;
-      spoolmanRequestUpdate(ctx->spool.id, res.remaining, ctx->boxName, ctx->owner[0] ? ctx->owner : nullptr);
+      spoolmanRequestUpdate(ctx->spool.id, res.remaining, ctx->boxName, ctx->owner[0] ? ctx->owner : nullptr, ctx->archive,
+                            ctx->spoolUid);
       logPrintf("[FLOW] Spule %d: W1 %.1f, W2 %.1f, Leerspule %.0f -> Rest %.1f g, Box %s\n", ctx->spool.id,
                 ctx->flow.w1(), ctx->flow.w2(), ctx->emptySpool, res.remaining, ctx->boxName);
     }
@@ -350,12 +570,13 @@ bool weighFlowActive() { return ctx != nullptr; }
 
 void weighFlowAbort() {
   if (!ctx) return;
+  newBoxReleaseWrite();
   lv_timer_delete(ctx->timer);
   delete ctx;
   ctx = nullptr;
 }
 
-void weighFlowStart(const SpoolInfo &spool, const char *owner) {
+void weighFlowStart(const SpoolInfo &spool, const char *spoolUid, const char *owner) {
   if (ctx) return;
   ctx = new Ctx();
   WeighConfig cfg;
@@ -364,6 +585,7 @@ void weighFlowStart(const SpoolInfo &spool, const char *owner) {
   cfg.showSpoolMs = WEIGH_SHOW_SPOOL_MS;
   ctx->flow = WeighFlow(cfg);
   ctx->spool = spool;
+  strlcpy(ctx->spoolUid, spoolUid ? spoolUid : "", sizeof(ctx->spoolUid));
   strlcpy(ctx->owner, owner ? owner : "", sizeof(ctx->owner));
   ctx->flow.start(millis());
   logPrintf("[FLOW] Start mit Spule %d (%s %s)\n", spool.id, spool.vendor, spool.material);

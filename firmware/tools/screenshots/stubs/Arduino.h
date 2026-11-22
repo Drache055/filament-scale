@@ -9,7 +9,12 @@
 #include <string>
 
 uint32_t millis();
+// glibc ab 2.38 deklariert strlcpy selbst (mit throw()); eine eigene Deklaration kollidiert dann.
+#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 38))
+#define STUB_LIBC_STRLCPY 1
+#else
 size_t strlcpy(char *dst, const char *src, size_t size);
+#endif
 
 template <class T> inline T max(T a, T b) { return a > b ? a : b; }
 template <class T> inline T min(T a, T b) { return a < b ? a : b; }

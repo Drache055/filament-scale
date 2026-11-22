@@ -14,6 +14,8 @@
 #include "display/display.h"
 #include "i18n/i18n.h"
 #include "util/log.h"
+#include "core/diag_core.h"
+#include "net/fwupdate.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "scale/scale.h"
@@ -21,7 +23,9 @@
 #include "net/websession.h"
 #include "storage/admin.h"
 #include "storage/catalog.h"
+#include "storage/devmode.h"
 #include "storage/devicepw.h"
+#include "storage/drying.h"
 #include "storage/users.h"
 #include "web_page.h"
 #include "wifi.h"
@@ -175,6 +179,7 @@ static void handleStatus() {
   doc["stable"] = r.stable;
   doc["overload"] = r.overload;
   doc["weight"] = r.grams;
+  doc["sensor"] = sensorTypeName(scaleSensorActive().type);
   NfcState n = nfcGet();
   JsonObject nfc = doc["nfc"].to<JsonObject>();
   nfc["module"] = n.moduleReady;
@@ -185,6 +190,7 @@ static void handleStatus() {
                 : n.content.kind == TagKind::User  ? "user"
                 : n.content.kind == TagKind::Admin ? "admin"
                                                    : "unknown";
+  nfc["format"] = n.content.openPrintTag ? "openprinttag" : n.hasNdef ? "json" : "";
   // Admin- und Benutzer-Tags enthalten ein Geheimnis (Token), ihr Inhalt geht nicht an die Webseite
   nfc["json"] = n.content.kind == TagKind::Admin || n.content.kind == TagKind::User ? "" : n.json;
   User current;
@@ -192,6 +198,7 @@ static void handleStatus() {
   doc["role"] = w.role == WebRole::Admin ? "admin" : w.role == WebRole::User ? "user" : "generic";
   doc["tare"] = mayTare(w);
   doc["catalog"] = mayEditCatalog(w);
+  doc["simple"] = devModeSimple();  // Betriebsart "Einfache Waage"
   // Sprache der Seite: eigene Sprache des Benutzers, sonst die Gerätesprache
   Lang lang = i18nDefault();
   User me;
@@ -210,6 +217,9 @@ static void handleStatus() {
     doc["psram_free"] = ESP.getFreePsram();
     doc["slot"] = esp_ota_get_running_partition()->label;
     doc["admin_lock"] = adminLockEnabled();
+    doc["fw_version"] = fwVersion();
+    FwUpdStatus fu = fwUpdateStatus();
+    doc["fw_update"] = fu.available ? fu.latest : "";
   }
   sendJson(doc);
 }
@@ -361,7 +371,7 @@ static void handleTare() {
   if (scaleTare()) {
     server.send(200, "text/plain", "ok");
   } else {
-    server.send(409, "text/plain", "HX711 liefert keine Daten");
+    server.send(409, "text/plain", "Wägesensor liefert keine Daten");
   }
 }
 
@@ -377,7 +387,79 @@ static void handleCalibrate() {
   if (scaleCalibrate(grams)) {
     server.send(200, "text/plain", "ok");
   } else {
-    server.send(409, "text/plain", "Signal zu klein oder HX711 ohne Daten (erst Tara, dann Gewicht auflegen)");
+    server.send(409, "text/plain", "Signal zu klein oder Wägesensor ohne Daten (erst Tara, dann Gewicht auflegen)");
+  }
+}
+
+// ---- Wägesensor: Typ und Pins (Admin). Wirksam nach dem Neustart, Kalibrierung gilt pro Sensortyp. ----
+static void sensorToJson(JsonObject o, const SensorConfig &c) {
+  o["type"] = sensorTypeId(c.type);
+  JsonArray pins = o["pins"].to<JsonArray>();
+  for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+    pins.add(c.pin[i]);
+  }
+}
+
+static void handleSensorGet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  sensorToJson(doc["active"].to<JsonObject>(), scaleSensorActive());
+  sensorToJson(doc["stored"].to<JsonObject>(), scaleSensorStored());
+  doc["restart"] = scaleSensorActive() != scaleSensorStored();
+  JsonArray free = doc["free"].to<JsonArray>();
+  int n = 0;
+  const int *p = sensorFreePins(n);
+  for (int i = 0; i < n; i++) {
+    free.add(p[i]);
+  }
+  JsonObject defs = doc["defaults"].to<JsonObject>();
+  for (int t = 0; t < SENSOR_TYPE_COUNT; t++) {
+    SensorConfig d = sensorDefault((SensorType)t);
+    JsonArray a = defs[sensorTypeId(d.type)].to<JsonArray>();
+    for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+      a.add(d.pin[i]);
+    }
+  }
+  String out;
+  serializeJson(doc, out);
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", out);
+}
+
+// Body: {"type":"nau7802","pins":[47,48,-1],"reboot":true}
+static void handleSensorSet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server.arg("plain"))) {
+    server.send(400, "text/plain", "Ungültiges JSON");
+    return;
+  }
+  SensorConfig c;
+  if (!sensorTypeParse(doc["type"] | "", c.type)) {
+    server.send(400, "text/plain", "Unbekannter Sensortyp");
+    return;
+  }
+  JsonArray pins = doc["pins"].as<JsonArray>();
+  if (pins.size() != SENSOR_PIN_COUNT) {
+    server.send(400, "text/plain", "pins: drei Einträge erwartet (-1 = nicht belegt)");
+    return;
+  }
+  for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+    int v = pins[i] | -1;
+    c.pin[i] = (v < -1 || v > 48) ? 127 : (int8_t)v;
+  }
+  const char *err = nullptr;
+  if (!scaleSensorSave(c, err)) {
+    server.send(400, "text/plain", err ? err : "Ungültige Sensorwahl");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+  if (doc["reboot"] | false) {
+    rebootAt = millis() + 600;
   }
 }
 
@@ -744,6 +826,46 @@ static void handleNfcWriteStatus() {
 }
 
 // ---- Spoolman ----
+// Selbstdiagnose (CLAUDE.md 12.7): ein Befund je Komponente, Klartext und Tipp liefert die Webseite
+static void handleDiag() {
+  if (!requireAdmin()) {
+    return;
+  }
+  ScaleReading r = scaleGet();
+  SpoolmanStatus sm = spoolmanStatus();
+  DiagInput in;
+  in.uptimeS = millis() / 1000;
+  in.simple = devModeSimple();
+  in.sensorValid = r.valid;
+  in.calibrated = r.calibrated;
+  in.overload = r.overload;
+  in.nfcReady = nfcGet().moduleReady;
+  in.wifiConnected = wifiConnected();
+  in.wifiHasCreds = wifiHasCredentials();
+  in.wifiRssi = wifiConnected() ? wifiRssi() : 0;
+  in.smChecked = sm.everChecked;
+  in.smReachable = sm.reachable;
+  in.smHttp = sm.httpCode;
+  in.queueCount = spoolmanQueueCount();
+  in.queueDropped = spoolmanQueueDropped();
+  DiagItem items[DIAG_MAX_ITEMS];
+  int n = diagRun(in, items);
+  JsonDocument doc;
+  JsonArray arr = doc["items"].to<JsonArray>();
+  for (int i = 0; i < n; i++) {
+    JsonObject o = arr.add<JsonObject>();
+    o["comp"] = diagCompName(items[i].comp);
+    o["level"] = diagLevelName(items[i].level);
+    o["code"] = items[i].code;
+  }
+  doc["http"] = sm.httpCode;
+  doc["sensor"] = sensorTypeId(scaleSensorActive().type);  // für sensorspezifische Tipps
+  String out;
+  serializeJson(doc, out);
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", out);
+}
+
 static void handleSpoolmanGet() {
   if (!requireAdmin()) {
     return;
@@ -780,6 +902,15 @@ static void handleSpoolmanGet() {
     sp["remaining"] = r.spool.remaining;
     sp["empty_spool"] = r.spool.emptySpool;
     sp["filament_weight"] = r.spool.filamentWeight;
+    sp["last_dried"] = r.spool.lastDried;
+    DryingStatus ds = dryingStatusFor(r.spool);
+    JsonObject dr = sp["drying"].to<JsonObject>();
+    dr["state"] = ds.state == DryingState::Due        ? "due"
+                  : ds.state == DryingState::Ok       ? "ok"
+                  : ds.state == DryingState::NoRecord ? "none"
+                                                      : "off";
+    dr["interval_days"] = ds.intervalDays;
+    dr["days_left"] = ds.daysLeft;
   }
   SpoolmanResult w = spoolmanWriteResult();
   JsonObject wr = doc["write"].to<JsonObject>();
@@ -867,6 +998,53 @@ static void handleSpoolmanLink() {
   server.send(200, "text/plain", "ok");
 }
 
+// Trocknungs-Erinnerung: Einstellungen lesen/schreiben (Admin) und eine Trocknung mit heutigem Datum eintragen
+static void handleDryingGet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  deserializeJson(doc, dryingConfigToJson(dryingConfig()));
+  doc["clock"] = dryingToday() >= 0;
+  sendJson(doc);
+}
+
+static void handleDryingSet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  DryingConfig cfg = dryingConfig();
+  std::string error;
+  if (!dryingConfigFromJson(server.arg("plain").c_str(), cfg, &error)) {
+    server.send(400, "text/plain", error.c_str());
+    return;
+  }
+  if (!dryingSetConfig(cfg)) {
+    server.send(500, "text/plain", "Speichern fehlgeschlagen");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+static void handleDryingLog() {
+  if (!requireAdmin()) {
+    return;
+  }
+  int id = server.arg("id").toInt();
+  char today[11];
+  if (id <= 0) {
+    server.send(400, "text/plain", "id fehlt");
+    return;
+  }
+  if (!dryingTodayText(today)) {
+    server.send(409, "text/plain", "Uhr nicht gestellt");
+    return;
+  }
+  spoolmanRequestMarkDried(id, today);
+  logPrintf("[DRY] Spule %d: getrocknet am %s (Webseite)\n", id, today);
+  server.send(200, "text/plain", "ok");
+}
+
 static void handleQueueFlush() {
   if (!requireAdmin()) {
     return;
@@ -921,6 +1099,34 @@ static void handleSpoolmanCheck() {
 }
 
 // ---- Sprache des Geräts ----
+// Betriebsart: {"simple": true} = Einfache Waage, false = Smarte Waage. Nur der Admin.
+static void handleModeSet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server.arg("plain")) || !doc["simple"].is<bool>()) {
+    server.send(400, "text/plain", "simple (true/false) fehlt");
+    return;
+  }
+  devModeSetSimple(doc["simple"].as<bool>());
+  server.send(200, "text/plain", "ok");
+}
+
+// Rolle "Nur wiegen" eines Benutzers (allow = 1 oder 0)
+static void handleUsersWeighOnly() {
+  if (!requireAdmin()) {
+    return;
+  }
+  uint16_t id = (uint16_t)server.arg("id").toInt();
+  if (!usersSetWeighOnly(id, server.arg("allow") == "1")) {
+    server.send(404, "text/plain", "Benutzer nicht gefunden");
+    return;
+  }
+  sessionUserChanged(id);
+  server.send(200, "application/json", usersJson());
+}
+
 static void handleLanguageSet() {
   if (!requireAdmin()) {
     return;
@@ -1050,6 +1256,80 @@ static void handleReboot() {
   rebootAt = millis() + 600;
 }
 
+// ---- Online-Update (GitHub-Releases) ----
+static void handleUpdateGet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  FwUpdStatus st = fwUpdateStatus();
+  static const char *STATES[] = {"idle", "checking", "ready", "downloading", "done", "error"};
+  JsonDocument doc;
+  doc["version"] = fwVersion();
+  doc["state"] = STATES[(int)st.state];
+  doc["checked"] = st.checked;
+  doc["checked_s"] = st.checkedSecondsAgo;
+  doc["available"] = st.available;
+  doc["downgrade"] = st.downgrade;
+  doc["channel"] = fwChannelName(st.channel);
+  doc["latest_channel"] = fwChannelName(st.latestChannel);
+  doc["no_release"] = st.noRelease;
+  doc["latest"] = st.latest;
+  doc["page_url"] = st.pageUrl;
+  doc["done"] = st.done;
+  doc["total"] = st.total;
+  doc["error"] = st.error;
+  if (server.hasArg("notes")) {
+    bool cut = false;
+    doc["notes"] = fwUpdateNotes(&cut);
+    doc["notes_cut"] = cut;
+  }
+  sendJson(doc);
+}
+
+static void handleUpdateCheck() {
+  if (!requireAdmin()) {
+    return;
+  }
+  if (!wifiConnected()) {
+    server.send(409, "text/plain", "Kein WLAN (im Einrichtungs-Hotspot ist keine Prüfung möglich)");
+    return;
+  }
+  if (!fwUpdateCheckNow()) {
+    server.send(409, "text/plain", "Update läuft bereits");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+// POST /api/update/channel?ch=stable|rc|test
+static void handleUpdateChannel() {
+  if (!requireAdmin()) {
+    return;
+  }
+  FwChannel ch;
+  if (!fwChannelFromName(server.arg("ch").c_str(), ch)) {
+    server.send(400, "text/plain", "Kanal muss stable, rc oder test sein");
+    return;
+  }
+  if (!fwUpdateSetChannel(ch)) {
+    server.send(409, "text/plain", "Update läuft gerade");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+static void handleUpdateInstall() {
+  if (!requireAdmin()) {
+    return;
+  }
+  String error;
+  if (!fwUpdateInstall(error)) {
+    server.send(409, "text/plain", error);
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
 // Captive Portal: Im Hotspot leiten die Prüf-URLs der Betriebssysteme (und jeder fremde Host) auf die Einrichtungsseite
 static bool captiveRedirect() {
   if (!wifiApActive()) {
@@ -1075,6 +1355,8 @@ static void webStart() {
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/tare", HTTP_POST, handleTare);
   server.on("/api/calibrate", HTTP_POST, handleCalibrate);
+  server.on("/api/sensor", HTTP_GET, handleSensorGet);
+  server.on("/api/sensor", HTTP_POST, handleSensorSet);
   server.on("/api/theme", HTTP_GET, handleThemeGet);
   server.on("/api/theme", HTTP_POST, handleThemePost);
   server.on("/api/catalog", HTTP_GET, handleCatalogGet);
@@ -1102,6 +1384,7 @@ static void webStart() {
   server.on("/api/admin/pin", HTTP_POST, handleAdminPin);
   server.on("/api/admin/tag", HTTP_POST, handleAdminTag);
   server.on("/api/nfc/write", HTTP_GET, handleNfcWriteStatus);
+  server.on("/api/diag", HTTP_GET, handleDiag);
   server.on("/api/spoolman", HTTP_GET, handleSpoolmanGet);
   server.on("/api/spoolman", HTTP_POST, handleSpoolmanUrl);
   server.on("/api/spoolman/check", HTTP_POST, handleSpoolmanCheck);
@@ -1112,7 +1395,12 @@ static void webStart() {
   server.on("/api/spoolman/lookup", HTTP_POST, handleSpoolmanLookup);
   server.on("/api/spoolman/update", HTTP_POST, handleSpoolmanUpdate);
   server.on("/api/spoolman/link", HTTP_POST, handleSpoolmanLink);
+  server.on("/api/drying", HTTP_GET, handleDryingGet);
+  server.on("/api/drying", HTTP_POST, handleDryingSet);
+  server.on("/api/drying/log", HTTP_POST, handleDryingLog);
   server.on("/api/language", HTTP_POST, handleLanguageSet);
+  server.on("/api/mode", HTTP_POST, handleModeSet);
+  server.on("/api/users/weigh", HTTP_POST, handleUsersWeighOnly);
   server.on("/api/wifi", HTTP_GET, handleWifiGet);
   server.on("/api/wifi", HTTP_POST, handleWifiSave);
   server.on("/api/wifi/scan", HTTP_GET, handleWifiScan);
@@ -1122,6 +1410,10 @@ static void webStart() {
   server.on("/api/screensaver", HTTP_POST, handleScreensaverSet);
   server.on("/api/log", HTTP_GET, handleLog);
   server.on("/api/reboot", HTTP_POST, handleReboot);
+  server.on("/api/update", HTTP_GET, handleUpdateGet);
+  server.on("/api/update/check", HTTP_POST, handleUpdateCheck);
+  server.on("/api/update/install", HTTP_POST, handleUpdateInstall);
+  server.on("/api/update/channel", HTTP_POST, handleUpdateChannel);
   // Prüf-URLs von Android, iOS/macOS, Windows und Firefox
   for (const char *path : {"/generate_204", "/gen_204", "/hotspot-detect.html", "/library/test/success.html",
                            "/connecttest.txt", "/ncsi.txt", "/fwlink", "/redirect", "/canonical.html", "/success.txt"}) {

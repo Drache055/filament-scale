@@ -6,15 +6,19 @@
 #include "nfc/nfc.h"
 #include "app/session.h"
 #include "bus/i2c_bus.h"
+#include "net/fwupdate.h"
 #include "net/ota.h"
 #include "net/spoolman.h"
+#include "net/usbsetup.h"
 #include "net/webserver.h"
 #include "net/wifi.h"
 #include "scale/scale.h"
 #include <LittleFS.h>
 #include "storage/admin.h"
 #include "storage/devicepw.h"
+#include "storage/devmode.h"
 #include "storage/catalog.h"
+#include "storage/drying.h"
 #include "storage/queue.h"
 #include "storage/users.h"
 #include "ui/ui.h"
@@ -48,11 +52,14 @@ void setup() {
 
   devicePwBegin();  // vor dem net-Task: Hotspot und OTA brauchen das Geräte-Passwort
   adminBegin();  // vor dem net-Task, die Webseite fragt die Sperre ab
+  devModeBegin();  // vor dem net-Task und session/spoolman/ui: alle fragen die Betriebsart ab
+  fwUpdateBegin();  // vor dem net-Task, die Webseite fragt den Update-Zustand ab
   xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 0);
   if (!LittleFS.begin(true)) {
     logPrintln("[BOOT] LittleFS konnte nicht gemountet werden");
   }
   catalogBegin();
+  dryingBegin();
   queueBegin();
   usersBegin();
   i2cBusBegin();  // vor allen Tasks, die den Bus nutzen (Touch, NFC)
@@ -104,14 +111,18 @@ static void handleSerialCommand(String line) {
 void loop() {
   static String line;
   while (Serial.available()) {
-    char c = Serial.read();
-    if (c == '\n' || c == '\r') {
-      if (line.length()) {
-        handleSerialCommand(line);
+    String text;  // Pakete der USB-Einrichtung (Webseite) herausfiltern, der Rest sind Textbefehle
+    usbSetupFeed((uint8_t)Serial.read(), text);
+    for (size_t i = 0; i < text.length(); i++) {
+      char c = text[i];
+      if (c == '\n' || c == '\r') {
+        if (line.length()) {
+          handleSerialCommand(line);
+        }
+        line = "";
+      } else if (line.length() < 200) {
+        line += c;
       }
-      line = "";
-    } else if (line.length() < 200) {
-      line += c;
     }
   }
   vTaskDelay(pdMS_TO_TICKS(50));

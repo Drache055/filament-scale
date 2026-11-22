@@ -2,6 +2,7 @@
 #include <lvgl.h>
 
 #include "net/spoolman.h"
+#include "nfc/nfc.h"
 
 // Gemeinsame Helfer und Navigation. Nur im ui-Task verwenden.
 lv_obj_t *uiMakeButton(lv_obj_t *parent, const char *text, lv_event_cb_t cb, bool fullWidth = false,
@@ -26,6 +27,8 @@ void screenCalibrationOpen();
 void uiOnTare();  // Tara aus dem Home-Screen
 void screenNfcOpen();
 void screenBoxWriteOpen();
+// Statustext zu einem Schreibergebnis (Schreiben, Ok, Fehler). nullptr bei Idle/WaitingForTag. color = Textfarbe.
+const char *uiNfcWriteText(NfcWrite st, lv_color_t *color);
 void screenFilamentTypeOpen();
 void screenFilamentMakerOpen();
 void screenFilamentWriteOpen();
@@ -34,7 +37,15 @@ void uiLanguageHandled();  // nach einer Sprachänderung am Gerät aufrufen, dam
 void screenFilamentColorOpen();
 void screenAssignSpoolOpen();  // nimmt den aktuell aufliegenden Tag (UID + Inhalt)
 
-// Wiegeablauf (Differenzwägung): Spule erkannt -> Box -> Spule in die Box -> Bestätigen -> Spoolman. Nur im ui-Task.
+// Wiegeablauf (Differenzwägung): Spule erkannt -> Box [-> Neue Box anlegen] -> Spule in die Box -> Bestätigen -> Spoolman.
+// Nur im ui-Task. spoolUid = UID des Spulen-Tags, der den Ablauf gestartet hat (wird beim Box-Schritt nie als neue Box
+// angeboten, auch wenn er kein bekanntes Format hat).
 bool weighFlowActive();
-void weighFlowStart(const SpoolInfo &spool, const char *owner);  // owner leer = nicht ändern
+void weighFlowStart(const SpoolInfo &spool, const char *spoolUid, const char *owner);  // owner leer = nicht ändern
 void weighFlowAbort();  // bricht einen laufenden Ablauf ohne Navigation ab (Screen wird von außen verlassen)
+
+// Einfache Waage (Betriebsart "Einfache Waage" oder Benutzer mit "Nur wiegen"): Auswahl Nur Spule / Box + Spule,
+// danach Live-Anzeige des Filamentgewichts. Nur im ui-Task.
+void screenSimpleWeighOpen();
+bool simpleFlowActive();
+void simpleFlowAbort();  // wie weighFlowAbort

@@ -12,8 +12,10 @@
 #include "nfc/nfc.h"
 #include "storage/catalog.h"
 #include "storage/devicepw.h"
+#include "storage/drying.h"
 #include "scale/scale.h"
 #include "screens.h"
+#include "fonts/fonts.h"
 #include "theme.h"
 
 static void onBackHome(lv_event_t *) { uiShowHome(); }
@@ -508,11 +510,30 @@ struct NfcUi {
   lv_obj_t *info;
   lv_obj_t *spool;
   lv_obj_t *assignBtn;  // nur sichtbar, wenn der aufliegende Tag in Spoolman unbekannt ist
+  lv_obj_t *drying;     // Trocknungsstatus der aufliegenden Spule
+  lv_obj_t *dryBtn;     // "Trocknung eintragen", nur bei bekannter Spule
 };
+
+// Trocknung für die aufliegende, in Spoolman bekannte Spule mit heutigem Datum eintragen
+static void onDryLog(lv_event_t *) {
+  NfcState n = nfcGet();
+  SpoolmanResult r = spoolmanLookupResult();
+  if (!n.tagPresent || r.state != SpoolmanState::Found || r.spool.id < 0 || strcmp(r.uid, n.uid) != 0) {
+    return;
+  }
+  char today[11];
+  if (!dryingTodayText(today)) {
+    return;  // Uhr nicht gestellt, der Button ist dann ausgeblendet
+  }
+  spoolmanRequestMarkDried(r.spool.id, today);
+  logPrintf("[DRY] Spule %d: getrocknet am %s\n", r.spool.id, today);
+}
 
 static void nfcRefresh(lv_timer_t *t) {
   auto *ui = static_cast<NfcUi *>(lv_timer_get_user_data(t));
   NfcState s = nfcGet();
+  lv_label_set_text(ui->drying, "");
+  lv_obj_add_flag(ui->dryBtn, LV_OBJ_FLAG_HIDDEN);
   {
     SpoolmanResult r = spoolmanLookupResult();
     bool unknown = s.tagPresent && (s.content.kind == TagKind::Spool || s.content.kind == TagKind::Unknown) &&
@@ -555,7 +576,8 @@ static void nfcRefresh(lv_timer_t *t) {
       lv_label_set_text(ui->status, tr(Str::KindUnknown));
       break;
   }
-  lv_label_set_text_fmt(ui->info, "%s: %s%s%s", tr(Str::NfcTagUid), s.uid, s.locked ? "\n" : "",
+  lv_label_set_text_fmt(ui->info, "%s: %s%s%s%s", tr(Str::NfcTagUid), s.uid,
+                        s.content.openPrintTag ? "\nOpenPrintTag" : "", s.locked ? "\n" : "",
                         s.locked ? tr(Str::NfcLocked) : "");
 
   // Spoolman-Ergebnis, nur wenn es zum aufliegenden Tag gehört
@@ -571,6 +593,20 @@ static void nfcRefresh(lv_timer_t *t) {
                               r.spool.material, weight, r.spool.location[0] ? ", " : "", r.spool.location,
                               r.spool.owner[0] ? (String(" (") + r.spool.owner + ")").c_str() : "");
         lv_obj_set_style_text_color(ui->spool, themeColors().ok, 0);
+        DryingStatus ds = dryingStatusFor(r.spool);
+        if (ds.state == DryingState::Due) {
+          lv_label_set_text(ui->drying, tr(Str::DryDue));
+          lv_obj_set_style_text_color(ui->drying, themeColors().warn, 0);
+        } else if (ds.state == DryingState::Ok) {
+          lv_label_set_text_fmt(ui->drying, tr(Str::DryOk), r.spool.lastDried, ds.daysLeft);
+          lv_obj_set_style_text_color(ui->drying, themeColors().dim, 0);
+        } else if (ds.state == DryingState::NoRecord) {
+          lv_label_set_text(ui->drying, tr(Str::DryNone));
+          lv_obj_set_style_text_color(ui->drying, themeColors().dim, 0);
+        }
+        if (dryingToday() >= 0) {
+          lv_obj_remove_flag(ui->dryBtn, LV_OBJ_FLAG_HIDDEN);
+        }
         break;
       }
       case SpoolmanState::NotFound:
@@ -602,10 +638,13 @@ void screenNfcOpen() {
   ui->status = addLabel(card, &theme().body, true);
   ui->info = addLabel(card, &theme().dim, true);
   ui->spool = addLabel(card, &theme().dim, true);
+  ui->drying = addLabel(card, &theme().dim, true);
   uiMakeButton(scr, tr(Str::KindBox), onBoxWrite, true);
   uiMakeButton(scr, tr(Str::Filament), onFilamentWrite, true);
   ui->assignBtn = uiMakeButton(scr, tr(Str::AssignSpool), onAssign, true);
   lv_obj_add_flag(ui->assignBtn, LV_OBJ_FLAG_HIDDEN);
+  ui->dryBtn = uiMakeButton(scr, tr(Str::DryLog), onDryLog, true);
+  lv_obj_add_flag(ui->dryBtn, LV_OBJ_FLAG_HIDDEN);
 
   lv_timer_t *t = addScreenTimer(scr, nfcRefresh, 300, ui);
   lv_obj_add_event_cb(scr, nfcScreenDeleted, LV_EVENT_DELETE, ui);
@@ -616,10 +655,10 @@ void screenNfcOpen() {
 // ---- Gemeinsamer Statustext für Schreibvorgänge ----
 static lv_obj_t *writeStatus = nullptr;
 
-static void writeStatusRefresh(lv_timer_t *) {
+const char *uiNfcWriteText(NfcWrite st, lv_color_t *color) {
   const char *text = nullptr;
   lv_color_t col = themeColors().error;
-  switch (nfcWriteStatus()) {
+  switch (st) {
     case NfcWrite::Writing: text = tr(Str::Writing); col = themeColors().warn; break;
     case NfcWrite::Ok: text = tr(Str::WriteOk); col = themeColors().ok; break;
     case NfcWrite::ErrLocked: text = tr(Str::WriteLocked); break;
@@ -630,6 +669,15 @@ static void writeStatusRefresh(lv_timer_t *) {
     case NfcWrite::ErrOccupied: text = tr(Str::WriteOccupied); break;
     default: break;  // Idle und WaitingForTag: Text bleibt wie gesetzt
   }
+  if (color) {
+    *color = col;
+  }
+  return text;
+}
+
+static void writeStatusRefresh(lv_timer_t *) {
+  lv_color_t col;
+  const char *text = uiNfcWriteText(nfcWriteStatus(), &col);
   if (text) {
     lv_label_set_text(writeStatus, text);
     lv_obj_set_style_text_color(writeStatus, col, 0);
@@ -658,10 +706,8 @@ static void onBoxStep(lv_event_t *e) {
 }
 
 static void onBoxWriteStart(lv_event_t *) {
-  char id[16], name[32], json[128];
-  snprintf(id, sizeof(id), "BOX-%02d", boxNumber);
-  snprintf(name, sizeof(name), "Box %02d", boxNumber);
-  if (tagBuildBox(id, name, json, sizeof(json)) != 0) {
+  char json[128];
+  if (tagBuildBoxNumber(boxNumber, json, sizeof(json)) != 0) {
     startWrite(json);
   }
 }
@@ -780,7 +826,7 @@ void screenFilamentColorOpen() {
   uiNavigate(scr);
 }
 
-static void onFilamentWriteStart(lv_event_t *) {
+static SpoolTag pickedSpool() {
   SpoolTag spool;
   const CatalogMaterial &m = catalog.materials[pickedMaterial];
   strlcpy(spool.type, m.name, sizeof(spool.type));
@@ -788,10 +834,23 @@ static void onFilamentWriteStart(lv_event_t *) {
   strlcpy(spool.brand, catalog.makers[pickedMaker], sizeof(spool.brand));
   spool.minTemp = m.minTemp;
   spool.maxTemp = m.maxTemp;
+  return spool;
+}
+
+static void onFilamentWriteStart(lv_event_t *) {
   char json[256];
-  if (tagBuildSpool(spool, json, sizeof(json)) != 0) {
+  if (tagBuildSpool(pickedSpool(), json, sizeof(json)) != 0) {
     startWrite(json);
   }
+}
+
+// Gleiche Daten im OpenPrintTag-Format (CBOR) statt OpenSpool-JSON
+static void onFilamentWriteOpt(lv_event_t *) {
+  if (!nfcRequestWriteOpenPrintTag(pickedSpool())) {
+    return;
+  }
+  lv_label_set_text(writeStatus, tr(Str::PlaceTag));
+  lv_obj_set_style_text_color(writeStatus, themeColors().warn, 0);
 }
 
 void screenFilamentWriteOpen() {
@@ -811,7 +870,17 @@ void screenFilamentWriteOpen() {
   lv_obj_align(sw, LV_ALIGN_TOP_RIGHT, 0, 0);
   writeStatus = addLabel(card, &theme().body, true);
   lv_label_set_text(writeStatus, "");
-  uiMakeButton(scr, tr(Str::Write), onFilamentWriteStart, true);
+  // Zwei Formate mit denselben Daten: OpenSpool (JSON) und OpenPrintTag (CBOR), siehe CLAUDE.md 4.7
+  lv_obj_t *row = lv_obj_create(scr);
+  lv_obj_remove_style_all(row);
+  lv_obj_set_size(row, LV_PCT(100), themeButtonHeight());
+  lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+  lv_obj_set_style_pad_column(row, themePadding(), 0);
+  lv_obj_t *formats[] = {uiMakeButton(row, "OpenSpool", onFilamentWriteStart),
+                         uiMakeButton(row, "OpenPrintTag", onFilamentWriteOpt)};
+  for (lv_obj_t *btn : formats) {
+    lv_obj_set_style_text_font(lv_obj_get_child(btn, 0), &lv_font_app_14, 0);  // beide Namen passen nebeneinander
+  }
 
   addScreenTimer(scr, writeStatusRefresh, 300, nullptr);
   uiNavigate(scr);
@@ -1054,6 +1123,12 @@ static void assignTick(lv_timer_t *) {
     case AssignStep::LookingUp: {
       SpoolmanResult r = spoolmanLookupResult();
       if (r.state == SpoolmanState::Busy || r.seq == assign.lookupSeq) {
+        break;
+      }
+      if (r.state == SpoolmanState::Found && assign.tag.openPrintTag) {
+        // OpenPrintTag bleibt unverändert: Spoolman findet die Spule über die verknüpfte UID
+        assign.step = AssignStep::Done;
+        assignSay(tr(Str::AssignDone), themeColors().ok);
         break;
       }
       char json[256];

@@ -21,6 +21,13 @@ void test_compute_ok() {
   TEST_ASSERT_EQUAL(WeighCheck::Ok, r.check);
 }
 
+void test_length() {
+  // 1.75 mm PLA (1.24 g/cm3): ca. 335 m pro kg
+  TEST_ASSERT_FLOAT_WITHIN(1.0f, 335.3f, filamentLengthM(1000, 1.24f, 1.75f));
+  TEST_ASSERT_EQUAL_FLOAT(0, filamentLengthM(1000, 0, 1.75f));
+  TEST_ASSERT_EQUAL_FLOAT(0, filamentLengthM(-5, 1.24f, 1.75f));
+}
+
 void test_compute_clamped_and_error() {
   TEST_ASSERT_EQUAL(WeighCheck::Clamped, weighCompute(0, 245, 250, -1).check);
   TEST_ASSERT_EQUAL_FLOAT(0, weighCompute(0, 245, 250, -1).remaining);
@@ -109,13 +116,85 @@ void test_upload_failed_retry() {
   TEST_ASSERT_EQUAL(WeighState::Upload, f.state());
 }
 
+// Leerer/unbekannter Box-Tag: "Neue Box anlegen", nach dem Beschreiben weiter wie gewohnt
+void test_new_box() {
+  WeighFlow f;
+  f.start(0);
+  f.step(in(2000, 0));
+  TEST_ASSERT_EQUAL(WeighState::WaitBox, f.state());
+  WeighInput blank = in(3000, 412, false);
+  blank.blankTag = true;
+  f.step(blank);  // nicht stabil
+  TEST_ASSERT_EQUAL(WeighState::WaitBox, f.state());
+  blank = in(3100, 20);
+  blank.blankTag = true;
+  f.step(blank);  // keine Box auf der Waage (unter Schwelle)
+  TEST_ASSERT_EQUAL(WeighState::WaitBox, f.state());
+  blank = in(3200, 412);
+  blank.blankTag = true;
+  f.step(blank);
+  TEST_ASSERT_EQUAL(WeighState::NewBox, f.state());
+  blank.now = 60000;
+  f.step(blank);  // bleibt, bis der Tag beschrieben ist
+  TEST_ASSERT_EQUAL(WeighState::NewBox, f.state());
+  WeighInput written = in(61000, 412);
+  written.boxTag = true;
+  f.step(written);
+  TEST_ASSERT_EQUAL(WeighState::WaitBox, f.state());
+  TEST_ASSERT_EQUAL(61000u, f.enteredAt());  // neuer Timeout ab hier
+  f.step(written);
+  TEST_ASSERT_EQUAL(WeighState::WaitSpool, f.state());
+  TEST_ASSERT_EQUAL_FLOAT(412, f.w1());
+}
+
+void test_new_box_cancel_and_timeout() {
+  WeighFlow f;
+  f.start(0);
+  f.step(in(2000, 0));
+  WeighInput blank = in(2100, 412);
+  blank.blankTag = true;
+  f.step(blank);
+  TEST_ASSERT_EQUAL(WeighState::NewBox, f.state());
+  TEST_ASSERT_EQUAL(120000u - 900u, f.remainingMs(3000));
+  WeighInput c = in(3000, 412);
+  c.cancel = true;
+  f.step(c);
+  TEST_ASSERT_EQUAL(WeighState::Idle, f.state());
+  TEST_ASSERT_EQUAL(WeighEnd::Cancelled, f.end());
+
+  f.start(0);
+  f.step(in(2000, 0));
+  f.step(blank);
+  TEST_ASSERT_EQUAL(WeighState::NewBox, f.state());
+  blank.now = 2100 + 120000;
+  f.step(blank);
+  TEST_ASSERT_EQUAL(WeighState::Idle, f.state());
+  TEST_ASSERT_EQUAL(WeighEnd::Timeout, f.end());
+}
+
+// Gültiger Box-Tag hat Vorrang: kein "Neue Box anlegen"
+void test_box_tag_wins_over_blank() {
+  WeighFlow f;
+  f.start(0);
+  f.step(in(2000, 0));
+  WeighInput b = in(2100, 412);
+  b.boxTag = true;
+  b.blankTag = true;
+  f.step(b);
+  TEST_ASSERT_EQUAL(WeighState::WaitSpool, f.state());
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_compute_ok);
+  RUN_TEST(test_length);
   RUN_TEST(test_compute_clamped_and_error);
   RUN_TEST(test_compute_too_heavy);
   RUN_TEST(test_full_flow);
   RUN_TEST(test_cancel_and_timeout);
   RUN_TEST(test_upload_failed_retry);
+  RUN_TEST(test_new_box);
+  RUN_TEST(test_new_box_cancel_and_timeout);
+  RUN_TEST(test_box_tag_wins_over_blank);
   return UNITY_END();
 }

@@ -9,16 +9,16 @@ A filament scale built on the ESP32-S3. It reads the spool and its storage box v
 ## How it works
 
 1. Hold the spool to the scan zone. The scale looks it up in Spoolman.
-2. Put the storage box (with its own NFC tag) on the scale. Weight W1 is stored.
-3. Put the spool into the box. Weight W2 is stored.
+2. Put the storage box (with its own NFC tag) on the scale. The scale stores the weight of the box without the spool (1st weighing).
+3. Put the spool into the box. The scale stores the weight of the box with the spool (2nd weighing).
 4. Confirm. Remaining weight and location go to Spoolman.
 
 The box weight never has to be known. Example from the device screens:
 
 | | |
 |---|---:|
-| W2, box with spool | 1254 g |
-| − W1, box alone | 412 g |
+| box with spool (2nd weighing) | 1254 g |
+| − box without spool (1st weighing) | 412 g |
 | − empty spool (from Spoolman) | 250 g |
 | **= remaining weight** | **592 g** |
 
@@ -28,8 +28,11 @@ The box weight never has to be known. Example from the device screens:
 - Uses the native NFC tags of Spoolman 0.27; unknown spools are linked by picking them from the Spoolman list
 - Offline queue: up to 100 updates are kept in flash and sent when Spoolman is reachable again
 - Users sign in with their own tag and are recorded as spool owner; settings are admin only
+- Simple scale mode (set by the admin): "Weigh filament" for a spool alone or box + spool, no sign-in, no NFC, no Spoolman; users can also get a "weigh only" role
 - Web interface for calibration, users, filament catalog, Spoolman, Wi-Fi, log and system settings
-- Wi-Fi setup through a hotspot with captive portal, firmware updates over Wi-Fi (OTA)
+- Drying reminder per material (longer interval for spools stored in a box), last drying date kept in Spoolman, can be switched off in the web UI
+- Length in metres on the confirm screen, QR code to the spool in Spoolman, archiving of empty spools, OpenPrintTag data format, selectable load sensor, self-diagnosis in the web UI
+- Wi-Fi and admin password set up over USB right after flashing (form on the web flasher page), hotspot with captive portal as fallback, firmware updates over Wi-Fi (OTA from PlatformIO, or one click in the web UI from GitHub releases, with stable, release-candidate and test channels)
 - German and English, language per user
 
 ## Hardware
@@ -45,6 +48,12 @@ The box weight never has to be known. Example from the device screens:
 
 Pinout: [`firmware/include/pins.h`](firmware/include/pins.h). Wiring and mechanics: [build guide](https://drache055.github.io/filament-scale/bauen.html).
 
+## Downloads
+
+- **Firmware:** the latest stable version is under [Releases](https://github.com/Drache055/filament-scale/releases/latest) (`…-factory.bin` for the first USB flash, `…-ota.bin` for updates over Wi-Fi). Older versions stay available under [all releases](https://github.com/Drache055/filament-scale/releases).
+- **3D model:** enclosure V1.0 with components as STEP: [`docs/cad/filament-scale.step`](docs/cad/filament-scale.step), also attached to every release.
+- **Web flasher:** [flash from the browser](https://drache055.github.io/filament-scale/bauen.html#webflash), defaults to the latest stable version, older ones selectable.
+
 ## Getting started
 
 **Without a toolchain:** use the [web flasher](https://drache055.github.io/filament-scale/bauen.html#webflash) in Chrome or Edge on a computer.
@@ -59,7 +68,9 @@ pio run -e waage -t upload                       # first flash over USB
 pio run -e waage -t uploadfs                     # theme data
 ```
 
-After that, updates go over Wi-Fi. Without Wi-Fi credentials the scale opens the hotspot `Filamentwaage-Setup`.
+Then close the install dialog and enter Wi-Fi and a new admin password in the setup form below it; the data goes to the scale over USB. After that, updates go over Wi-Fi. Without Wi-Fi credentials the scale opens the hotspot `Filamentwaage-Setup` as a fallback.
+
+**Updating:** you only flash once. After that the admin opens the web UI, goes to **System → Firmware update**, checks GitHub for new releases and installs one with **Update now**. The scale never updates on its own. Channels: **stable** (`v1.2`), **release candidate** (`v1.3-rc1`) and **test** (`v1.3-beta1`). Settings, users and calibration are kept; if an update fails, the current firmware keeps running.
 
 Unit tests run on the host without hardware: `cd firmware && pio test -e native`
 
@@ -68,9 +79,23 @@ Default login: admin password `Filament`, device PIN `1234`. Change both after t
 ## Repository
 
 ```
-firmware/   PlatformIO project (ESP32-S3, Arduino, LVGL 9)
-docs/       Website (GitHub Pages) and web flasher
+firmware/        PlatformIO project (ESP32-S3, Arduino, LVGL 9)
+docs/            Website (GitHub Pages) and web flasher
+docs/firmware/   Web flasher images, one folder per stable release
+docs/cad/        3D model (STEP)
+tools/           Release helper scripts
 ```
+
+### Releasing a version
+
+Push a tag, the [release workflow](.github/workflows/release.yml) does the rest:
+
+```bash
+git tag v1.1
+git push origin v1.1
+```
+
+It builds the firmware, creates the GitHub release with factory image, OTA image and STEP file, and for stable tags updates the web flasher on `main`. Tags with a hyphen (e.g. `v1.2-beta`) become pre-releases and are not offered in the web flasher.
 
 Development notes: [`firmware/CLAUDE.md`](firmware/CLAUDE.md).
 

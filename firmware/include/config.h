@@ -17,6 +17,7 @@
 #define WEIGH_ADDED_G        50.0f   // Objekt hinzugefügt: stabil und >= Referenz + Schwelle
 #define WEIGH_TIMEOUT_MS    120000  // Timeout je Wartezustand
 #define WEIGH_SHOW_SPOOL_MS 2000    // Mindestdauer des Screens "Spule erkannt"
+#define WEIGH_ARCHIVE_MAX_G  10.0f  // bis zu diesem Restgewicht bietet "Bestätigen" das Archivieren an
 #define WEIGH_DEFAULT_EMPTY_G 250   // Startwert der manuellen Eingabe, wenn kein Leerspulengewicht bekannt ist
 
 // NFC (PN532, I²C, Adresse 0x24)
@@ -52,6 +53,7 @@
 #define SPOOLMAN_CHECK_MS        30000   // Erreichbarkeitsprüfung im Hintergrund
 #define CATALOG_SYNC_MS          (10UL * 60UL * 1000UL)  // Katalog (Typen, Hersteller) alle 10 min mit Spoolman abgleichen
 #define SPOOLMAN_OWNER_FIELD_KEY "owner" // Extra-Feld an der Spule (Text), wird bei Bedarf angelegt
+#define SPOOLMAN_DRIED_FIELD_KEY "last_dried" // Extra-Feld: zuletzt getrocknet (Text JJJJ-MM-TT), wird bei Bedarf angelegt
 
 // Offline-Warteschlange (Spoolman-Updates)
 #define QUEUE_FILE        "/queue.jsonl"
@@ -62,3 +64,11 @@
 #define WIFI_AP_SSID         "Filamentwaage-Setup"
 #define WIFI_AP_FALLBACK_MS  60000   // so lange ohne Verbindung, dann startet das Einrichtungs-WLAN
 #define WIFI_AP_STABLE_MS    60000   // so lange verbunden, dann wird das Einrichtungs-WLAN wieder abgeschaltet
+
+// Online-Update aus den GitHub-Releases (CLAUDE.md 12.6)
+#define FW_UPDATE_REPO        "Drache055/filament-scale"  // owner/repo
+#define FW_UPDATE_LIST        15                          // so viele neueste Releases werden je Prüfung ausgewertet
+#define FW_UPDATE_FIRST_MS    60000                       // erste automatische Prüfung so lange nach der WLAN-Verbindung
+#define FW_UPDATE_INTERVAL_MS (24UL * 60UL * 60UL * 1000UL)  // danach einmal am Tag
+#define FW_UPDATE_RETRY_MS    (60UL * 60UL * 1000UL)      // nach einer fehlgeschlagenen automatischen Prüfung
+#define FW_UPDATE_TIMEOUT_MS  20000                       // ohne Daten so lange, dann Abbruch

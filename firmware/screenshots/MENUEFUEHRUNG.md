@@ -105,3 +105,18 @@ Seit Firmware-Abschnitt 16 gibt es die Screens des Wiegeablaufs. Beispiel wie im
 | `46_ablauf_9_home_nach_ende` | Home | „0 g“ nach Entnehmen der Box |
 
 Alle Wechsel sind harte Schnitte. Zu jedem Screen unten: [Abbrechen] (außer Speichern). Die Zahlen oben zeigen den Live-Wert; in `43` wurden 842 g (= 1254 − 412) abzüglich Leerspule 250 g zu 592 g.
+
+## Einfache Waage (Betriebsart „Einfache Waage“, Rolle „Nur wiegen“)
+
+Beispiel: Spule 1092 g gesamt (Leerspule 250 g → Filament 842 g), Box 412 g mit Spule 842 g (→ Filament 592 g).
+
+| Bild | Zustand | Anzeige |
+|---|---|---|
+| `72_einfach_1_home` | Home | „Einfache Waage“, [Filament wiegen] [Tara] [Menü], keine Anmeldung |
+| `73_einfach_2_auswahl` | Auswahl | „Was kommt auf die Waage?“, [Nur Spule] [Box + Spule] [Zurück] |
+| `74_einfach_3_nur_spule_1092g` | Spule auflegen | „Filament 842 g“, „Spule gesamt: 1092 g“, Leerspule −10/+10, [Fertig] |
+| `75_einfach_4_box_auflegen` | Box auflegen | „412 g“ gedimmt (nicht stabil), [Box tarieren] gesperrt, [✕] |
+| `76_einfach_5_box_stabil` | Box auflegen | „412 g“, [Box tarieren] aktiv |
+| `77_einfach_6_box_und_spule_1254g` | Spule in die Box | „Filament 592 g“, „Spule 842 g • Box 412 g“ |
+| `78_einfach_7_waage_leeren` | Waage leeren | Start mit Gewicht auf der Waage, [Abbrechen] |
+| `79_home_nur_wiegen` | Home (smarte Waage) | Benutzer mit „Nur wiegen“ angemeldet: [Filament wiegen], kein „Spule scannen“ |

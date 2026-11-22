@@ -14,6 +14,7 @@
 MockState mock;
 
 uint32_t millis() { return mock.now; }
+#ifndef STUB_LIBC_STRLCPY
 size_t strlcpy(char *dst, const char *src, size_t size) {
   size_t n = strlen(src);
   if (size) {
@@ -23,6 +24,7 @@ size_t strlcpy(char *dst, const char *src, size_t size) {
   }
   return n;
 }
+#endif
 
 LittleFSClass LittleFS;
 File LittleFSClass::open(const char *path, const char *) {
@@ -57,6 +59,7 @@ bool scaleTare() { return true; }
 bool scaleCalibrate(float) { return true; }
 NfcState nfcGet() { return mock.nfc; }
 bool nfcRequestWrite(const char *, NfcWriteOrigin) { return true; }
+bool nfcRequestWriteOpenPrintTag(const SpoolTag &) { return true; }
 NfcWriteOrigin nfcWriteOrigin() { return NfcWriteOrigin::Device; }
 void nfcAcknowledgeWrite() {}
 NfcWrite nfcWriteStatus() { return mock.nfcWrite; }
@@ -76,8 +79,9 @@ SpoolmanStatus spoolmanStatus() { return mock.spoolman; }
 SpoolmanResult spoolmanLookupResult() { return mock.lookup; }
 SpoolmanResult spoolmanWriteResult() { return mock.write; }
 void spoolmanRequestLookup(const char *, int) {}
-void spoolmanRequestUpdate(int, float, const char *, const char *) {}
+void spoolmanRequestUpdate(int, float, const char *, const char *, bool, const char *) {}
 void spoolmanRequestLinkTag(int, const char *) {}
+String spoolmanUrl() { return "http://192.168.178.40:7912"; }
 int spoolmanQueueCount() { return mock.queued; }
 void spoolmanRequestList() {}
 void spoolmanListResult(SpoolListResult &out) { out = mock.list; }
@@ -124,11 +128,21 @@ bool sessionCurrentUser(User &out) {
   return true;
 }
 bool sessionUserMayTare() { return false; }
+bool sessionUserWeighOnly() { return mock.userLoggedIn && mock.weighOnly; }
+bool sessionSimpleWeighAllowed() { return mock.simpleMode || sessionUserWeighOnly(); }
 void sessionLogout() { mock.userLoggedIn = false; }
 bool sessionSetMyLanguage(Lang) { return true; }
 void sessionUserChanged(uint16_t) {}
 bool sessionNotice(char *, size_t, int *) { return false; }
 void sessionPostNotice(const char *, int) {}
+
+// Betriebsart (storage/devmode)
+#include "storage/devmode.h"
+static int stubEmptySpool = 250;
+bool devModeSimple() { return mock.simpleMode; }
+void devModeSetSimple(bool on) { mock.simpleMode = on; }
+int devModeEmptySpoolG() { return stubEmptySpool; }
+void devModeSetEmptySpoolG(int g) { stubEmptySpool = g; }
 
 // i2c
 void i2cBusBegin() {}

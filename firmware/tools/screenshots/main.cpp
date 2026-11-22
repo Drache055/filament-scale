@@ -9,6 +9,7 @@
 #include "../../src/ui/ui.cpp"
 #include "../../src/ui/screens_menu.cpp"
 #include "../../src/ui/screen_weigh.cpp"
+#include "../../src/ui/screen_simple.cpp"
 
 static uint16_t frame[240 * 320];
 static const char *outDir = ".";
@@ -67,6 +68,12 @@ static void advance(uint32_t ms) {
 static void clickRowButton(int rowIndex, int btnIndex) {
   lv_obj_t *row = lv_obj_get_child(lv_screen_active(), rowIndex);
   lv_obj_send_event(lv_obj_get_child(row, btnIndex), LV_EVENT_CLICKED, nullptr);
+}
+
+// Button im Card-Bereich (Auswahl "Filament wiegen": Kind 1 und 2 der Card)
+static void clickCardButton(int childIndex) {
+  lv_obj_t *card = lv_obj_get_child(lv_screen_active(), 1);
+  lv_obj_send_event(lv_obj_get_child(card, childIndex), LV_EVENT_CLICKED, nullptr);
 }
 
 static void setBoxTag(bool present) {
@@ -297,7 +304,7 @@ int main(int argc, char **argv) {
   sp.initialWeight = 1000;
   setWeight(0);
   setBoxTag(false);
-  weighFlowStart(sp, "Fabian");
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
   advance(400);
   shot("ablauf_1_spule_erkannt");
   advance(2400);
@@ -333,7 +340,7 @@ int main(int argc, char **argv) {
   // Box: Live-Gewicht zählt mit Zittern von 0 auf 412 g, Box-Tag noch nicht gelesen.
   setWeight(0);
   setBoxTag(false);
-  weighFlowStart(sp, "Fabian");
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
   advance(400);
   advance(2400);
   {
@@ -372,6 +379,101 @@ int main(int argc, char **argv) {
   shot("home_hotspot");
   mock.apActive = false;
   mock.wifiUp = true;
+
+  // --- Neue Box anlegen: Box mit leerem Tag (hinten angehängt, Nummern der älteren Bilder bleiben) ---
+  setWeight(0);
+  setBoxTag(false);
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
+  advance(2800);
+  setWeight(412);
+  mock.nfc.moduleReady = mock.nfc.tagPresent = true;
+  strlcpy(mock.nfc.uid, "04EE11FF22AA33", sizeof(mock.nfc.uid));
+  mock.nfc.capacity = 872;
+  mock.nfc.seq = mock.nfc.readSeq = 3;
+  advance(400);
+  shot("neue_box_1_leerer_tag");
+  clickRowButton(2, 3);  // +5
+  clickRowButton(2, 2);  // +1
+  clickRowButton(3, 0);  // Schreiben
+  mock.nfcWrite = NfcWrite::Ok;
+  advance(400);
+  shot("neue_box_2_geschrieben");
+  mock.nfcWrite = NfcWrite::Idle;
+  setBoxTag(true);
+  strlcpy(mock.nfc.content.box.id, "BOX-07", 16);
+  strlcpy(mock.nfc.content.box.name, "Box 07", 32);
+  advance(400);
+  advance(400);
+  shot("neue_box_3_spule_einstellen");
+  uiShowHome();
+
+  // --- Einfache Waage (hinten angehängt, Nummern der älteren Bilder bleiben) ---
+  mock.simpleMode = true;
+  mock.userLoggedIn = false;
+  mock.adminLoggedIn = false;
+  setBoxTag(false);
+  setWeight(0);
+  uiShowHome();
+  shot("einfach_1_home");
+  screenSimpleWeighOpen();
+  shot("einfach_2_auswahl");
+  clickCardButton(1);  // Nur Spule
+  setWeight(1092);
+  advance(400);
+  shot("einfach_3_nur_spule_1092g");
+  setWeight(0);
+  advance(400);  // Spule abgenommen: zurück zu Home
+  screenSimpleWeighOpen();
+  clickCardButton(2);  // Box + Spule
+  setWeight(412, false);
+  advance(400);
+  shot("einfach_4_box_auflegen");
+  setWeight(412);
+  advance(400);
+  shot("einfach_5_box_stabil");
+  clickRowButton(2, 0);  // Box tarieren
+  advance(400);
+  setWeight(1254);
+  advance(400);
+  shot("einfach_6_box_und_spule_1254g");
+  clickRowButton(3, 0);  // Fertig
+  advance(400);
+  setWeight(300);
+  screenSimpleWeighOpen();
+  clickCardButton(1);
+  advance(400);
+  shot("einfach_7_waage_leeren");
+  uiShowHome();
+  setWeight(0);
+
+  // Smarte Waage, angemeldeter Benutzer mit "Nur wiegen"
+  mock.simpleMode = false;
+  mock.userLoggedIn = true;
+  mock.weighOnly = true;
+  uiShowHome();
+  shot("home_nur_wiegen");
+  mock.weighOnly = false;
+  uiShowHome();
+
+  // --- QR-Code zur Spule (virtuelles Label), hinten angehängt ---
+  setWeight(0);
+  setBoxTag(false);
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
+  advance(2800);
+  setWeight(412, false);
+  setBoxTag(true);
+  advance(400);
+  setWeight(412);
+  advance(400);
+  setWeight(412, false);
+  setBoxTag(true);
+  advance(400);
+  setWeight(1254);
+  advance(400);
+  lv_obj_send_event(lv_obj_get_child(lv_screen_active(), -1), LV_EVENT_CLICKED, nullptr);  // QR-Button neben dem Titel (zuletzt angelegt)
+  advance(100);
+  shot("qr_spule");
+  uiShowHome();
 
   return 0;
 }
