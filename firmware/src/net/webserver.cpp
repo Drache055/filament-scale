@@ -1,4 +1,5 @@
 #include "webserver.h"
+#include "util/secret.h"
 #include "util/log.h"
 
 #include <Arduino.h>
@@ -16,6 +17,7 @@
 #include "core/auth_throttle.h"
 #include "core/diag_core.h"
 #include "net/fwupdate.h"
+#include "net/ota.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "scale/scale.h"
@@ -33,6 +35,7 @@
 static WebServer server(80);
 static bool started = false;
 static uint32_t rebootAt = 0;
+static uint32_t apPwApplyAt = 0;  // neues Hotspot-Passwort übernehmen, nachdem die Antwort raus ist
 
 // ---- Anmeldung und Rollen ----
 // Admin: Benutzer "admin" mit dem Admin-Passwort (Login-Seite, Cookie "sid"; Basic-Auth für Skripte).
@@ -87,9 +90,9 @@ static WebWho currentWho() {
     w.role = WebRole::Admin;
     return w;
   }
-  // Wer im geschützten Einrichtungs-WLAN ist, kennt dessen Passwort (Gerätepasswort, mindestens 8 Zeichen);
-  // ein offener Hotspot ist dagegen kein Ausweis
-  if (devicePassword().length() >= 8 && wifiApActive() && server.client().localIP() == WiFi.softAPIP()) {
+  // Wer im geschützten Einrichtungs-WLAN ist, kennt dessen Passwort (Hotspot-Passwort, mindestens 8 Zeichen, auf dem
+  // Display nur bei der Ersteinrichtung, sonst nur für den Admin sichtbar); ein offener Hotspot ist dagegen kein Ausweis
+  if (hotspotPassword().length() >= 8 && wifiApActive() && server.client().localIP() == WiFi.softAPIP()) {
     w.role = WebRole::Admin;
     return w;
   }
@@ -203,7 +206,8 @@ static void handleStatus() {
                 : n.content.kind == TagKind::Admin ? "admin"
                                                    : "unknown";
   nfc["format"] = n.content.openPrintTag ? "openprinttag" : n.hasNdef ? "json" : "";
-  nfc["json"] = n.content.kind == TagKind::Admin ? "" : n.json;  // der Admin-Tag enthält ein Geheimnis
+  // Admin- und Benutzer-Tags enthalten ein Geheimnis (Token), ihr Inhalt geht nicht an die Webseite
+  nfc["json"] = n.content.kind == TagKind::Admin || n.content.kind == TagKind::User ? "" : n.json;
   User current;
   doc["user"] = sessionCurrentUser(current) ? current.name : "";
   doc["role"] = w.role == WebRole::Admin ? "admin" : w.role == WebRole::User ? "user" : "generic";
@@ -794,8 +798,10 @@ static void handleUsersWrite() {
     server.send(404, "text/plain", "Benutzer nicht gefunden");
     return;
   }
-  char json[128];
-  if (tagBuildUser(u.id, u.name, json, sizeof(json)) == 0) {
+  char json[192];
+  // Neues Token: gespeichert erst, wenn der Schreibauftrag angenommen ist; der bisherige Tag wird damit ungültig
+  String token = secretRandomHex(16);
+  if (tagBuildUser(u.id, u.name, token.c_str(), json, sizeof(json)) == 0) {
     server.send(500, "text/plain", "Tag-Inhalt zu groß");
     return;
   }
@@ -803,6 +809,7 @@ static void handleUsersWrite() {
     server.send(409, "text/plain", "Es läuft bereits ein Schreibvorgang");
     return;
   }
+  usersSetTagToken(u.id, token);
   logPrintf("[WEB] Benutzer-Tag für '%s' angefordert\n", u.name);
   server.send(200, "text/plain", "ok");
 }
@@ -1164,7 +1171,34 @@ static void handleWifiGet() {
   doc["ap_active"] = wifiApActive();
   doc["ap_ssid"] = wifiApSsid();
   doc["ap_ip"] = wifiApIp();
+  doc["ap_password"] = hotspotPassword();
+  doc["ota_password"] = otaPassword();
+  doc["ota_fixed"] = otaPasswordFixed();
   sendJson(doc);
+}
+
+// Hotspot- oder OTA-Passwort neu erzeugen (which=ap|ota)
+static void handleDevicePwRegenerate() {
+  if (!requireAdmin()) {
+    return;
+  }
+  String which = server.arg("which");
+  if (which == "ap") {
+    hotspotPasswordRegenerate();
+    if (wifiApActive()) {
+      apPwApplyAt = millis() + 800;
+    }
+  } else if (which == "ota") {
+    if (!otaPasswordRegenerate()) {
+      server.send(409, "text/plain", "OTA-Passwort kommt aus secrets.h");
+      return;
+    }
+    otaPasswordChanged();
+  } else {
+    server.send(400, "text/plain", "which=ap oder which=ota");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
 }
 
 // Blockiert einige Sekunden (Scan)
@@ -1414,6 +1448,7 @@ static void webStart() {
   server.on("/api/wifi/scan", HTTP_GET, handleWifiScan);
   server.on("/api/wifi/reset", HTTP_POST, handleWifiReset);
   server.on("/api/wifi/ap", HTTP_POST, handleWifiAp);
+  server.on("/api/devicepw/regenerate", HTTP_POST, handleDevicePwRegenerate);
   server.on("/api/screensaver", HTTP_GET, handleScreensaverGet);
   server.on("/api/screensaver", HTTP_POST, handleScreensaverSet);
   server.on("/api/log", HTTP_GET, handleLog);
@@ -1449,5 +1484,9 @@ void webLoop() {
   server.handleClient();
   if (rebootAt && millis() > rebootAt) {
     ESP.restart();
+  }
+  if (apPwApplyAt && millis() > apPwApplyAt) {
+    apPwApplyAt = 0;
+    wifiApApplyPassword();
   }
 }

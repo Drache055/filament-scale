@@ -37,14 +37,40 @@ void test_box_tag() {
 }
 
 void test_user_tag_roundtrip() {
-  char buf[128];
-  size_t n = tagBuildUser(3, "Fabian", buf, sizeof buf);
+  char buf[192];
+  size_t n = tagBuildUser(3, "Fabian", "0123456789ABCDEF0123456789ABCDEF", buf, sizeof buf);
   TEST_ASSERT_GREATER_THAN(0, n);
   TagContent t = tagParse(buf, n);
   TEST_ASSERT_EQUAL((int)TagKind::User, (int)t.kind);
   TEST_ASSERT_EQUAL(3, t.user.id);
   TEST_ASSERT_EQUAL_STRING("Fabian", t.user.name);
-  TEST_ASSERT_EQUAL(0, tagBuildUser(3, "Fabian", buf, 10));  // Puffer zu klein
+  TEST_ASSERT_EQUAL_STRING("0123456789ABCDEF0123456789ABCDEF", t.user.token);
+  TEST_ASSERT_EQUAL(0, tagBuildUser(3, "Fabian", "0123456789ABCDEF0123456789ABCDEF", buf, 40));  // Puffer zu klein
+  // Längster Name (23 Zeichen) mit Token passt in den Puffer der Webseite (192 Byte)
+  TEST_ASSERT_GREATER_THAN(0, tagBuildUser(65535, "ABCDEFGHIJKLMNOPQRSTUVW", "0123456789ABCDEF0123456789ABCDEF", buf,
+                                           sizeof buf));
+}
+
+void test_user_tag_old_format_has_no_token() {
+  TagContent t = parse("{\"type\":\"user\",\"id\":1,\"name\":\"Fabian\"}");
+  TEST_ASSERT_EQUAL((int)TagKind::User, (int)t.kind);
+  TEST_ASSERT_EQUAL(1, t.user.id);
+  TEST_ASSERT_EQUAL_STRING("", t.user.token);
+}
+
+void test_user_token_check() {
+  const char *tok = "0123456789ABCDEF0123456789ABCDEF";
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Ok, (int)tagCheckUserToken(tok, "0123456789ABCDEF0123456789ABCDEF"));
+  // Falsches Token, abweichende Länge
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Invalid, (int)tagCheckUserToken(tok, "0123456789ABCDEF0123456789ABCDEE"));
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Invalid, (int)tagCheckUserToken(tok, "0123"));
+  // Tag mit Token, aber der Benutzer hat keins gespeichert (z. B. selbst geschriebener Tag)
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Invalid, (int)tagCheckUserToken("", tok));
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Invalid, (int)tagCheckUserToken(nullptr, tok));
+  // Tag im alten Format (nur ID und Name)
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Outdated, (int)tagCheckUserToken(tok, ""));
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Outdated, (int)tagCheckUserToken("", ""));
+  TEST_ASSERT_EQUAL((int)UserTagCheck::Outdated, (int)tagCheckUserToken(tok, nullptr));
 }
 
 void test_admin_tag_roundtrip() {
@@ -123,6 +149,8 @@ int main() {
   RUN_TEST(test_spool_without_spoolman_id_and_numeric_temps);
   RUN_TEST(test_box_tag);
   RUN_TEST(test_user_tag_roundtrip);
+  RUN_TEST(test_user_tag_old_format_has_no_token);
+  RUN_TEST(test_user_token_check);
   RUN_TEST(test_admin_tag_roundtrip);
   RUN_TEST(test_unknown_content);
   RUN_TEST(test_spool_build_roundtrip);
