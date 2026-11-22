@@ -59,6 +59,7 @@ bool scaleTare() { return true; }
 bool scaleCalibrate(float) { return true; }
 NfcState nfcGet() { return mock.nfc; }
 bool nfcRequestWrite(const char *, NfcWriteOrigin) { return true; }
+bool nfcRequestWriteOpenPrintTag(const SpoolTag &) { return true; }
 NfcWriteOrigin nfcWriteOrigin() { return NfcWriteOrigin::Device; }
 void nfcAcknowledgeWrite() {}
 NfcWrite nfcWriteStatus() { return mock.nfcWrite; }
@@ -78,7 +79,7 @@ SpoolmanStatus spoolmanStatus() { return mock.spoolman; }
 SpoolmanResult spoolmanLookupResult() { return mock.lookup; }
 SpoolmanResult spoolmanWriteResult() { return mock.write; }
 void spoolmanRequestLookup(const char *, int) {}
-void spoolmanRequestUpdate(int, float, const char *, const char *) {}
+void spoolmanRequestUpdate(int, float, const char *, const char *, bool, const char *) {}
 void spoolmanRequestLinkTag(int, const char *) {}
 int spoolmanQueueCount() { return mock.queued; }
 void spoolmanRequestList() {}

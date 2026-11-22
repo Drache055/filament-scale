@@ -14,6 +14,7 @@
 #include "storage/devicepw.h"
 #include "scale/scale.h"
 #include "screens.h"
+#include "fonts/fonts.h"
 #include "theme.h"
 
 static void onBackHome(lv_event_t *) { uiShowHome(); }
@@ -555,7 +556,8 @@ static void nfcRefresh(lv_timer_t *t) {
       lv_label_set_text(ui->status, tr(Str::KindUnknown));
       break;
   }
-  lv_label_set_text_fmt(ui->info, "%s: %s%s%s", tr(Str::NfcTagUid), s.uid, s.locked ? "\n" : "",
+  lv_label_set_text_fmt(ui->info, "%s: %s%s%s%s", tr(Str::NfcTagUid), s.uid,
+                        s.content.openPrintTag ? "\nOpenPrintTag" : "", s.locked ? "\n" : "",
                         s.locked ? tr(Str::NfcLocked) : "");
 
   // Spoolman-Ergebnis, nur wenn es zum aufliegenden Tag gehört
@@ -787,7 +789,7 @@ void screenFilamentColorOpen() {
   uiNavigate(scr);
 }
 
-static void onFilamentWriteStart(lv_event_t *) {
+static SpoolTag pickedSpool() {
   SpoolTag spool;
   const CatalogMaterial &m = catalog.materials[pickedMaterial];
   strlcpy(spool.type, m.name, sizeof(spool.type));
@@ -795,10 +797,23 @@ static void onFilamentWriteStart(lv_event_t *) {
   strlcpy(spool.brand, catalog.makers[pickedMaker], sizeof(spool.brand));
   spool.minTemp = m.minTemp;
   spool.maxTemp = m.maxTemp;
+  return spool;
+}
+
+static void onFilamentWriteStart(lv_event_t *) {
   char json[256];
-  if (tagBuildSpool(spool, json, sizeof(json)) != 0) {
+  if (tagBuildSpool(pickedSpool(), json, sizeof(json)) != 0) {
     startWrite(json);
   }
+}
+
+// Gleiche Daten im OpenPrintTag-Format (CBOR) statt OpenSpool-JSON
+static void onFilamentWriteOpt(lv_event_t *) {
+  if (!nfcRequestWriteOpenPrintTag(pickedSpool())) {
+    return;
+  }
+  lv_label_set_text(writeStatus, tr(Str::PlaceTag));
+  lv_obj_set_style_text_color(writeStatus, themeColors().warn, 0);
 }
 
 void screenFilamentWriteOpen() {
@@ -818,7 +833,17 @@ void screenFilamentWriteOpen() {
   lv_obj_align(sw, LV_ALIGN_TOP_RIGHT, 0, 0);
   writeStatus = addLabel(card, &theme().body, true);
   lv_label_set_text(writeStatus, "");
-  uiMakeButton(scr, tr(Str::Write), onFilamentWriteStart, true);
+  // Zwei Formate mit denselben Daten: OpenSpool (JSON) und OpenPrintTag (CBOR), siehe CLAUDE.md 4.7
+  lv_obj_t *row = lv_obj_create(scr);
+  lv_obj_remove_style_all(row);
+  lv_obj_set_size(row, LV_PCT(100), themeButtonHeight());
+  lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+  lv_obj_set_style_pad_column(row, themePadding(), 0);
+  lv_obj_t *formats[] = {uiMakeButton(row, "OpenSpool", onFilamentWriteStart),
+                         uiMakeButton(row, "OpenPrintTag", onFilamentWriteOpt)};
+  for (lv_obj_t *btn : formats) {
+    lv_obj_set_style_text_font(lv_obj_get_child(btn, 0), &lv_font_app_14, 0);  // beide Namen passen nebeneinander
+  }
 
   addScreenTimer(scr, writeStatusRefresh, 300, nullptr);
   uiNavigate(scr);
@@ -1061,6 +1086,12 @@ static void assignTick(lv_timer_t *) {
     case AssignStep::LookingUp: {
       SpoolmanResult r = spoolmanLookupResult();
       if (r.state == SpoolmanState::Busy || r.seq == assign.lookupSeq) {
+        break;
+      }
+      if (r.state == SpoolmanState::Found && assign.tag.openPrintTag) {
+        // OpenPrintTag bleibt unverändert: Spoolman findet die Spule über die verknüpfte UID
+        assign.step = AssignStep::Done;
+        assignSay(tr(Str::AssignDone), themeColors().ok);
         break;
       }
       char json[256];

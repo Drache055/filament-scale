@@ -60,7 +60,7 @@ Daneben gibt es die Betriebsart **Einfache Waage** (5.4): nur wiegen, ohne Spool
 ## 4. NFC-Tags
 
 ### 4.1 Allgemein
-- Typ: NTAG215 oder NTAG216 (NFC Forum Type 2, ISO14443A). Ein NDEF-Record, MIME-Type `application/json`.
+- Typ: NTAG215 oder NTAG216 (NFC Forum Type 2, ISO14443A). Ein NDEF-Record, MIME-Type `application/json`. Spulen auch als OpenPrintTag (`application/vnd.openprinttag`, siehe 4.7). Beim Lesen wird der erste passende MIME-Record einer Nachricht genommen (`ndefFindMimeRecord`), davor stehende Records (z. B. URI) werden übersprungen.
 - **Kapazität nicht hart codieren**, sondern aus dem Capability Container lesen (Page 3, Byte 2, Wert × 8 = NDEF-Bereich in Byte):
 
 | Tag | CC Byte 2 | NDEF-Bereich | User-Pages |
@@ -106,14 +106,26 @@ Daneben gibt es die Betriebsart **Einfache Waage** (5.4): nur wiegen, ohne Spool
 ### 4.5 Tag-Typ-Erkennung
 - JSON enthält `"protocol": "openspool"` → Spule
 - JSON enthält `"type": "box"` / `"user"` / `"admin"` → Box / Benutzer / Admin
+- MIME-Record `application/vnd.openprinttag` mit gültigem Meta- und Hauptbereich → Spule (`TagContent.openPrintTag`). Hat der Tag auch einen JSON-Record, gilt der JSON-Record.
 - Kein NDEF / kein gültiges JSON → „leer/unbekannt“
 
 ### 4.6 Umsetzung
-- `nfc/ndef.cpp` (NDEF-TLV, reine Funktionen, nativ getestet), `nfc/tags.cpp` (Spule/Box/Benutzer/Admin parsen und erzeugen), `nfc/nfc.cpp` (PN532-Task per Software-SPI, ca. 4 Hz).
+- `nfc/ndef.cpp` (NDEF-TLV, reine Funktionen, nativ getestet), `nfc/cbor.cpp` und `nfc/openprinttag.cpp` (OpenPrintTag, nativ getestet), `nfc/tags.cpp` (Spule/Box/Benutzer/Admin parsen und erzeugen), `nfc/nfc.cpp` (PN532-Task per Software-SPI, ca. 4 Hz).
 - Antwortet das Modul nicht, wird die Initialisierung alle 15 s wiederholt (Log: `[NFC] Firmware-Abfrage fehlgeschlagen`). Die Meldungen `pinMode(): Invalid IO 255` beim Start stammen von der Adafruit-Bibliothek (kein IRQ/Reset-Pin) und sind harmlos.
 - Menü → NFC zeigt den aufliegenden Tag und schreibt Box- und Filament-Tags.
-- **Filament-Tags:** Menü → NFC → Filament → Typ → Hersteller → Farbe → Schreiben. Der Tag enthält `color_hex` aus der Auswahl. Typen (mit Temperaturbereich), Hersteller und Farben stehen im Katalog (`storage/catalog.cpp`, NVS, überlebt `uploadfs`) und werden über die Webseite gepflegt (`/api/catalog`, je Liste max. 24 Einträge, Typname max. 15, Herstellername max. 31 Zeichen). Standard: PLA 190–220, ABS 230–260, PETG 220–250; Hersteller Elegoo, Generic.
+- **Filament-Tags:** Menü → NFC → Filament → Typ → Hersteller → Farbe → [OpenSpool] oder [OpenPrintTag]. Der Tag enthält `color_hex` (bzw. `primary_color`) aus der Auswahl. Typen (mit Temperaturbereich), Hersteller und Farben stehen im Katalog (`storage/catalog.cpp`, NVS, überlebt `uploadfs`) und werden über die Webseite gepflegt (`/api/catalog`, je Liste max. 24 Einträge, Typname max. 15, Herstellername max. 31 Zeichen). Standard: PLA 190–220, ABS 230–260, PETG 220–250; Hersteller Elegoo, Generic.
 - **Web-Schreibaufträge** (`NfcWriteOrigin::Web`) schreiben nur auf einen **neu aufgelegten** Tag (erst entfernen, dann auflegen) und überschreiben keine Spulen-Tags (Status `occupied`). Geräte-Aufträge (Menü → NFC) schreiben sofort.
+
+### 4.7 OpenPrintTag (Issue #24)
+- Offener Standard von Prusa Research (MIT-Lizenz), Spezifikation: https://specs.openprinttag.org, Quellen und Testdaten: https://github.com/prusa3d/OpenPrintTag (geprüft mit dem Stand vom 9.10.2026).
+- Aufbau: NDEF-MIME-Record `application/vnd.openprinttag`, Payload = CBOR mit Integer-Schlüsseln: Meta-Bereich (Lage der Bereiche), Hauptbereich (Materialdaten), optional Aux-Bereich (Verbrauch, von Druckern beschrieben). Jeder Abschnitt höchstens 512 Byte. Unbekannte Schlüssel werden übersprungen.
+- **Einschränkung:** Der Standard ist für **NFC-V** (ISO 15693, ICODE SLIX2) definiert. Der PN532 kann kein ISO 15693, echte OpenPrintTag-Spulen (z. B. Prusament) erkennt die Waage deshalb **nicht**. Die Waage liest und schreibt dasselbe Datenformat auf NTAG215/216. Solche Tags sind nicht standardkonform; ob Drucker oder Apps sie lesen, ist nicht geprüft. Für echte Tags bräuchte es einen anderen Leser (z. B. PN5180). Entscheidung von Fabian am 22.11.2026: Format auf NTAG, PN532 bleibt.
+- Gelesen werden `material_class` (8), `material_type` (9, Enum, Tabelle in `openprinttag.cpp`), `material_name` (10), `brand_name` (11), Gewichte (16, 17, 18), `primary_color` (19), Drucktemperatur (34, 35) und aus dem Aux-Bereich `consumed_weight` (0). Daraus wird ein `SpoolTag` (Typ = Enum-Abkürzung, sonst `material_name`). `spoolman_id` gibt es im Format nicht, Spoolman findet die Spule über die UID.
+- Geschrieben werden Meta (`aux_region_offset`, `aux_region_size`), Hauptbereich (FFF, Typ falls im Enum, Name = Typ aus dem Katalog, Hersteller, Farbe, Temperaturen) und ein leerer Aux-Bereich (32 Byte, offene Map `BF FF`, auf 4-Byte-Grenze des Tags). Nicht geschrieben: `instance_uuid` (die Spezifikation leitet sie dann aus der Tag-UID ab), Gewichte, `write_protection`.
+- Ein OpenPrintTag wird beim Zuordnen einer unbekannten Spule (7.4) **nicht** mit JSON überschrieben, die Verknüpfung läuft nur über die UID. Web-Schreibaufträge überschreiben ihn nicht (`occupied`).
+- Webseite: `/api/status` meldet `nfc.format` (`json`, `openprinttag` oder leer), `nfc.json` enthält bei OpenPrintTag eine Kurzbeschreibung (`optDescribeJson`).
+- Nicht umgesetzt: Restgewicht bzw. `consumed_weight` nach dem Wiegen auf den Tag schreiben, `workgroup`.
+- Am Gerät nicht geprüft: Lesen und Schreiben mit echtem PN532 und NTAG. Nativ getestet mit dem Beispiel-Tag der Spezifikation (`test/test_openprinttag`).
 
 ---
 
@@ -330,7 +342,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `core/queue_core`, `core/weigh_core` und `core/simple_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core` und `core/simple_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---
@@ -451,6 +463,8 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - **Einfache Waage** und Rolle „Nur wiegen“ (5.4): Ablauf am Gerät, Umschalten auf der Webseite, Benutzer-Spalte. Logik nativ getestet, Screens gerendert, Webseite nur mit `node --check` geprüft.
 - Hotspot-Start beim Boot ohne gespeicherte Daten, Beitreten mit einem Handy, automatischer Rückfall nach einer Minute ohne Verbindung.
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
+
+- **OpenPrintTag** auf NTAG215/216 (4.7): Lesen, Schreiben, Anzeige unter Menü → NFC und auf der Webseite.
 
 ### 14.3 Offen
 - Leseweite des PN532 durch Wiegeplatte und Boxboden praktisch testen.

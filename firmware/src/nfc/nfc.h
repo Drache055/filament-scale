@@ -12,7 +12,7 @@ struct NfcState {
   size_t capacity = 0;        // NDEF-Bereich in Byte (aus CC), 0 = kein gültiger CC
   bool locked = false;        // Tag ist (teilweise) schreibgeschützt
   bool hasNdef = false;       // gültiger NDEF-MIME-Record gelesen
-  char json[256] = "";        // Payload (gekürzt)
+  char json[256] = "";        // JSON-Payload (gekürzt), bei OpenPrintTag eine Kurzbeschreibung als JSON
   TagContent content;         // geparster Inhalt, kind = Unknown bei leer/unbekannt
   uint32_t seq = 0;           // zählt hoch, sobald ein Tag neu erkannt wurde
   uint32_t readSeq = 0;       // seq, für die der Inhalt (content) bereits gelesen ist
@@ -40,6 +40,8 @@ NfcState nfcGet();  // threadsicherer Schnappschuss
 
 // Beschreibt den nächsten (bzw. bereits aufliegenden) Tag mit einem JSON-MIME-Record.
 bool nfcRequestWrite(const char *json, NfcWriteOrigin origin = NfcWriteOrigin::Device);  // false, wenn schon ein Auftrag läuft
+// Beschreibt den Tag mit einer Spule im OpenPrintTag-Format (Geräte-Auftrag, schreibt sofort).
+bool nfcRequestWriteOpenPrintTag(const SpoolTag &spool);
 NfcWriteOrigin nfcWriteOrigin();
 void nfcAcknowledgeWrite();  // Ergebnis (Ok/Fehler) quittieren, Status wird wieder Idle
 NfcWrite nfcWriteStatus();

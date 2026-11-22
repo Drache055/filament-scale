@@ -30,6 +30,7 @@ struct AdminTag {
 
 struct TagContent {
   TagKind kind = TagKind::Unknown;
+  bool openPrintTag = false;  // Spule im OpenPrintTag-Format (CBOR, siehe openprinttag.h) statt OpenSpool-JSON
   SpoolTag spool;
   BoxTag box;
   UserTag user;
