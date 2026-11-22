@@ -155,3 +155,16 @@ void i2cBusUnlock() {}
 String hotspotPassword() { return "K7MQ4X9RTB"; }
 String otaPassword() { return "P3WZ8HNC2D"; }
 bool otaPasswordFixed() { return false; }
+
+// Trocknungs-Erinnerung (storage/drying): Konfiguration = Voreinstellung, "heute" kommt aus mock.today (-1 = Uhr nicht gestellt).
+#include "storage/drying.h"
+long dryingToday() { return mock.today; }
+bool dryingTodayText(char *out11) {
+  if (mock.today < 0) return false;
+  dryingFormatDate(mock.today, out11);
+  return true;
+}
+DryingStatus dryingStatusFor(const SpoolInfo &spool) {
+  return dryingStatus(mock.dryingCfg, spool.material, spool.location[0] != '\0', spool.lastDried, mock.today);
+}
+void spoolmanRequestMarkDried(int, const char *) {}

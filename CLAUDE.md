@@ -9,7 +9,7 @@ ESP32-S3-Filamentwaage mit NFC und Spoolman. Fachliche Spezifikation, Hardware u
 
 ## Arbeitsweise
 - Alles läuft über GitHub: Branch, Pull Request, CI. Kein lokaler Build, kein USB am Rechner vorausgesetzt.
-- CI (`.github/workflows/ci.yml`) bei jedem Push und PR: `native-tests` (`pio test -e native`) und `firmware-build` (`pio run -e waage`). Eine Firmware-Änderung ist erst fertig, wenn beide Jobs grün sind.
+- CI (`.github/workflows/ci.yml`) bei jedem Push und PR: `native-tests` (`pio test -e native`), `firmware-build` (`pio run -e waage`) und `screenshots` (Screens rendern, Vergleich mit `firmware/screenshots/`). Eine Firmware-Änderung ist erst fertig, wenn alle drei Jobs grün sind.
 - In der Cloud-Sitzung ist die PlatformIO-Registry gesperrt, `pio` kann dort nichts installieren. Build-Prüfung deshalb über die CI. GitHub-Klone (z. B. LVGL, ArduinoJson, Unity) funktionieren für Tests und Screenshots am Rechner.
 - Was nicht am echten Gerät getestet wurde, im PR und in `firmware/CLAUDE.md` als „am Gerät nicht geprüft“ kennzeichnen.
 
