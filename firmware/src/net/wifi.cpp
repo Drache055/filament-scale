@@ -1,11 +1,13 @@
 #include "wifi.h"
 
-#include <ArduinoJson.h>
 #include <DNSServer.h>
 #include <Preferences.h>
 #include <WiFi.h>
 
+#include <mutex>
+
 #include "config.h"
+#include "core/wifi_core.h"
 #include "secrets.h"
 #include "storage/devicepw.h"
 #include "util/log.h"
@@ -18,6 +20,18 @@ volatile bool hasCredentials = false;
 uint32_t lastConnectedMs = 0;   // letzter Zeitpunkt, an dem verbunden war (bzw. Start)
 uint32_t connectedSinceMs = 0;  // seit wann ohne Unterbrechung verbunden
 bool wasConnected = false;
+
+// Scan und USB-Einrichtung: Anfragen kommen aus anderen Tasks (Webserver, loop), ausgeführt wird nur im net-Task
+// (wifiLoop). Alles hier drunter nur mit jobsMutex.
+std::mutex jobsMutex;
+ScanJob scanJob;
+ProvisionJob provJob;
+String provSsid, provPass, provError;
+
+void wipe(String &s) {
+  for (size_t i = 0; i < s.length(); i++) s.setCharAt(i, 0);
+  s = "";
+}
 
 void onWifiEvent(arduino_event_id_t event, arduino_event_info_t info) {
   switch (event) {
@@ -55,6 +69,93 @@ void loadCredentials(String &ssid, String &pass) {
     prefs.putBool("mig", true);
   }
   prefs.end();
+}
+
+void restoreOldConnection() {
+  WiFi.disconnect(false, false);
+  String oldSsid, oldPass;
+  loadCredentials(oldSsid, oldPass);
+  if (oldSsid.length()) {
+    WiFi.begin(oldSsid.c_str(), oldPass.c_str());
+  }
+  wipe(oldPass);
+}
+
+// Verbindungsversuch der USB-Einrichtung. Gibt true zurück, solange er läuft (dann ruhen Scan und Hotspot-Automatik).
+bool runProvision(uint32_t now) {
+  std::lock_guard<std::mutex> lock(jobsMutex);
+  if (provJob.wantsStart()) {
+    if (scanJob.state() == ScanState::Running) {
+      return true;  // laufenden Scan abwarten, sonst scheitert die Verbindung
+    }
+    logPrintf("[NET] USB-Einrichtung: verbinde mit '%s' ...\n", provSsid.c_str());
+    WiFi.disconnect(false, false);
+    WiFi.begin(provSsid.c_str(), provPass.c_str());
+    provJob.started(now);
+    return true;
+  }
+  if (provJob.state() != ProvState::Connecting) {
+    return false;
+  }
+  ProvState st = provJob.step(now, WiFi.status() == WL_CONNECTED);
+  if (st == ProvState::Connecting) {
+    return true;
+  }
+  if (st == ProvState::Connected) {
+    if (wifiSaveCredentials(provSsid.c_str(), provPass.c_str(), provError)) {
+      lastConnectedMs = now;
+      hasCredentials = true;  // der Hotspot endet wie gewohnt, sobald die Verbindung eine Minute steht
+    } else {
+      provJob.fail();
+    }
+  } else {
+    provError = "Keine Verbindung mit diesem WLAN";
+    logPrintf("[NET] USB-Einrichtung: keine Verbindung mit '%s'\n", provSsid.c_str());
+    restoreOldConnection();
+  }
+  wipe(provPass);
+  return false;
+}
+
+// allowStart = false: nur einen laufenden Scan zu Ende bringen (während der USB-Einrichtung)
+void runScan(uint32_t now, bool allowStart) {
+  std::lock_guard<std::mutex> lock(jobsMutex);
+  if (scanJob.wantsStart()) {
+    if (!allowStart) {
+      return;
+    }
+    if (WiFi.scanNetworks(true, false, false, 300) == WIFI_SCAN_FAILED) {
+      logPrintln("[NET] WLAN-Suche konnte nicht starten");
+      scanJob.failed(now);
+    } else {
+      scanJob.started(now);
+    }
+    return;
+  }
+  if (scanJob.state() != ScanState::Running) {
+    return;
+  }
+  int n = WiFi.scanComplete();
+  if (n == WIFI_SCAN_RUNNING && !scanJob.timedOut(now)) {
+    return;
+  }
+  if (n < 0) {
+    logPrintln("[NET] WLAN-Suche fehlgeschlagen");
+    WiFi.scanDelete();
+    scanJob.failed(now);
+    return;
+  }
+  std::vector<WifiNet> raw;
+  raw.reserve(n);
+  for (int i = 0; i < n; i++) {
+    WifiNet w;
+    w.ssid = WiFi.SSID(i).c_str();
+    w.rssi = WiFi.RSSI(i);
+    w.open = WiFi.encryptionType(i) == WIFI_AUTH_OPEN;
+    raw.push_back(std::move(w));
+  }
+  WiFi.scanDelete();
+  scanJob.finished(now, wifiMergeNetworks(raw));
 }
 
 }  // namespace
@@ -96,7 +197,11 @@ void wifiLoop() {
   }
   wasConnected = connected;
 
-  if (hasCredentials && !connected && !apActive && now - lastConnectedMs > WIFI_AP_FALLBACK_MS) {
+  bool provisioning = runProvision(now);
+  runScan(now, !provisioning);
+  if (provisioning) {
+    // während der USB-Einrichtung keinen Hotspot starten oder beenden (WiFi.mode würde den Versuch stören)
+  } else if (hasCredentials && !connected && !apActive && now - lastConnectedMs > WIFI_AP_FALLBACK_MS) {
     logPrintln("[NET] Keine Verbindung, starte Einrichtungs-WLAN");
     wifiStartAp();
   } else if (hasCredentials && connected && apActive && now - connectedSinceMs > WIFI_AP_STABLE_MS && WiFi.softAPgetStationNum() == 0) {
@@ -144,30 +249,36 @@ bool wifiSaveCredentials(const char *ssid, const char *password, String &error) 
 bool wifiProvision(const char *ssid, const char *password, uint32_t timeoutMs, String &error) {
   String s(ssid ? ssid : "");
   s.trim();
-  logPrintf("[NET] USB-Einrichtung: verbinde mit '%s' ...\n", s.c_str());
-  WiFi.disconnect(false, false);
-  WiFi.begin(s.c_str(), password ? password : "");
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
-    delay(200);
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    error = "Keine Verbindung mit diesem WLAN";
-    logPrintf("[NET] USB-Einrichtung: keine Verbindung mit '%s'\n", s.c_str());
-    WiFi.disconnect(false, false);
-    String oldSsid, oldPass;
-    loadCredentials(oldSsid, oldPass);
-    if (oldSsid.length()) {
-      WiFi.begin(oldSsid.c_str(), oldPass.c_str());
+  {
+    std::lock_guard<std::mutex> lock(jobsMutex);
+    if (!provJob.request(timeoutMs)) {
+      error = "Verbindungsversuch läuft bereits";
+      return false;
     }
-    return false;
+    provSsid = s;
+    provPass = password ? password : "";
+    provError = "";
   }
-  if (!wifiSaveCredentials(s.c_str(), password, error)) {
-    return false;
+  // Der net-Task verbindet (wifiLoop), hier nur warten. Sicherheitsgrenze, falls der net-Task hängt.
+  uint32_t start = millis();
+  for (;;) {
+    {
+      std::lock_guard<std::mutex> lock(jobsMutex);
+      ProvState st = provJob.state();
+      if (st == ProvState::Connected) {
+        return true;
+      }
+      if (st == ProvState::Failed) {
+        error = provError;
+        return false;
+      }
+    }
+    if (millis() - start > timeoutMs + 10000) {
+      error = "Keine Antwort vom WLAN-Task";
+      return false;
+    }
+    delay(100);
   }
-  lastConnectedMs = millis();
-  hasCredentials = true;  // der Hotspot endet wie gewohnt, sobald die Verbindung eine Minute steht
-  return true;
 }
 
 void wifiResetCredentials() {
@@ -180,35 +291,13 @@ void wifiResetCredentials() {
   logPrintln("[NET] WLAN-Zugangsdaten gelöscht, nach dem Neustart startet der Hotspot");
 }
 
-String wifiScanJson() {
-  int n = WiFi.scanNetworks(false, false, false, 300);
-  JsonDocument doc;
-  JsonArray arr = doc.to<JsonArray>();
-  for (int i = 0; i < n && i < 30; i++) {
-    String ssid = WiFi.SSID(i);
-    if (ssid.length() == 0) {
-      continue;  // verstecktes Netz
-    }
-    bool dup = false;
-    for (JsonObject o : arr) {
-      if (ssid == o["ssid"].as<const char *>()) {
-        if (WiFi.RSSI(i) > o["rssi"].as<int>()) {
-          o["rssi"] = WiFi.RSSI(i);  // stärkstes Signal je Name
-        }
-        dup = true;
-      }
-    }
-    if (!dup) {
-      JsonObject o = arr.add<JsonObject>();
-      o["ssid"] = ssid;
-      o["rssi"] = WiFi.RSSI(i);
-      o["open"] = WiFi.encryptionType(i) == WIFI_AUTH_OPEN;
-    }
+ScanState wifiScanRequest(std::vector<WifiNet> *nets) {
+  std::lock_guard<std::mutex> lock(jobsMutex);
+  ScanState st = scanJob.request(millis());
+  if (st == ScanState::Done && nets) {
+    *nets = scanJob.networks();
   }
-  WiFi.scanDelete();
-  String out;
-  serializeJson(doc, out);
-  return out;
+  return st;
 }
 
 bool wifiApActive() { return apActive; }
