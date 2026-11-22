@@ -30,7 +30,7 @@ jobs:
 
       - run: pip install platformio
 
-      - name: Firmware bauen (Standard-Vorlage, Geräte-Passwort wird beim ersten Start erzeugt)
+      - name: Firmware bauen (Standard-Vorlage, Geräte-Passwörter werden beim ersten Start erzeugt)
         working-directory: firmware
         run: |
           cp include/secrets.h.example include/secrets.h
