@@ -22,6 +22,7 @@ struct BoxTag {
 struct UserTag {
   int id = -1;
   char name[24] = "";
+  char token[33] = "";  // geheimer Wert pro Benutzer, leer bei Tags im alten Format (nur ID und Name)
 };
 
 struct AdminTag {
@@ -54,8 +55,14 @@ bool tagIsBlankForBox(const TagContent &tag);
 // JSON für einen OpenSpool-Tag (Temperaturen als Strings, wie im Format üblich). spoolmanId < 0 wird weggelassen.
 size_t tagBuildSpool(const SpoolTag &spool, char *out, size_t cap);
 
-// JSON für einen Benutzer-Tag: {"type":"user","id":3,"name":"Fabian"}
-size_t tagBuildUser(int id, const char *name, char *out, size_t cap);
+// JSON für einen Benutzer-Tag: {"type":"user","id":3,"name":"Fabian","token":"<32 Hex-Zeichen>"}
+size_t tagBuildUser(int id, const char *name, const char *token, char *out, size_t cap);
+
+// Prüfung des Tokens auf einem Benutzer-Tag gegen das gespeicherte Token des Benutzers.
+// Ok: beide gesetzt und gleich. Outdated: Tag ohne Token (altes Format, muss neu geschrieben werden).
+// Invalid: Token falsch oder der Benutzer hat noch kein Token (Tag gefälscht oder durch einen neueren ersetzt).
+enum class UserTagCheck : uint8_t { Ok, Outdated, Invalid };
+UserTagCheck tagCheckUserToken(const char *stored, const char *presented);
 
 // JSON für einen Admin-Tag: {"type":"admin","token":"<32 Hex-Zeichen>"}
 size_t tagBuildAdmin(const char *token, char *out, size_t cap);
