@@ -440,7 +440,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Nach `dim` Minuten ohne Berührung, Tag-Scan, Gewichtsänderung (> 3 g) oder Meldung auf 10 % gedimmt, nach `off` Minuten aus (Standard 5/15, 0 = nie, NVS, Webseite → System). Der erste Tipp weckt nur und löst nichts aus.
 
 ### 12.5 Weboberfläche
-- Menü: Übersicht, Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log, System. `GET /api/wifi/scan` blockiert nicht: 202 = Suche läuft (die Seite fragt alle 0,8 s nach, höchstens 20-mal), 200 = Liste, 503 = Suche gescheitert. Zweisprachig, folgt der Gerätesprache. Login siehe 11.4.
+- Menü: Übersicht, Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log, System. `GET /api/wifi/scan` blockiert nicht: 202 = Suche läuft (die Seite fragt alle 0,8 s nach, höchstens 20-mal), 200 = Liste, 503 = Suche gescheitert. Zweisprachig, folgt der Gerätesprache. Login siehe 11.4. Die Seite `/` geht mit `Cache-Control: no-cache` raus, damit der Browser nach einem Firmware-Update nicht die alte Seite aus dem Cache zeigt (bei v0.2 blieb die Seite deshalb schwarz, bis Strg+Shift+R). Am Gerät nicht geprüft.
 - Design wie die Projektseite (`docs/style.css`): dunkel, enge große Headlines, Pill-Buttons und -Navigation, weicher Farbverlauf, Karten, Akzent blau. Tokens als CSS-Variablen in `web_page.h` (`:root`), systemeigene Schriften (offline, kein Webfont/CDN). Am Gerät nicht geprüft.
 
 ### 12.6 Online-Update (GitHub-Releases)
