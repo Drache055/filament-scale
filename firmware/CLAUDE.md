@@ -21,7 +21,7 @@ Daneben gibt es die Betriebsart **Einfache Waage** (5.4): nur wiegen, ohne Spool
 |---|---|
 | MCU/Display | Waveshare ESP32-S3-Touch-LCD-2 (ESP32-S3R8, 8 MB Octal-PSRAM, 16 MB Flash), ST7789T3 (SPI), 240×320 Hochformat, Touch CST816 (I²C, nur Single-Touch) |
 | Wägezelle | Biegebalken **5 kg**, 4 Leiter (E+, E−, A+, A−) |
-| ADC | HX711-Modul (grün), versorgt mit **3,3 V** (DOUT darf keine 5 V führen), RATE = 10 Hz |
+| ADC | HX711-Modul (grün), versorgt mit **3,3 V** (DOUT darf keine 5 V führen), RATE = 10 Hz. Wahlweise NAU7802 oder ADS1232 (6.4) |
 | NFC | PN532, **SPI-Modus** (DIP: SW1=OFF, SW2=ON), 3,3 V, Software-SPI an eigenen Pins. Der I²C-Modus lief am Waagen-Board nicht: SCL blieb dort an allen getesteten Pins (IO2/4/6/13/15 und IO47/48) dauerhaft auf low, am NodeMCU-ESP32 lief dasselbe Modul fehlerfrei. Ursache nicht geklärt. |
 | Tags | **NTAG216** (vorhanden); NTAG215 muss ebenfalls unterstützt werden |
 | Speicher | **keine SD-Karte**, nur Flash (NVS + LittleFS) |
@@ -37,6 +37,7 @@ Daneben gibt es die Betriebsart **Einfache Waage** (5.4): nur wiegen, ohne Spool
 ### 2.2 Pinbelegung
 - Alle Pins zentral in `include/pins.h`, nirgends sonst hart codieren.
 - Display/Touch: aus dem Waveshare-Demo für ESP32-S3-Touch-LCD-2 übernommen (`include/pins.h`). Der Touch bleibt allein auf seinem I²C-Bus (GPIO47/48).
+- Wägesensor: Typ und Pins sind auf der Webseite wählbar (6.4), `pins.h` enthält nur die Standardbelegung.
 - HX711 (kein I²C, eigene 2-Draht-Schnittstelle): SCK = GPIO17 (Header P1 Pin 5), DOUT = GPIO18 (Header P1 Pin 6). Versorgung 3,3 V = Header P2 Pin 1. Quelle: Schaltplan des Boards.
 - PN532 (**SPI**, Software-SPI): SCK = GPIO15, MISO = GPIO13, MOSI = GPIO11, SS = GPIO12 (Header P2, Bild-Nr. 7 bis 10 im Waveshare-Pinout), 3V3 = P2 Pin 1, GND = P2 Pin 2. TODO: Ob GPIO11 bis 15 sonst belegt sind (vermutlich SD-Slot, ungenutzt), ist nicht am Schaltplan geprüft.
 - Header-Belegung des Boards (Quelle: Schaltplan): P1 = IO2, IO4, IO6, IO16, IO17, IO18, IO21, IO8, IO7, IO10, IO20, IO19, GND, 5V (Pin 1–14). P2 = 3V3, GND, IO43, IO44, IO47, IO48, IO15, IO13, IO11, IO12, IO14, IO9, GND, VBAT (Pin 1–14). IO19/IO20 sind USB und nicht verwendbar.
@@ -214,6 +215,15 @@ MEASURE ─ Spule lag stabil ≥ 50 g auf, danach Waage leer ─► IDLE;  [Fert
 - Ohne angeschlossenen HX711 liest die Bibliothek am freien DOUT-Pin lauter Nullen (0) oder Einsen (−1). Mit dem gespeicherten Offset ergibt das eine feste Anzeige wie −67 g. Der `scale`-Task verwirft deshalb die Rohwerte 0, −1 und die Sättigungswerte (`rawInvalid` in `scale/scale.cpp`) und meldet alle 5 s, wie viele es waren (`[SCALE] n ungültige Lesungen verworfen`).
 - Treten diese Meldungen mit angeschlossenem HX711 auf, ist die Versorgung oder das SCK-Timing gestört (Kondensatoren 100 µF und 100 nF am HX711 helfen).
 
+### 6.4 Wägesensor wählbar
+- Typen (`core/sensor_core.h`): **HX711** (auch HX710B, Standard, GPIO17/18), **NAU7802** (I²C 0x2A, 10 SPS, Gain 128, interner LDO 3,3 V, Offset-Kalibrierung beim Start), **ADS1232/ADS1231** (2-Draht, PDWN optional, Gain/SPEED per Lötbrücke).
+- Gemeinsam für alle: Fenster, Stabilität, Tara, Kalibrierung (`scale/scale.cpp`). Je Sensor nur ein Treiber mit `begin/ready/read` (`scale/sensor.h`). Neuer Sensor: Eintrag in `SensorType`, Treiberklasse in `sensor_drivers.cpp`, Fall in `sensorCreate`, Option und Pinrollen in `web_page.h`.
+- Auswahl auf der Webseite unter Kalibrierung (nur Admin), `GET/POST /api/sensor`. Gespeichert in NVS `sensor` (`type`, `p0`–`p2`), wirksam nach dem Neustart. Ungültige gespeicherte Werte fallen auf HX711 an GPIO17/18 zurück.
+- Pinprüfung (`sensorValidate`): nur freie Header-Pins (2, 4, 6, 7, 8, 9, 10, 14, 16, 17, 18, 21), keine doppelten. IO43/44 (UART0) sind bewusst ausgeschlossen. NAU7802 darf zusätzlich genau SCL = 47 / SDA = 48 nutzen (Touch-Bus, mit dem I²C-Mutex), sonst eigener Bus `Wire1`.
+- Kalibrierung pro Typ: HX711 mit den alten Schlüsseln (`offset`, `factor`, `cal`), sonst mit Anhang (`_nau`, `_ads`). Die bestehende HX711-Kalibrierung bleibt beim Update gültig.
+- Rohwerte: 0 und −1 gelten bei HX711/ADS1232 als „kein Sensor“, beim NAU7802 nicht (Lesefehler erkennt dort der I²C-Status). Sättigung ist bei allen ungültig. Findet `begin()` den NAU7802 nicht, versucht der Task es alle 2 s erneut, ebenso nach 2 s ohne Daten.
+- **Am Gerät nicht geprüft:** NAU7802, ADS1232, die Sensorwahl auf der Webseite und der Umbau des HX711-Pfads auf die Treiber-Schnittstelle.
+
 ---
 
 ## 7. Spoolman-Integration
@@ -300,6 +310,7 @@ src/
   core/weigh_core             Wiegeablauf-Logik (ohne Arduino, getestet)
   core/simple_core            Einfache Waage, Ablauf-Logik (ohne Arduino, getestet)
   core/update_core            Online-Update: Versionsvergleich, GitHub-Release auswerten (ohne Arduino, getestet)
+  core/diag_core              Selbstdiagnose: Zustände der Komponenten → Befund-Codes (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
@@ -308,7 +319,9 @@ src/
   net/web_page.h              HTML/JS der Weboberfläche
   net/spoolman                Spoolman-Client
   nfc/ndef, tags, nfc         siehe 4.6
-  scale/scale                 HX711, Filter, Stabilität, Kalibrierung
+  core/sensor_core            Wägesensor: Typen, Pinprüfung, Rohwerte (ohne Arduino, getestet)
+  scale/scale                 Sensorwahl, Filter, Stabilität, Kalibrierung
+  scale/sensor, sensor_drivers  Treiber-Schnittstelle LoadSensor, HX711, NAU7802, ADS1232
   storage/admin, users        Admin, Benutzer, PINs
   storage/catalog             Filament-Katalog
   storage/devicepw            Geräte-Passwort
@@ -328,7 +341,8 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ## 9. Konfiguration (NVS)
 - WLAN SSID/Passwort (siehe 12.1), Spoolman-Basis-URL
-- Kalibrierfaktor, Nulloffset
+- Kalibrierfaktor, Nulloffset pro Sensortyp (Namensraum `scale`, siehe 6.4)
+- Wägesensor: Typ und Pins (Namensraum `sensor`)
 - Schwellen (Stabilität, „leer“, „hinzugefügt“, Timeout), Defaults in `config.h`
 - Bildschirmschoner, Display-VCOMS, Gerätesprache, Benutzer, Katalog, Admin-Daten
 - Betriebsart und Leerspule der einfachen Waage (`devmode`)
@@ -416,6 +430,15 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - API: `GET /api/update[?notes=1]`, `POST /api/update/check`, `POST /api/update/install`, `POST /api/update/channel?ch=stable|rc|test` (alle Admin).
 - Am Gerät nicht geprüft (Stand der Einführung).
 
+### 12.7 Selbstdiagnose
+- Webseite → System → Selbstdiagnose (nur Admin, aktualisiert sich alle 3 s): je Komponente (Wägesensor, NFC-Modul, WLAN, Spoolman, Offline-Warteschlange) eine Zeile mit Status und, bei einem Fehler, Ursache und Lösungstipp. Im Modus „Einfache Waage“ nur Wägesensor und WLAN.
+- `core/diag_core` (`diagRun`) macht aus einer Momentaufnahme (`DiagInput`) Befunde (Komponente, Stufe ok/info/warn/error, Code). Die Klartexte stehen zweisprachig in `net/web_page.h` (`dg_<komponente>_<code>`, Tipp `…_tip`). Neuer Befund = Code in `diag_core.cpp`, Test in `test/test_diag`, Texte in beiden Sprachen.
+- Sensor-unabhängig: Es zählt nur, ob der Wägesensor gültige Werte liefert (`ScaleReading.valid`), nicht welcher Wandler. Der Tipp „keine gültigen Werte“ gibt es je Sensortyp (`dg_sensor_no_data_tip_<hx711|nau7802|ads1232>`, Typ aus `scaleSensorActive()`, `GET /api/diag` → `sensor`), sonst den allgemeinen.
+- Spoolman: `SpoolmanStatus.httpCode` (HTTP-Status der letzten `/api/v1/info`-Prüfung) trennt „nicht erreichbar“ (0), falsche Adresse (404), Zugriff verweigert (401/403), Serverfehler (5xx) und „kein Spoolman“ (200 ohne gültiges JSON).
+- In den ersten 30 s nach dem Start gelten fehlende Daten als „startet noch“ (Info), danach als Fehler.
+- API: `GET /api/diag` (Admin) liefert `{"items":[{"comp","level","code"}],"http":n}`.
+- Am Gerät nicht geprüft. Eine Anzeige am Gerätedisplay gibt es noch nicht.
+
 ---
 
 ## 13. Flashen, Releases, UI-Style
@@ -465,6 +488,8 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
 
 - **OpenPrintTag** auf NTAG215/216 (4.7): Lesen, Schreiben, Anzeige unter Menü → NFC und auf der Webseite.
+- **Selbstdiagnose** (12.7): Seite im Browser, Befunde mit echten Fehlern (HX711/PN532 abgesteckt, Spoolman aus, falsche URL, WLAN weg). Logik nativ getestet, JavaScript nur mit `node --check`.
+- **Wägesensor wählbar** (6.4): NAU7802 und ADS1232 ohne Hardware umgesetzt, Webseite nur mit `node --check` geprüft, HX711 nach dem Umbau auf die Treiber-Schnittstelle noch nicht am Gerät.
 
 ### 14.3 Offen
 - Leseweite des PN532 durch Wiegeplatte und Boxboden praktisch testen.

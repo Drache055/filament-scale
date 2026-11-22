@@ -2,16 +2,17 @@
 #include "util/log.h"
 
 #include <Arduino.h>
-#include <HX711.h>
 #include <Preferences.h>
 #include <freertos/semphr.h>
 
 #include "config.h"
-#include "pins.h"
+#include "sensor.h"
 
 namespace {
 
-HX711 hx;
+SensorConfig active;  // beim Start geladen, gilt bis zum Neustart
+SensorConfig stored;  // gespeichert (Webseite), wirksam nach dem Neustart
+LoadSensor *sensor = nullptr;
 SemaphoreHandle_t mutex = nullptr;
 ScaleReading shared;
 
@@ -25,23 +26,47 @@ int head = 0;
 uint32_t lastSampleMs = 0;
 bool bootZeroDone = false;
 
+// Kalibrierung pro Sensortyp: HX711 mit den alten Schlüsseln (offset, factor, cal), andere mit Anhang (offset_nau ...)
+String calKey(const char *base) { return String(base) + sensorCalSuffix(active.type); }
+
 void saveCalibration() {
   Preferences prefs;
   prefs.begin("scale", false);
-  prefs.putLong("offset", offset);
-  prefs.putFloat("factor", factor);
-  prefs.putBool("cal", calibrated);
+  prefs.putLong(calKey("offset").c_str(), offset);
+  prefs.putFloat(calKey("factor").c_str(), factor);
+  prefs.putBool(calKey("cal").c_str(), calibrated);
   prefs.end();
 }
 
 void loadCalibration() {
   Preferences prefs;
   prefs.begin("scale", false);
-  offset = prefs.getLong("offset", 0);
-  factor = prefs.getFloat("factor", 1.0f);
-  calibrated = prefs.getBool("cal", false) && factor != 0.0f;
+  offset = prefs.getLong(calKey("offset").c_str(), 0);
+  factor = prefs.getFloat(calKey("factor").c_str(), 1.0f);
+  calibrated = prefs.getBool(calKey("cal").c_str(), false) && factor != 0.0f;
   prefs.end();
-  logPrintf("[SCALE] Kalibrierung: %s, Offset %ld, Faktor %.4f\n", calibrated ? "ja" : "nein", offset, factor);
+  logPrintf("[SCALE] Kalibrierung %s: %s, Offset %ld, Faktor %.4f\n", sensorTypeName(active.type),
+            calibrated ? "ja" : "nein", offset, factor);
+}
+
+// Sensorwahl (NVS-Namensraum "sensor"). Ungültige oder fehlende Einträge ergeben den HX711 an GPIO17/18.
+SensorConfig loadSensorConfig() {
+  Preferences prefs;
+  prefs.begin("sensor", true);
+  SensorConfig c;
+  c.type = (SensorType)prefs.getUChar("type", (uint8_t)SensorType::HX711);
+  SensorConfig def = sensorDefault((int)c.type < SENSOR_TYPE_COUNT ? c.type : SensorType::HX711);
+  for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+    char key[4] = {'p', (char)('0' + i), 0, 0};
+    c.pin[i] = prefs.getChar(key, def.pin[i]);
+  }
+  prefs.end();
+  const char *err = nullptr;
+  if (!sensorValidate(c, err)) {
+    logPrintf("[SCALE] Gespeicherte Sensorwahl ungültig (%s), nutze HX711\n", err);
+    c = sensorDefault(SensorType::HX711);
+  }
+  return c;
 }
 
 void update() {
@@ -77,26 +102,49 @@ void update() {
   xSemaphoreGive(mutex);
 }
 
-// Ungültige Lesungen: Ohne HX711 liest die Bibliothek am freien DOUT-Pin lauter Nullen (0) oder lauter Einsen (-1); das
-// gilt auch, wenn der HX711 durch eine zu lange SCK-Pause in den Stromsparmodus fällt. Die Sättigungswerte des
-// 24-Bit-Wandlers sind ebenfalls keine Messung.
-bool rawInvalid(long raw) {
-  return raw == 0 || raw == -1 || raw >= 0x7FFFFF || raw <= -0x800000;
+void markNoData() {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  shared.valid = false;
+  xSemaphoreGive(mutex);
+  count = 0;
+  head = 0;
 }
 
+// Ungültige Lesungen (sensorRawInvalid): Ohne HX711/ADS1232 liest man am freien DOUT-Pin lauter Nullen (0) oder lauter
+// Einsen (-1); das gilt auch, wenn der HX711 durch eine zu lange SCK-Pause in den Stromsparmodus fällt. Die
+// Sättigungswerte des 24-Bit-Wandlers sind bei allen Sensoren keine Messung.
 void scaleTask(void *) {
-  hx.begin(PIN_HX711_DOUT, PIN_HX711_SCK);
+  const char *name = sensorTypeName(active.type);
+  sensor = sensorCreate(active);
+  bool started = sensor->begin();
+  uint32_t lastBeginMs = millis();
+  if (!started) {
+    logPrintf("[SCALE] %s nicht gefunden, neuer Versuch alle 2 s\n", name);
+  }
   lastSampleMs = millis();
   uint32_t rejected = 0;
   uint32_t lastRejectLogMs = 0;
   for (;;) {
-    if (hx.is_ready()) {
-      long raw = hx.read();
-      if (rawInvalid(raw)) {
+    if (!started) {
+      if (millis() - lastBeginMs > 2000) {
+        lastBeginMs = millis();
+        started = sensor->begin();
+        if (started) {
+          logPrintf("[SCALE] %s gefunden\n", name);
+          lastSampleMs = millis();
+        }
+      }
+      vTaskDelay(pdMS_TO_TICKS(20));
+      continue;
+    }
+    if (sensor->ready()) {
+      long raw = 0;
+      bool ok = sensor->read(raw);
+      if (!ok || sensorRawInvalid(active.type, raw)) {
         rejected++;
         if (rejected && millis() - lastRejectLogMs > 5000) {
-          logPrintf("[SCALE] %u ungültige Lesungen verworfen (Rohwert %ld), HX711 angeschlossen?\n", (unsigned)rejected,
-                    raw);
+          logPrintf("[SCALE] %u ungültige Lesungen verworfen (Rohwert %ld), %s angeschlossen?\n", (unsigned)rejected,
+                    raw, name);
           rejected = 0;
           lastRejectLogMs = millis();
         }
@@ -112,11 +160,12 @@ void scaleTask(void *) {
       update();
     } else {
       if (millis() - lastSampleMs > SCALE_NO_DATA_MS) {
-        xSemaphoreTake(mutex, portMAX_DELAY);
-        shared.valid = false;
-        xSemaphoreGive(mutex);
-        count = 0;
-        head = 0;
+        markNoData();
+        // Ein I²C-Sensor kann nach einem Spannungseinbruch seine Register verloren haben: neu initialisieren
+        if (active.type == SensorType::NAU7802) {
+          started = false;
+          lastBeginMs = millis();
+        }
       }
       vTaskDelay(pdMS_TO_TICKS(5));
     }
@@ -127,6 +176,10 @@ void scaleTask(void *) {
 
 void scaleBegin() {
   mutex = xSemaphoreCreateMutex();
+  active = loadSensorConfig();
+  stored = active;
+  logPrintf("[SCALE] Sensor %s, Pins %d/%d/%d\n", sensorTypeName(active.type), active.pin[0], active.pin[1],
+            active.pin[2]);
   loadCalibration();
   xTaskCreatePinnedToCore(scaleTask, "scale", 4096, nullptr, 3, nullptr, 1);
 }
@@ -164,4 +217,26 @@ bool scaleCalibrate(float knownGrams) {
   }
   xSemaphoreGive(mutex);
   return ok;
+}
+
+SensorConfig scaleSensorActive() { return active; }
+
+SensorConfig scaleSensorStored() { return stored; }
+
+bool scaleSensorSave(const SensorConfig &cfg, const char *&error) {
+  if (!sensorValidate(cfg, error)) {
+    return false;
+  }
+  Preferences prefs;
+  prefs.begin("sensor", false);
+  prefs.putUChar("type", (uint8_t)cfg.type);
+  for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+    char key[4] = {'p', (char)('0' + i), 0, 0};
+    prefs.putChar(key, cfg.pin[i]);
+  }
+  prefs.end();
+  stored = cfg;
+  logPrintf("[SCALE] Sensorwahl gespeichert: %s, Pins %d/%d/%d (nach Neustart)\n", sensorTypeName(cfg.type), cfg.pin[0],
+            cfg.pin[1], cfg.pin[2]);
+  return true;
 }

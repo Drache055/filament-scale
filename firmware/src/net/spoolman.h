@@ -39,6 +39,7 @@ struct SpoolmanStatus {
   char url[96] = "";
   uint32_t checkedSecondsAgo = 0;
   bool everChecked = false;
+  int httpCode = 0;  // HTTP-Status der letzten Prüfung (0 = keine Verbindung)
 };
 
 void spoolmanBegin();
