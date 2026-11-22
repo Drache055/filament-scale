@@ -9,16 +9,16 @@ A filament scale built on the ESP32-S3. It reads the spool and its storage box v
 ## How it works
 
 1. Hold the spool to the scan zone. The scale looks it up in Spoolman.
-2. Put the storage box (with its own NFC tag) on the scale. Weight W1 is stored.
-3. Put the spool into the box. Weight W2 is stored.
+2. Put the storage box (with its own NFC tag) on the scale. The scale stores the weight of the box without the spool (1st weighing).
+3. Put the spool into the box. The scale stores the weight of the box with the spool (2nd weighing).
 4. Confirm. Remaining weight and location go to Spoolman.
 
 The box weight never has to be known. Example from the device screens:
 
 | | |
 |---|---:|
-| W2, box with spool | 1254 g |
-| − W1, box alone | 412 g |
+| box with spool (2nd weighing) | 1254 g |
+| − box without spool (1st weighing) | 412 g |
 | − empty spool (from Spoolman) | 250 g |
 | **= remaining weight** | **592 g** |
 

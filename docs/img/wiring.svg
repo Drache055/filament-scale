@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 740" font-family="IBM Plex Mono,Menlo,Consolas,monospace" font-size="13">
-<rect width="960" height="740" rx="10" fill="#f6f6f2"/>
+<style>.bg{fill:#f3f4f2}.tx{fill:#1a1d21}.mu{fill:#5a6068}.wa{fill:#b45309}.ha{stroke:none}@media (prefers-color-scheme:dark){.bg{fill:#1b1f24}.tx{fill:#e7e9ec}.mu{fill:#9aa1aa}.wa{fill:#f0a43c}.ha{stroke:#8a9096}}</style>
+<rect class="bg" width="960" height="740" rx="10"/>
 <rect x="318" y="46" width="364" height="606" rx="26" fill="#2a2c30"/>
 <rect x="330" y="80" width="340" height="520" rx="10" fill="#1d4f9c" stroke="#123a75" stroke-width="2"/>
 <circle cx="352" cy="102" r="11" fill="#c9a227"/><circle cx="352" cy="102" r="5" fill="#2a2c30"/>
@@ -80,8 +81,10 @@
 <path d="M290,254 H305 V26 H700 V170" fill="none" stroke="#d62828" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M290,282 H355" fill="none" stroke="#e0a800" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M290,310 H355" fill="none" stroke="#2e9e4f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path class="ha" d="M290,338 H322 V506 H355" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M290,338 H322 V506 H355" fill="none" stroke="#222" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M120,266 H170" fill="none" stroke="#d62828" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path class="ha" d="M120,294 H170" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M120,294 H170" fill="none" stroke="#222" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M120,322 H170" fill="none" stroke="#555" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M120,322 H170" stroke="#f0f0f0" stroke-width="2.5"/>
@@ -96,16 +99,17 @@
 <circle cx="176" cy="350" r="4" fill="#f2c94c"/><text x="184" y="354" fill="#fff" font-size="12">A+</text>
 <circle cx="176" cy="378" r="4" fill="#9a8a52"/><text x="184" y="382" fill="#a7c9b0" font-size="12">B-</text>
 <circle cx="176" cy="406" r="4" fill="#9a8a52"/><text x="184" y="410" fill="#a7c9b0" font-size="12">B+</text>
-<text x="230" y="466" text-anchor="middle" font-size="11" fill="#5a6068">optional: 100 µF + 100 nF</text><text x="230" y="481" text-anchor="middle" font-size="11" fill="#5a6068">between VCC and GND</text>
+<text x="230" y="466" text-anchor="middle" font-size="11" class="mu">optional: 100 µF + 100 nF</text><text x="230" y="481" text-anchor="middle" font-size="11" class="mu">between VCC and GND</text>
 <rect x="30" y="246" width="90" height="124" rx="4" fill="#c9ccd1" stroke="#7d838a" stroke-width="2"/>
-<circle cx="58" cy="282" r="9" fill="#f6f6f2" stroke="#7d838a"/><circle cx="92" cy="282" r="9" fill="#f6f6f2" stroke="#7d838a"/>
+<circle cx="58" cy="282" r="9" class="bg" stroke="#7d838a"/><circle cx="92" cy="282" r="9" class="bg" stroke="#7d838a"/>
 <text x="75" y="320" text-anchor="middle" font-size="12" fill="#1a1d21">Load cell</text><text x="75" y="337" text-anchor="middle" font-size="12" fill="#1a1d21">5 kg</text>
-<text x="75" y="392" text-anchor="middle" font-size="11" fill="#5a6068">red=E+ black=E-</text><text x="75" y="407" text-anchor="middle" font-size="11" fill="#5a6068">white=A- green=A+</text><text x="75" y="422" text-anchor="middle" font-size="11" fill="#b45309">typical colors,</text><text x="75" y="437" text-anchor="middle" font-size="11" fill="#b45309">check yours</text>
+<text x="75" y="392" text-anchor="middle" font-size="11" class="mu">red=E+ black=E-</text><text x="75" y="407" text-anchor="middle" font-size="11" class="mu">white=A- green=A+</text><text x="75" y="422" text-anchor="middle" font-size="11" class="wa">typical colors,</text><text x="75" y="437" text-anchor="middle" font-size="11" class="wa">check yours</text>
 <rect x="760" y="140" width="160" height="310" rx="6" fill="#1b3f8f" stroke="#10275a" stroke-width="2"/>
 <rect x="812" y="214" width="92" height="130" rx="10" fill="none" stroke="#d9a441" stroke-width="3"/>
 <text x="858" y="276" fill="#fff" text-anchor="middle" font-weight="700">PN532</text><text x="858" y="294" fill="#cfd8ef" text-anchor="middle" font-size="11">NFC</text>
 <text x="840" y="416" fill="#fff" text-anchor="middle" font-size="11">DIP: SW1=OFF</text><text x="840" y="431" fill="#fff" text-anchor="middle" font-size="11">SW2=ON (SPI)</text>
 <path d="M760,170 H645" fill="none" stroke="#d62828" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path class="ha" d="M760,198 H645" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M760,198 H645" fill="none" stroke="#222" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M760,338 H645" fill="none" stroke="#e0a800" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M760,366 H645" fill="none" stroke="#2a7de1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -118,7 +122,7 @@
 <circle cx="766" cy="366" r="4" fill="#f2c94c"/><text x="774" y="370" fill="#fff" font-size="12">MISO</text>
 <circle cx="766" cy="394" r="4" fill="#f2c94c"/><text x="774" y="398" fill="#fff" font-size="12">MOSI</text>
 <circle cx="766" cy="422" r="4" fill="#f2c94c"/><text x="774" y="426" fill="#fff" font-size="12">SS</text>
-<text x="30" y="686" font-size="12" fill="#1a1d21">View from the back. Labels as printed on the board. GPIOs: firmware/include/pins.h.</text>
-<text x="30" y="704" font-size="12" fill="#1a1d21">Power everything from 3V3, not 5V. Any G (GND) pin works. 19/20 are USB, do not use.</text>
-<text x="30" y="722" font-size="12" fill="#b45309">Not verified: whether GPIO11–15 are used elsewhere on the board.</text>
+<text x="30" y="686" font-size="12" class="tx">View from the back. Labels as printed on the board. GPIOs: firmware/include/pins.h.</text>
+<text x="30" y="704" font-size="12" class="tx">Power everything from 3V3, not 5V. Any G (GND) pin works. 19/20 are USB, do not use.</text>
+<text x="30" y="722" font-size="12" class="wa">Not verified: whether GPIO11–15 are used elsewhere on the board.</text>
 </svg>
