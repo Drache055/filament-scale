@@ -43,7 +43,7 @@ const char *const texts[(int)Str::Count][2] = {
     /* CalOk */ {"Kalibriert", "Calibrated"},
     /* CalFailed */ {"Fehler: Signal zu klein", "Failed: signal too small"},
     /* NotCalibrated */ {"Nicht kalibriert", "Not calibrated"},
-    /* NoSensor */ {"HX711 nicht gefunden", "HX711 not found"},
+    /* NoSensor */ {"Wägesensor fehlt", "No load sensor"},
     /* Stable */ {"stabil", "stable"},
     /* Overload */ {"Überlast", "Overload"},
     /* Raw */ {"Rohwert", "Raw"},
