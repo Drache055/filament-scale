@@ -1,8 +1,9 @@
 name: Release
 
 # Ein Tag wie v0.1 oder v1.2 erzeugt eine GitHub-Release mit Firmware und STEP-Datei als Assets.
-# Tags mit Bindestrich (z. B. v1.2-beta) werden Pre-Releases und landen nicht im Web-Flasher.
-# Stabile Versionen kommen nach docs/firmware/<tag>/; die höchste ist der Standard im Web-Flasher.
+# Tags mit Bindestrich (z. B. v1.2-rc1, v1.2-beta) werden Pre-Releases.
+# Jede Version kommt nach docs/firmware/<tag>/ (Kanal stable, rc oder test, siehe tools/update_flasher.py);
+# die höchste stabile ist der Standard im Web-Flasher, Pre-Releases ändern ihn nicht.
 on:
   push:
     tags: ["v*"]
@@ -65,12 +66,13 @@ jobs:
             gh release create "$TAG" out/* --title "$TAG" $flags
           fi
 
-      - name: Web-Flasher aktualisieren (nur stabile Versionen)
-        if: steps.kind.outputs.prerelease == 'false'
+      - name: Web-Flasher aktualisieren
         run: |
           git fetch origin main
           git checkout -B main origin/main
-          python3 tools/update_flasher.py "$TAG" firmware/.pio/build/waage/firmware.factory.bin
+          flag=""
+          [ "${{ steps.kind.outputs.prerelease }}" = "true" ] && flag="--prerelease"
+          python3 tools/update_flasher.py "$TAG" firmware/.pio/build/waage/firmware.factory.bin $flag
           git config user.name "Drache055"
           git config user.email "98689959+Drache055@users.noreply.github.com"
           git add docs/firmware
@@ -82,5 +84,4 @@ jobs:
           fi
 
       - name: Pages neu bauen
-        if: steps.kind.outputs.prerelease == 'false'
         run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
