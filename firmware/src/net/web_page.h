@@ -70,6 +70,9 @@ body:not([data-role=admin]):not([data-cat="1"]) .cat-only{display:none!important
 h3{font-size:15px;margin:18px 0 8px}
 #logbox{background:var(--screen);color:#cbd5e1;border:1px solid var(--line);border-radius:var(--r);padding:12px;height:62vh;overflow:auto;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-all;margin:0}
 .ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}
+#fwbar{width:100%;height:10px;margin-top:12px;accent-color:var(--accent)}
+#fwnotes{background:var(--screen);color:#cbd5e1;border:1px solid var(--line);border-radius:var(--r);padding:12px;max-height:40vh;overflow:auto;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;margin:12px 0 0}
+#menu a.upd::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:12px 22px;box-shadow:0 8px 30px #0006;opacity:0;pointer-events:none;transition:.25s;max-width:92vw;z-index:9}
 #toast.show{opacity:1;transform:translateX(-50%)}
 @media (max-width:760px){
@@ -131,6 +134,7 @@ h3{font-size:15px;margin:18px 0 8px}
       <tr><td data-i18n="signal">Signal</td><td id="rssi">-</td></tr>
       <tr><td data-i18n="uptime">Laufzeit</td><td id="up">-</td></tr>
       <tr><td data-i18n="mem">Freier RAM / PSRAM</td><td id="heap">-</td></tr>
+      <tr><td>Firmware</td><td id="fwver">-</td></tr>
     </table>
   </div>
 </section>
@@ -272,6 +276,26 @@ h3{font-size:15px;margin:18px 0 8px}
     <textarea id="theme" spellcheck="false"></textarea>
     <div class="row" style="margin-top:10px"><button id="save" data-i18n="save_restart">Speichern &amp; neu starten</button><button id="load" class="sec" data-i18n="reload">Neu laden</button></div>
   </div>
+  <div class="card" id="fwcard">
+    <div class="label" data-i18n="fw_update">Firmware-Update</div>
+    <p class="hint" data-i18n="fw_hint"></p>
+    <table>
+      <tr><td data-i18n="fw_installed">Installiert</td><td id="fwcur">-</td></tr>
+      <tr><td data-i18n="fw_latest">Neueste Version im Kanal</td><td id="fwlatest">-</td></tr>
+    </table>
+    <div class="row" style="margin-top:12px"><span data-i18n="fw_channel">Update-Kanal</span>
+      <select id="fwchan"><option value="stable" data-i18n="ch_stable">Stable</option><option value="rc" data-i18n="ch_rc">Release-Kandidat</option><option value="test" data-i18n="ch_test">Test</option></select></div>
+    <p class="hint" style="margin:8px 0 0" data-i18n="fw_chan_hint"></p>
+    <div id="fwmsg" style="min-height:1.4em;margin-top:10px"></div>
+    <progress id="fwbar" max="100" value="0" style="display:none"></progress>
+    <div class="row" style="margin-top:12px">
+      <button id="fwcheck" class="sec" data-i18n="fw_check">Nach Updates suchen</button>
+      <button id="fwinstall" style="display:none" data-i18n="fw_install">Jetzt aktualisieren</button>
+      <button id="fwdown" class="sec" style="display:none"></button>
+      <a id="fwpage" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="fw_page">Release auf GitHub</a>
+    </div>
+    <pre id="fwnotes" style="display:none"></pre>
+  </div>
   <div class="card">
     <div class="label" data-i18n="maintenance">Wartung</div>
     <table><tr><td data-i18n="fw_slot">Firmware-Slot</td><td id="slot">-</td></tr></table>
@@ -312,7 +336,7 @@ pause:'Pause',resume:'Weiter',clear_view:'Anzeige leeren',download:'Herunterlade
 mode:'Betriebsart',mode_smart:'Smarte Waage (NFC, Anmeldung, Spoolman)',mode_simple:'Einfache Waage (nur wiegen, ohne Anmeldung und Spoolman)',mode_hint:'Einfache Waage: Am Gerät gibt es nur "Filament wiegen" (Spule allein oder Box + Spule). Benutzer-Tags melden nicht an, Spulen werden nicht in Spoolman nachgeschlagen, Spoolman wird nicht abgefragt. Jeder darf tarieren. Einstellungen bleiben beim Admin.',mode_set:'Betriebsart gespeichert',sm_off:'aus (einfache Waage)',weigh_only:'Nur wiegen',weigh_only_right:'Sieht am Gerät nur "Filament wiegen", ohne Spoolman',
 language:'Sprache',lang_hint:'Gilt für die Anzeige am Gerät (es springt dabei zum Startbildschirm) und für diese Webseite.',lang_set:'Sprache auf Deutsch gestellt',
 screensaver:'Bildschirmschoner',ss_hint:'Nach der eingestellten Zeit ohne Berührung, Tag oder Gewichtsänderung wird die Anzeige gedimmt, später ausgeschaltet. 0 = nie. Der erste Tipp weckt nur auf.',dim_after:'Dimmen nach',off_after:'Aus nach',ss_saved:'Bildschirmschoner gespeichert',
-theme_hint:'Farben, Radius, Abstände und Schriftgrößen der Anzeige am Gerät. Nach dem Speichern startet das Gerät neu.',reload:'Neu laden',maintenance:'Wartung',fw_slot:'Firmware-Slot',reboot:'Gerät neu starten',touch_reset:'Touch-Kalibrierung zurücksetzen',
+theme_hint:'Farben, Radius, Abstände und Schriftgrößen der Anzeige am Gerät. Nach dem Speichern startet das Gerät neu.',reload:'Neu laden',maintenance:'Wartung',fw_slot:'Firmware-Slot',fw_update:'Firmware-Update',fw_hint:'Sucht auf GitHub nach der neuesten Version im gewählten Kanal und installiert sie per WLAN. Einstellungen, Benutzer und Kalibrierung bleiben erhalten. Schlägt das Update fehl, läuft die bisherige Firmware weiter.',fw_channel:'Update-Kanal',ch_stable:'Stable',ch_rc:'Release-Kandidat',ch_test:'Test',fw_chan_hint:'Stable: nur normale Releases (v1.2). Release-Kandidat: zusätzlich Tags mit -rc (v1.3-rc1). Test: zusätzlich alle anderen Vorabversionen (v1.3-beta1, v1.3-test2).',fw_down:'{0} installieren (Rückschritt)',fw_down_info:'Im Kanal gibt es nur die ältere Version {0}.',fw_down_confirm:'Version {0} ist älter als die installierte. Trotzdem installieren? Das Gerät startet danach neu.',fw_chan_set:'Kanal gespeichert',fw_installed:'Installiert',fw_latest:'Neueste Version im Kanal',fw_check:'Nach Updates suchen',fw_install:'Jetzt aktualisieren',fw_page:'Release auf GitHub',fw_checking:'Suche nach Updates ...',fw_uptodate:'Die Firmware ist aktuell.',fw_avail:'Version {0} ist verfügbar.',fw_unknown:'Installierte Version unbekannt (Entwicklungsstand). Version {0} kann installiert werden.',fw_norel:'Auf GitHub gibt es in diesem Kanal noch keine Version.',fw_never:'Noch nicht gesucht.',fw_dl:'Update wird geladen und geschrieben: {0} %. Gerät nicht ausschalten.',fw_done:'Update installiert, Gerät startet neu ...',fw_confirm:'Version {0} jetzt installieren? Das Gerät startet danach neu.',fw_back:'Neustart fertig, Version {0} läuft.',fw_ago:'zuletzt vor {0}',fw_cut:'(gekürzt)',reboot:'Gerät neu starten',touch_reset:'Touch-Kalibrierung zurücksetzen',
 saved_restarting:'Gespeichert, Gerät startet neu ...',confirm_reboot:'Gerät neu starten?',rebooting:'Neustart ...',confirm_touch:'Touch-Kalibrierung zurücksetzen? Danach am Gerät neu kalibrieren (Menü → Einstellungen → Touch kalibrieren).',touch_done:'Touch-Kalibrierung zurückgesetzt',
 tare_done:'Tara gesetzt',tare_fail:'Tara fehlgeschlagen: {0}',cal_done:'Kalibriert',cal_fail:'Kalibrierung fehlgeschlagen: {0}',
 nfc_none:'Modul nicht gefunden',nfc_ready:'bereit',k_spool:'Spule',k_box:'Box',k_user:'Benutzer',k_unknown:'Tag ohne Format',
@@ -340,7 +364,7 @@ pause:'Pause',resume:'Resume',clear_view:'Clear view',download:'Download',
 mode:'Operating mode',mode_smart:'Smart scale (NFC, login, Spoolman)',mode_simple:'Simple scale (weigh only, no login, no Spoolman)',mode_hint:'Simple scale: the device only offers "Weigh filament" (spool alone or box + spool). User tags do not log in, spools are not looked up in Spoolman and Spoolman is not contacted. Everyone may tare. Settings stay with the admin.',mode_set:'Operating mode saved',sm_off:'off (simple scale)',weigh_only:'Weigh only',weigh_only_right:'Only sees "Weigh filament" on the device, no Spoolman',
 language:'Language',lang_hint:'Applies to the display on the device (it jumps to the home screen) and to this web page.',lang_set:'Language set to English',
 screensaver:'Screensaver',ss_hint:'After the set time without touch, tag or weight change the display is dimmed, later switched off. 0 = never. The first tap only wakes it up.',dim_after:'Dim after',off_after:'Off after',ss_saved:'Screensaver saved',
-theme_hint:'Colors, radius, spacing and font sizes of the display on the device. The device restarts after saving.',reload:'Reload',maintenance:'Maintenance',fw_slot:'Firmware slot',reboot:'Restart device',touch_reset:'Reset touch calibration',
+theme_hint:'Colors, radius, spacing and font sizes of the display on the device. The device restarts after saving.',reload:'Reload',maintenance:'Maintenance',fw_slot:'Firmware slot',fw_update:'Firmware update',fw_hint:'Looks up the latest version of the selected channel on GitHub and installs it over Wi-Fi. Settings, users and calibration are kept. If the update fails, the current firmware keeps running.',fw_channel:'Update channel',ch_stable:'Stable',ch_rc:'Release candidate',ch_test:'Test',fw_chan_hint:'Stable: regular releases only (v1.2). Release candidate: also tags with -rc (v1.3-rc1). Test: also all other pre-releases (v1.3-beta1, v1.3-test2).',fw_down:'Install {0} (downgrade)',fw_down_info:'This channel only has the older version {0}.',fw_down_confirm:'Version {0} is older than the installed one. Install anyway? The device restarts afterwards.',fw_chan_set:'Channel saved',fw_installed:'Installed',fw_latest:'Latest version in channel',fw_check:'Check for updates',fw_install:'Update now',fw_page:'Release on GitHub',fw_checking:'Checking for updates ...',fw_uptodate:'The firmware is up to date.',fw_avail:'Version {0} is available.',fw_unknown:'Installed version unknown (development build). Version {0} can be installed.',fw_norel:'There is no version in this channel on GitHub yet.',fw_never:'Not checked yet.',fw_dl:'Downloading and writing update: {0} %. Do not switch off the device.',fw_done:'Update installed, device restarts ...',fw_confirm:'Install version {0} now? The device restarts afterwards.',fw_back:'Restart finished, version {0} is running.',fw_ago:'last checked {0} ago',fw_cut:'(shortened)',reboot:'Restart device',touch_reset:'Reset touch calibration',
 saved_restarting:'Saved, device restarts ...',confirm_reboot:'Restart the device?',rebooting:'Restarting ...',confirm_touch:'Reset touch calibration? Then recalibrate on the device (Menu → Settings → Calibrate touch).',touch_done:'Touch calibration reset',
 tare_done:'Tare set',tare_fail:'Tare failed: {0}',cal_done:'Calibrated',cal_fail:'Calibration failed: {0}',
 nfc_none:'Module not found',nfc_ready:'ready',k_spool:'Spool',k_box:'Box',k_user:'User',k_unknown:'Tag without format',
@@ -356,7 +380,7 @@ function applyLang(l){
   document.querySelectorAll('[data-i18n-html]').forEach(e=>{e.innerHTML=t(e.dataset.i18nHtml)});
   document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh)});
   show(true);
-  if(changed){renderUsers();renderCat();logPauseLabel()}
+  if(changed){renderUsers();renderCat();logPauseLabel();if(fwLast)fwRender(fwLast)}
 }
 
 let toastTimer;
@@ -367,7 +391,7 @@ const post=(p,body)=>api(p,{method:'POST',headers:{'Content-Type':'text/plain'},
 /* ---- Menü ---- */
 const PAGES=['overview','calibration','users','catalog','spoolman','wifi','log','system'];
 const loaded={};
-const ONLOAD={users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS()},wifi:()=>loadWifi(),log:()=>startLog()};
+const ONLOAD={users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS();loadFw(true)},wifi:()=>loadWifi(),log:()=>startLog()};
 function show(langOnly){
   let p=location.hash.slice(1);if(!PAGES.includes(p)||(p!=='overview'&&!(ME&&(ME.role==='admin'||(p==='catalog'&&ME.catalog)))))p='overview';
   document.querySelectorAll('.page').forEach(e=>e.classList.toggle('active',e.id==='p-'+p));
@@ -404,7 +428,9 @@ function render(d){
     $('ssid').textContent=d.ssid;$('ip').textContent=d.ip;$('rssi').textContent=d.rssi+' dBm';
     $('up').textContent=dur(d.uptime_s);
     $('heap').textContent=Math.round(d.heap_free/1024)+' KB / '+Math.round(d.psram_free/1024)+' KB';
-    $('slot').textContent=d.slot}
+    $('slot').textContent=d.slot;
+    $('fwver').textContent=d.fw_version+(d.fw_update?' → '+d.fw_update:'');
+    document.querySelector('#menu a[data-page=system]').classList.toggle('upd',!!d.fw_update)}
   $('curuser').textContent=(ME&&ME.name)||t('nobody');$('devuser').textContent=t('at_device')+': '+(d.user||t('nobody'));
   if(ME&&d.catalog!==undefined&&!!ME.catalog!==!!d.catalog){ME.catalog=d.catalog;document.body.dataset.cat=d.catalog?'1':'';if(!d.catalog&&location.hash==='#catalog')location.hash='#overview'}
   const n=d.nfc,nf=$('nfcshort'),K={spool:'k_spool',box:'k_box',user:'k_user',admin:'k_admin',unknown:'k_unknown'};
@@ -609,6 +635,51 @@ $('load').onclick=loadTheme;
 $('save').onclick=async()=>{try{JSON.parse($('theme').value)}catch(e){return say(t('invalid_json',e.message),'err')}
   try{await post('/api/theme',$('theme').value);say(t('saved_restarting'),'ok')}catch(e){say(t('save_fail',e.message),'err')}};
 $('reboot').onclick=async()=>{if(!confirm(t('confirm_reboot')))return;try{await post('/api/reboot','');say(t('rebooting'),'ok')}catch(e){say(e.message,'err')}};
+/* ---- Firmware-Update ---- */
+let fwTimer=null,fwPrev='',fwWaitVer='',fwLast=null;
+function fwRender(d){
+  fwLast=d;
+  $('fwcur').textContent=d.version;$('fwlatest').textContent=d.latest?d.latest+(d.latest_channel!=='stable'?' ('+t('ch_'+d.latest_channel)+')':''):'-';
+  if(document.activeElement!==$('fwchan'))$('fwchan').value=d.channel;
+  const m=$('fwmsg'),bar=$('fwbar'),busy=d.state==='checking'||d.state==='downloading'||d.state==='done';
+  let txt,cls='';
+  if(d.state==='checking')txt=t('fw_checking');
+  else if(d.state==='downloading'){const p=d.total?Math.floor(d.done*100/d.total):0;bar.value=p;txt=t('fw_dl',p);cls='warn'}
+  else if(d.state==='done'){bar.value=100;txt=t('fw_done');cls='ok'}
+  else if(d.state==='error'){txt=d.error;cls='err'}
+  else if(!d.checked)txt=t('fw_never');
+  else if(d.no_release)txt=t('fw_norel');
+  else if(d.available){txt=t(/^v?\d+\.\d+/.test(d.version)?'fw_avail':'fw_unknown',d.latest);cls='ok'}
+  else if(d.downgrade){txt=t('fw_down_info',d.latest);cls='warn'}
+  else{txt=t('fw_uptodate');cls='ok'}
+  if(d.checked&&!busy&&d.checked_s!==undefined)txt+=' ('+t('fw_ago',dur(d.checked_s))+')';
+  m.textContent=txt;m.className=cls;
+  bar.style.display=d.state==='downloading'||d.state==='done'?'':'none';
+  $('fwcheck').disabled=busy;$('fwchan').disabled=busy;
+  $('fwdown').style.display=d.downgrade&&!busy?'':'none';$('fwdown').textContent=t('fw_down',d.latest);
+  $('fwinstall').style.display=d.available&&!busy?'':'none';
+  $('fwinstall').dataset.tag=d.latest||'';
+  $('fwpage').style.display=d.page_url?'':'none';if(d.page_url)$('fwpage').href=d.page_url;
+  if(d.notes!==undefined){const n=$('fwnotes');n.textContent=d.notes+(d.notes_cut?'\n'+t('fw_cut'):'');n.style.display=d.notes&&d.latest?'':'none'}
+}
+async function loadFw(notes){
+  clearTimeout(fwTimer);fwTimer=null;
+  let d;
+  try{d=await(await api('/api/update'+(notes?'?notes=1':''))).json()}
+  catch(e){if(fwWaitVer&&ME){fwTimer=setTimeout(()=>loadFw(true),2000)}return}  // während des Neustarts nicht erreichbar; nach Abmeldung (401) nicht weiter fragen
+  if(fwWaitVer&&d.state==='idle'){say(t('fw_back',d.version),'ok');fwWaitVer=''}
+  const changed=fwPrev!==d.state;fwPrev=d.state;
+  fwRender(d);
+  if(d.state==='checking'||d.state==='downloading')fwTimer=setTimeout(()=>loadFw(false),1000);
+  else if(d.state==='done'){fwWaitVer=d.latest;fwTimer=setTimeout(()=>loadFw(true),5000)}
+  else if(changed&&!notes)loadFw(true);  // Prüfung fertig: Release Notes holen
+}
+$('fwcheck').onclick=async()=>{try{await post('/api/update/check','');fwPrev='';loadFw(false)}catch(e){say(e.message,'err')}};
+async function fwInstall(q){if(!confirm(q))return;
+  try{await post('/api/update/install','');fwPrev='';loadFw(false)}catch(e){say(e.message,'err')}}
+$('fwinstall').onclick=()=>fwInstall(t('fw_confirm',$('fwinstall').dataset.tag));
+$('fwdown').onclick=()=>fwInstall(t('fw_down_confirm',$('fwinstall').dataset.tag));
+$('fwchan').onchange=async()=>{try{await post('/api/update/channel?ch='+$('fwchan').value,'');say(t('fw_chan_set'),'ok');$('fwnotes').style.display='none';fwPrev='';loadFw(false)}catch(e){say(e.message,'err');loadFw(true)}};
 $('touchreset').onclick=async()=>{if(!confirm(t('confirm_touch')))return;try{await post('/api/touch/reset','');say(t('touch_done'),'ok')}catch(e){say(e.message,'err')}};
 $('lang').onchange=async()=>{
   const l=$('lang').value;

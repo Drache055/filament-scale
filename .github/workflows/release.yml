@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAG: ${{ github.ref_name }}
+      FW_VERSION: ${{ github.ref_name }}  # eingebettete Version (tools/version.py), Grundlage für das Online-Update
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4

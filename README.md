@@ -30,7 +30,7 @@ The box weight never has to be known. Example from the device screens:
 - Users sign in with their own tag and are recorded as spool owner; settings are admin only
 - Simple scale mode (set by the admin): "Weigh filament" for a spool alone or box + spool, no sign-in, no NFC, no Spoolman; users can also get a "weigh only" role
 - Web interface for calibration, users, filament catalog, Spoolman, Wi-Fi, log and system settings
-- Wi-Fi setup through a hotspot with captive portal, firmware updates over Wi-Fi (OTA)
+- Wi-Fi setup through a hotspot with captive portal, firmware updates over Wi-Fi (OTA from PlatformIO, or one click in the web UI from GitHub releases, with stable, release-candidate and test channels)
 - German and English, language per user
 
 ## Hardware
