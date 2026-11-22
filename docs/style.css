@@ -123,6 +123,8 @@ pre{background:var(--surface);border:1px solid var(--line);border-radius:var(--r
 
 /* Web-Flasher */
 .flashbox{margin:18px 0;padding:22px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.flashbox .cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0}
+.fwver select{font:inherit;padding:6px 8px;margin-left:6px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 esp-web-install-button{--esp-tools-button-color:var(--accent)}
 
 /* Startseite */

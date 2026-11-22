@@ -45,6 +45,12 @@ The box weight never has to be known. Example from the device screens:
 
 Pinout: [`firmware/include/pins.h`](firmware/include/pins.h). Wiring and mechanics: [build guide](https://drache055.github.io/filament-scale/bauen.html).
 
+## Downloads
+
+- **Firmware:** the latest stable version is under [Releases](https://github.com/Drache055/filament-scale/releases/latest) (`…-factory.bin` for the first USB flash, `…-ota.bin` for updates over Wi-Fi). Older versions stay available under [all releases](https://github.com/Drache055/filament-scale/releases).
+- **3D model:** enclosure V1.0 with components as STEP: [`docs/cad/filament-scale.step`](docs/cad/filament-scale.step), also attached to every release.
+- **Web flasher:** [flash from the browser](https://drache055.github.io/filament-scale/bauen.html#webflash), defaults to the latest stable version, older ones selectable.
+
 ## Getting started
 
 **Without a toolchain:** use the [web flasher](https://drache055.github.io/filament-scale/bauen.html#webflash) in Chrome or Edge on a computer.
@@ -68,9 +74,23 @@ Default login: admin password `Filament`, device PIN `1234`. Change both after t
 ## Repository
 
 ```
-firmware/   PlatformIO project (ESP32-S3, Arduino, LVGL 9)
-docs/       Website (GitHub Pages) and web flasher
+firmware/        PlatformIO project (ESP32-S3, Arduino, LVGL 9)
+docs/            Website (GitHub Pages) and web flasher
+docs/firmware/   Web flasher images, one folder per stable release
+docs/cad/        3D model (STEP)
+tools/           Release helper scripts
 ```
+
+### Releasing a version
+
+Push a tag, the [release workflow](.github/workflows/release.yml) does the rest:
+
+```bash
+git tag v1.1
+git push origin v1.1
+```
+
+It builds the firmware, creates the GitHub release with factory image, OTA image and STEP file, and for stable tags updates the web flasher on `main`. Tags with a hyphen (e.g. `v1.2-beta`) become pre-releases and are not offered in the web flasher.
 
 Development notes: [`firmware/CLAUDE.md`](firmware/CLAUDE.md).
 
