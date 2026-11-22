@@ -371,7 +371,7 @@ int main(int argc, char **argv) {
       shot(name);
     }
   }
-  // --- Hotspot mit Geräte-Passwort (am Ende, damit die Nummern der älteren Bilder gleich bleiben) ---
+  // --- Hotspot bei der Ersteinrichtung mit Hotspot-Passwort (am Ende, damit die Nummern der älteren Bilder gleich bleiben) ---
   uiShowHome();
   mock.apActive = true;
   mock.wifiUp = false;

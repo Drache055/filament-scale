@@ -17,6 +17,7 @@ uint16_t nextId = 1;
 bool genericOn = true;
 
 void pinKey(uint16_t id, char *key, size_t cap) { snprintf(key, cap, "pin%u", (unsigned)id); }
+void tokenKey(uint16_t id, char *key, size_t cap) { snprintf(key, cap, "tok%u", (unsigned)id); }
 
 // Muss mit gehaltenem Mutex aufgerufen werden
 void save() {
@@ -161,8 +162,10 @@ bool usersRemove(uint16_t id) {
       save();
       Preferences p;
       char key[12];
-      pinKey(id, key, sizeof(key));
       p.begin("users", false);
+      pinKey(id, key, sizeof(key));
+      p.remove(key);
+      tokenKey(id, key, sizeof(key));
       p.remove(key);
       p.end();
       removed = true;
@@ -314,6 +317,32 @@ bool usersCheckPin(uint16_t id, const char *pin) {
   return secretEqual(secretHash(salt, pin), stored.substring(16));
 }
 
+bool usersSetTagToken(uint16_t id, const String &token) {
+  User u;
+  if (id == 0 || token.length() != 32 || !usersFind(id, u)) {
+    return false;
+  }
+  char key[12];
+  tokenKey(id, key, sizeof(key));
+  Preferences p;
+  p.begin("users", false);
+  p.putString(key, token);
+  p.end();
+  return true;
+}
+
+String usersTagToken(uint16_t id) {
+  char key[12];
+  tokenKey(id, key, sizeof(key));
+  Preferences p;
+  p.begin("users", true);
+  String token = p.getString(key, "");
+  p.end();
+  return token.length() == 32 ? token : String();
+}
+
+bool usersHasTagToken(uint16_t id) { return usersTagToken(id).length() > 0; }
+
 bool usersGenericEnabled() {
   xSemaphoreTake(mutex, portMAX_DELAY);
   bool v = genericOn;
@@ -345,6 +374,7 @@ String usersJson() {
     o["catalog"] = list[i].canCatalog;
     o["weigh_only"] = list[i].weighOnly;
     o["pin"] = usersHasPin(list[i].id);
+    o["tag"] = usersHasTagToken(list[i].id);
   }
   String out;
   serializeJson(doc, out);
