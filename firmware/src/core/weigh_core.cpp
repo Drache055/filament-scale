@@ -22,8 +22,12 @@ void WeighFlow::start(uint32_t now) {
   enter(WeighState::SpoolIdentified, now);
 }
 
+static bool isWaiting(WeighState s) {
+  return s == WeighState::WaitBox || s == WeighState::NewBox || s == WeighState::WaitSpool;
+}
+
 uint32_t WeighFlow::remainingMs(uint32_t now) const {
-  if (state_ != WeighState::WaitBox && state_ != WeighState::WaitSpool) {
+  if (!isWaiting(state_)) {
     return 0;
   }
   uint32_t used = now - entered_;
@@ -39,7 +43,7 @@ void WeighFlow::step(const WeighInput &in) {
     finish(WeighEnd::Cancelled);
     return;
   }
-  bool timedOut = (state_ == WeighState::WaitBox || state_ == WeighState::WaitSpool) && in.now - entered_ >= cfg_.timeoutMs;
+  bool timedOut = isWaiting(state_) && in.now - entered_ >= cfg_.timeoutMs;
   if (timedOut) {
     finish(WeighEnd::Timeout);
     return;
@@ -55,6 +59,14 @@ void WeighFlow::step(const WeighInput &in) {
       if (in.stable && in.grams >= cfg_.addedG && in.boxTag) {
         w1_ = in.grams;
         enter(WeighState::WaitSpool, in.now);
+      } else if (in.stable && in.grams >= cfg_.addedG && in.blankTag && !in.boxTag) {
+        enter(WeighState::NewBox, in.now);  // Box steht, ihr Tag ist leer/unbekannt
+      }
+      break;
+    case WeighState::NewBox:
+      // Tag wurde beschrieben (oder ein gültiger Box-Tag aufgelegt): zurück, W1 wird dort wie gewohnt eingefroren
+      if (in.boxTag) {
+        enter(WeighState::WaitBox, in.now);
       }
       break;
     case WeighState::WaitSpool:

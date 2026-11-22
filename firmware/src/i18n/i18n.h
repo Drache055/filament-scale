@@ -125,6 +125,8 @@ enum class Str : uint8_t {
   WfRetry,
   WfDone,
   WfSaveFailed,
+  WfNewBox,
+  WfNewBoxHint,
   Count
 };
 

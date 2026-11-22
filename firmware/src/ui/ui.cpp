@@ -285,7 +285,7 @@ static void refreshTimerCb(lv_timer_t *) {
       if (r.state == SpoolmanState::Found && strcmp(r.uid, n.uid) == 0 && r.spool.id >= 0) {
         flowHandledSeq = n.seq;
         User u;
-        weighFlowStart(r.spool, sessionCurrentUser(u) ? u.name : "");
+        weighFlowStart(r.spool, n.uid, sessionCurrentUser(u) ? u.name : "");
       }
     }
   }
