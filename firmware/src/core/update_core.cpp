@@ -97,6 +97,18 @@ FwVersion fwParseVersion(const char *s) {
     }
   }
   v.prerelease = rest[0] == '-';
+  if (v.prerelease) {
+    const char *suf = rest + 1;
+    v.rc = (suf[0] == 'r' || suf[0] == 'R') && (suf[1] == 'c' || suf[1] == 'C');
+    const char *e = suf + strlen(suf);
+    while (e > suf && isdigit((unsigned char)e[-1])) {
+      e--;
+    }
+    const char *q = e;
+    if (*q && !readNum(q, v.preNum)) {
+      v.preNum = 0;
+    }
+  }
   v.valid = true;
   return v;
 }
@@ -118,7 +130,15 @@ int fwCompareVersions(const FwVersion &a, const FwVersion &b) {
     return a.patch < b.patch ? -1 : 1;
   }
   if (a.prerelease != b.prerelease) {
-    return a.prerelease ? -1 : 1;  // v1.2-beta < v1.2
+    return a.prerelease ? -1 : 1;  // v1.2-rc1 < v1.2
+  }
+  if (a.prerelease) {
+    if (a.rc != b.rc) {
+      return a.rc ? 1 : -1;  // v1.2-beta3 < v1.2-rc1
+    }
+    if (a.preNum != b.preNum) {
+      return a.preNum < b.preNum ? -1 : 1;
+    }
   }
   if (a.ahead != b.ahead) {
     return a.ahead < b.ahead ? -1 : 1;
@@ -126,13 +146,47 @@ int fwCompareVersions(const FwVersion &a, const FwVersion &b) {
   return 0;
 }
 
+FwChannel fwReleaseChannel(const char *tag, bool ghPrerelease) {
+  FwVersion v = fwParseVersion(tag);
+  if (v.prerelease) {
+    return v.rc ? FwChannel::Rc : FwChannel::Test;
+  }
+  return ghPrerelease ? FwChannel::Rc : FwChannel::Stable;  // ohne Zusatz, aber als Pre-Release markiert
+}
+
 bool fwUpdateAvailable(const char *latestTag, const char *currentVersion) {
   FwVersion latest = fwParseVersion(latestTag);
-  if (!latest.valid || latest.prerelease) {
+  if (!latest.valid) {
     return false;
   }
   FwVersion cur = fwParseVersion(currentVersion);
   return !cur.valid || fwCompareVersions(latest, cur) > 0;
+}
+
+bool fwIsDowngrade(const char *latestTag, const char *currentVersion) {
+  FwVersion latest = fwParseVersion(latestTag);
+  FwVersion cur = fwParseVersion(currentVersion);
+  return latest.valid && cur.valid && fwCompareVersions(latest, cur) < 0;
+}
+
+const char *fwChannelName(FwChannel ch) {
+  return ch == FwChannel::Test ? "test" : ch == FwChannel::Rc ? "rc" : "stable";
+}
+
+bool fwChannelFromName(const char *name, FwChannel &out) {
+  if (!name) {
+    return false;
+  }
+  if (!strcmp(name, "stable")) {
+    out = FwChannel::Stable;
+  } else if (!strcmp(name, "rc")) {
+    out = FwChannel::Rc;
+  } else if (!strcmp(name, "test")) {
+    out = FwChannel::Test;
+  } else {
+    return false;
+  }
+  return true;
 }
 
 bool fwAllowedUrl(const char *url) {
@@ -157,51 +211,69 @@ bool fwAllowedUrl(const char *url) {
   return endsWith(h, dom) && strlen(h) > strlen(dom);
 }
 
-bool fwParseRelease(const char *json, size_t len, FwRelease &out, const char *&error) {
+bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
   out = FwRelease();
+  found = false;
   JsonDocument filter;
-  filter["tag_name"] = true;
-  filter["draft"] = true;
-  filter["prerelease"] = true;
-  filter["html_url"] = true;
-  filter["body"] = true;
-  filter["assets"][0]["name"] = true;
-  filter["assets"][0]["size"] = true;
-  filter["assets"][0]["browser_download_url"] = true;
+  JsonObject f = filter.add<JsonObject>();
+  f["tag_name"] = true;
+  f["draft"] = true;
+  f["prerelease"] = true;
+  f["html_url"] = true;
+  f["body"] = true;
+  f["assets"][0]["name"] = true;
+  f["assets"][0]["size"] = true;
+  f["assets"][0]["browser_download_url"] = true;
   JsonDocument doc;
-  if (deserializeJson(doc, json, len, DeserializationOption::Filter(filter))) {
+  if (deserializeJson(doc, json, len, DeserializationOption::Filter(filter)) || !doc.is<JsonArrayConst>()) {
     error = "Antwort von GitHub ist kein gültiges JSON";
     return false;
   }
-  const char *tag = doc["tag_name"] | "";
-  if (!*tag) {
-    error = "Release ohne Tag";
-    return false;
-  }
-  if ((doc["draft"] | false) || (doc["prerelease"] | false) || fwParseVersion(tag).prerelease) {
-    error = "Neueste Release ist keine stabile Version";
-    return false;
-  }
-  if (strlen(tag) >= sizeof(out.tag)) {
-    error = "Tag zu lang";
-    return false;
-  }
-  copy(out.tag, sizeof(out.tag), tag);
-  copy(out.pageUrl, sizeof(out.pageUrl), doc["html_url"] | "");
-  for (JsonObjectConst a : doc["assets"].as<JsonArrayConst>()) {
-    const char *name = a["name"] | "";
-    const char *url = a["browser_download_url"] | "";
-    if (endsWith(name, "-ota.bin") && fwAllowedUrl(url) && strlen(url) < sizeof(out.otaUrl)) {
-      copy(out.otaUrl, sizeof(out.otaUrl), url);
-      out.otaSize = a["size"] | 0u;
-      break;
+  JsonObjectConst best;
+  FwVersion bestVer;
+  const char *bestUrl = nullptr;
+  uint32_t bestSize = 0;
+  for (JsonObjectConst r : doc.as<JsonArrayConst>()) {
+    const char *tag = r["tag_name"] | "";
+    FwVersion v = fwParseVersion(tag);
+    if ((r["draft"] | false) || !v.valid || strlen(tag) >= sizeof(out.tag)) {
+      continue;
+    }
+    if ((int)fwReleaseChannel(tag, r["prerelease"] | false) > (int)channel) {
+      continue;
+    }
+    const char *url = nullptr;
+    uint32_t size = 0;
+    for (JsonObjectConst a : r["assets"].as<JsonArrayConst>()) {
+      const char *name = a["name"] | "";
+      const char *u = a["browser_download_url"] | "";
+      if (endsWith(name, "-ota.bin") && fwAllowedUrl(u) && strlen(u) < sizeof(out.otaUrl)) {
+        url = u;
+        size = a["size"] | 0u;
+        break;
+      }
+    }
+    if (!url) {
+      continue;
+    }
+    if (!found || fwCompareVersions(v, bestVer) > 0) {
+      found = true;
+      best = r;
+      bestVer = v;
+      bestUrl = url;
+      bestSize = size;
     }
   }
-  if (!out.otaUrl[0]) {
-    error = "Release enthält kein OTA-Image (*-ota.bin)";
-    return false;
+  if (!found) {
+    return true;
   }
-  const char *body = doc["body"] | "";
+  const char *tag = best["tag_name"] | "";
+  copy(out.tag, sizeof(out.tag), tag);
+  out.channel = fwReleaseChannel(tag, best["prerelease"] | false);
+  copy(out.otaUrl, sizeof(out.otaUrl), bestUrl);
+  out.otaSize = bestSize;
+  copy(out.pageUrl, sizeof(out.pageUrl), best["html_url"] | "");
+  const char *body = best["body"] | "";
   size_t n = strlen(body);
   if (n > FW_NOTES_LEN) {
     n = FW_NOTES_LEN;

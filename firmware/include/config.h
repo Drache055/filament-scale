@@ -65,6 +65,7 @@
 
 // Online-Update aus den GitHub-Releases (CLAUDE.md 12.6)
 #define FW_UPDATE_REPO        "Drache055/filament-scale"  // owner/repo
+#define FW_UPDATE_LIST        15                          // so viele neueste Releases werden je Prüfung ausgewertet
 #define FW_UPDATE_FIRST_MS    60000                       // erste automatische Prüfung so lange nach der WLAN-Verbindung
 #define FW_UPDATE_INTERVAL_MS (24UL * 60UL * 60UL * 1000UL)  // danach einmal am Tag
 #define FW_UPDATE_RETRY_MS    (60UL * 60UL * 1000UL)      // nach einer fehlgeschlagenen automatischen Prüfung

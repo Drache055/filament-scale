@@ -16,6 +16,7 @@ ESP32-S3-Filamentwaage mit NFC und Spoolman. Fachliche Spezifikation, Hardware u
 ## Releases
 - Version per Tag `vX.Y` (z. B. `v1.2`) auf `main`. `.github/workflows/release.yml` baut Factory- und OTA-Image und legt die GitHub-Release mit STEP-Datei an.
 - Tag mit Bindestrich (z. B. `v1.2-beta`) = Pre-Release. Pre-Releases kommen nicht in den Web-Flasher.
+- Update-Kanäle am Gerät (Webseite → System): `-rc` (z. B. `v1.3-rc1`) = Release-Kandidat, jeder andere Zusatz (`-beta1`, `-test2`) = Test, ohne Zusatz = Stable. Details: `firmware/CLAUDE.md` 12.6.
 - Stabile Tags schreibt der Workflow über `tools/update_flasher.py` nach `docs/firmware/` (die höchste Version ist Standard im Web-Flasher). Details: `firmware/CLAUDE.md`, Abschnitt „Flashen und Releases“.
 - Tags nur setzen, wenn Fabian es verlangt.
 

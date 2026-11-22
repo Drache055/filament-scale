@@ -1,6 +1,7 @@
 #include "fwupdate.h"
 
 #include <HTTPClient.h>
+#include <Preferences.h>
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -10,7 +11,6 @@
 #include <algorithm>
 
 #include "config.h"
-#include "core/update_core.h"
 #include "util/log.h"
 #include "wifi.h"
 
@@ -45,9 +45,11 @@ void setError(const char *msg) {
 
 String userAgent() { return String("filament-scale/") + FW_VERSION; }
 
-// Prüft die neueste stabile Release. auto_: automatische Prüfung (nur Log, kein Fehlerzustand auf der Webseite)
+// Sucht die neueste Release im gewählten Kanal. auto_: automatische Prüfung (nur Log, kein Fehlerzustand auf der Webseite)
 bool check(bool auto_) {
-  locked([]() {
+  FwChannel ch = FwChannel::Stable;
+  locked([&]() {
+    ch = status.channel;
     if (status.state != FwUpdState::Downloading) {
       status.state = FwUpdState::Checking;
       status.error[0] = 0;
@@ -59,7 +61,8 @@ bool check(bool auto_) {
   http.useHTTP10(true);  // keine Chunked-Übertragung
   http.setTimeout(FW_UPDATE_TIMEOUT_MS);
   http.setUserAgent(userAgent());
-  String url = String("https://api.github.com/repos/") + FW_UPDATE_REPO + "/releases/latest";
+  // Liste statt /releases/latest, weil diese Pre-Releases auslässt; neueste zuerst
+  String url = String("https://api.github.com/repos/") + FW_UPDATE_REPO + "/releases?per_page=" + FW_UPDATE_LIST;
   if (!http.begin(client, url)) {
     setError("GitHub-Adresse ungültig");
     return false;
@@ -67,21 +70,6 @@ bool check(bool auto_) {
   http.addHeader("Accept", "application/vnd.github+json");
   http.addHeader("X-GitHub-Api-Version", "2022-11-28");
   int code = http.GET();
-  if (code == 404) {
-    http.end();
-    logPrintln("[UPDATE] Noch keine stabile Release auf GitHub");
-    locked([]() {
-      status.state = FwUpdState::Idle;
-      status.checked = true;
-      status.available = false;
-      status.noRelease = true;
-      status.latest[0] = 0;
-      status.pageUrl[0] = 0;
-      release = FwRelease();
-    });
-    lastCheckMs = millis();
-    return true;
-  }
   if (code != 200) {
     char msg[96];
     if (code < 0) {
@@ -104,20 +92,32 @@ bool check(bool auto_) {
   http.end();
   FwRelease *r = new FwRelease();  // ca. 4 KB, nicht auf den Task-Stack
   const char *err = nullptr;
-  bool ok = fwParseRelease(body.c_str(), body.length(), *r, err);
+  bool found = false;
+  bool ok = fwParseReleases(body.c_str(), body.length(), ch, *r, found, err);
   body = String();
   if (!ok) {
     delete r;
-    setError(err ? err : "Release nicht lesbar");
+    setError(err ? err : "Releases nicht lesbar");
     return false;
   }
-  bool avail = fwUpdateAvailable(r->tag, FW_VERSION);
-  logPrintf("[UPDATE] Neueste stabile Version %s, installiert %s%s\n", r->tag, FW_VERSION, avail ? ", Update verfügbar" : "");
+  bool avail = found && fwUpdateAvailable(r->tag, FW_VERSION);
+  bool down = found && fwIsDowngrade(r->tag, FW_VERSION);
+  if (found) {
+    logPrintf("[UPDATE] Kanal %s: neueste Version %s, installiert %s%s\n", fwChannelName(ch), r->tag, FW_VERSION,
+              avail ? ", Update verfügbar" : down ? ", älter als installiert" : "");
+  } else {
+    logPrintf("[UPDATE] Kanal %s: keine passende Release auf GitHub\n", fwChannelName(ch));
+  }
   locked([&]() {
-    release = *r;
+    if (status.channel != ch) {
+      return;  // Kanal wurde während der Abfrage gewechselt, die neue Prüfung folgt
+    }
+    release = *r;  // bei !found leer
     status.checked = true;
-    status.noRelease = false;
+    status.noRelease = !found;
     status.available = avail;
+    status.downgrade = down;
+    status.latestChannel = r->channel;
     strlcpy(status.latest, r->tag, sizeof(status.latest));
     strlcpy(status.pageUrl, r->pageUrl, sizeof(status.pageUrl));
     if (status.state != FwUpdState::Downloading) {
@@ -324,7 +324,12 @@ void updateTask(void *) {
 
 void fwUpdateBegin() {
   mutex = xSemaphoreCreateMutex();
-  logPrintf("[UPDATE] Firmware-Version %s\n", FW_VERSION);
+  Preferences prefs;
+  prefs.begin("fwupd", true);
+  uint8_t ch = prefs.getUChar("ch", 0);
+  prefs.end();
+  status.channel = ch <= (uint8_t)FwChannel::Test ? (FwChannel)ch : FwChannel::Stable;
+  logPrintf("[UPDATE] Firmware-Version %s, Kanal %s\n", FW_VERSION, fwChannelName(status.channel));
   // TLS (mbedTLS) braucht Stack; Kern 0 wie die übrigen Netz-Tasks
   xTaskCreatePinnedToCore(updateTask, "fwupdate", 12288, nullptr, 1, &task, 0);
 }
@@ -361,6 +366,39 @@ bool fwUpdateCheckNow() {
   return true;
 }
 
+bool fwUpdateSetChannel(FwChannel ch) {
+  bool busy = false;
+  locked([&]() {
+    busy = status.state == FwUpdState::Downloading || status.state == FwUpdState::Done || installRequested;
+    if (busy || status.channel == ch) {
+      return;
+    }
+    status.channel = ch;
+    // Ergebnis des alten Kanals verwerfen, damit nichts Falsches installiert wird
+    release = FwRelease();
+    status.checked = false;
+    status.available = false;
+    status.downgrade = false;
+    status.noRelease = false;
+    status.latest[0] = 0;
+    status.pageUrl[0] = 0;
+    status.error[0] = 0;
+    status.state = FwUpdState::Idle;
+  });
+  if (busy) {
+    return false;
+  }
+  Preferences prefs;
+  prefs.begin("fwupd", false);
+  prefs.putUChar("ch", (uint8_t)ch);
+  prefs.end();
+  logPrintf("[UPDATE] Kanal %s gewählt\n", fwChannelName(ch));
+  if (wifiConnected()) {
+    fwUpdateCheckNow();
+  }
+  return true;
+}
+
 bool fwUpdateInstall(String &error) {
   FwUpdStatus st = fwUpdateStatus();
   if (st.state == FwUpdState::Downloading || st.state == FwUpdState::Done || installRequested) {
@@ -369,6 +407,10 @@ bool fwUpdateInstall(String &error) {
   }
   if (!st.checked || !st.latest[0]) {
     error = "Erst nach Updates suchen";
+    return false;
+  }
+  if (!st.available && !st.downgrade) {
+    error = "Diese Version ist bereits installiert";
     return false;
   }
   if (!wifiConnected()) {

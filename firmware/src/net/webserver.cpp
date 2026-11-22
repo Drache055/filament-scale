@@ -1092,6 +1092,9 @@ static void handleUpdateGet() {
   doc["checked"] = st.checked;
   doc["checked_s"] = st.checkedSecondsAgo;
   doc["available"] = st.available;
+  doc["downgrade"] = st.downgrade;
+  doc["channel"] = fwChannelName(st.channel);
+  doc["latest_channel"] = fwChannelName(st.latestChannel);
   doc["no_release"] = st.noRelease;
   doc["latest"] = st.latest;
   doc["page_url"] = st.pageUrl;
@@ -1116,6 +1119,23 @@ static void handleUpdateCheck() {
   }
   if (!fwUpdateCheckNow()) {
     server.send(409, "text/plain", "Update läuft bereits");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+// POST /api/update/channel?ch=stable|rc|test
+static void handleUpdateChannel() {
+  if (!requireAdmin()) {
+    return;
+  }
+  FwChannel ch;
+  if (!fwChannelFromName(server.arg("ch").c_str(), ch)) {
+    server.send(400, "text/plain", "Kanal muss stable, rc oder test sein");
+    return;
+  }
+  if (!fwUpdateSetChannel(ch)) {
+    server.send(409, "text/plain", "Update läuft gerade");
     return;
   }
   server.send(200, "text/plain", "ok");
@@ -1210,6 +1230,7 @@ static void webStart() {
   server.on("/api/update", HTTP_GET, handleUpdateGet);
   server.on("/api/update/check", HTTP_POST, handleUpdateCheck);
   server.on("/api/update/install", HTTP_POST, handleUpdateInstall);
+  server.on("/api/update/channel", HTTP_POST, handleUpdateChannel);
   // Prüf-URLs von Android, iOS/macOS, Windows und Firefox
   for (const char *path : {"/generate_204", "/gen_204", "/hotspot-detect.html", "/library/test/success.html",
                            "/connecttest.txt", "/ncsi.txt", "/fwlink", "/redirect", "/canonical.html", "/success.txt"}) {
