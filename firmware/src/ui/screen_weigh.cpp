@@ -11,6 +11,7 @@
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "scale/scale.h"
+#include "storage/drying.h"
 #include "screens.h"
 #include "theme.h"
 #include "ui.h"
@@ -268,6 +269,11 @@ void build() {
       lv_label_set_text(makeLabel(card, &theme().title), buf);
       if (ctx->spool.remaining >= 0) {
         lv_label_set_text_fmt(makeLabel(card, &theme().dim), tr(Str::WfLastRemaining), (int)lroundf(ctx->spool.remaining));
+      }
+      if (dryingStatusFor(ctx->spool).state == DryingState::Due) {
+        lv_obj_t *dry = makeLabel(card, &theme().body);
+        lv_label_set_text(dry, tr(Str::DryDue));
+        lv_obj_set_style_text_color(dry, c.warn, 0);
       }
       ctx->hint = makeLabel(card, &theme().body);
       break;

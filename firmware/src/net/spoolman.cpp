@@ -33,6 +33,8 @@ struct Job {
   char owner[24];
   bool archive;   // Spule archivieren (leer)
   char tagUid[21];  // dabei diesen Tag von der Spule lösen (leer = keiner)
+  bool hasDried;
+  char dried[11];
 };
 
 QueueHandle_t jobs = nullptr;
@@ -135,6 +137,7 @@ void parseSpool(JsonObjectConst o, SpoolInfo &s) {
     s.emptySpool = numberOr(v["empty_spool_weight"], -1);
   }
   decodeExtraString(o["extra"][SPOOLMAN_OWNER_FIELD_KEY], s.owner, sizeof(s.owner));
+  decodeExtraString(o["extra"][SPOOLMAN_DRIED_FIELD_KEY], s.lastDried, sizeof(s.lastDried));
 }
 
 void publish(SpoolmanResult &target, const SpoolmanResult &value) {
@@ -226,8 +229,8 @@ void doLookup(const Job &job) {
   publish(lookupResult, res);
 }
 
-// Legt das Extra-Feld "owner" an, falls es fehlt. true = Feld ist vorhanden.
-bool ensureOwnerField(char *err, size_t cap, int &code) {
+// Legt ein Text-Extra-Feld an der Spule an, falls es fehlt. true = Feld ist vorhanden.
+bool ensureTextField(const char *key, const char *label, char *err, size_t cap, int &code) {
   Http r = request("GET", "/api/v1/field/spool");
   code = r.code;
   if (r.code != 200) {
@@ -237,19 +240,19 @@ bool ensureOwnerField(char *err, size_t cap, int &code) {
   JsonDocument doc;
   if (!deserializeJson(doc, r.body)) {
     for (JsonObjectConst f : doc.as<JsonArrayConst>()) {
-      if (strcmp(f["key"] | "", SPOOLMAN_OWNER_FIELD_KEY) == 0) {
+      if (strcmp(f["key"] | "", key) == 0) {
         return true;
       }
     }
   }
-  r = request("POST", String("/api/v1/field/spool/") + SPOOLMAN_OWNER_FIELD_KEY,
-              "{\"name\":\"Owner\",\"field_type\":\"text\"}");
+  r = request("POST", String("/api/v1/field/spool/") + key,
+              String("{\"name\":\"") + label + "\",\"field_type\":\"text\"}");
   code = r.code;
   if (r.code != 200) {
     errorText(r, err, cap);
     return false;
   }
-  logPrintln("[SPOOLMAN] Extra-Feld 'owner' angelegt");
+  logPrintf("[SPOOLMAN] Extra-Feld '%s' angelegt\n", key);
   return true;
 }
 
@@ -273,11 +276,17 @@ Outcome performUpdate(const Job &job, SpoolmanResult &res) {
   if (job.archive) {
     patch["archived"] = true;
   }
-  if (job.hasOwner) {
-    if (!ensureOwnerField(err, sizeof(err), code)) {
+  if (job.hasOwner || job.hasDried) {
+    if (job.hasOwner && !ensureTextField(SPOOLMAN_OWNER_FIELD_KEY, "Owner", err, sizeof(err), code)) {
       res.state = SpoolmanState::Error;
       res.httpStatus = code;
       snprintf(res.error, sizeof(res.error), "Owner-Feld: %s", err);
+      return retryable(code) ? Outcome::Retry : Outcome::Permanent;
+    }
+    if (job.hasDried && !ensureTextField(SPOOLMAN_DRIED_FIELD_KEY, "Last dried", err, sizeof(err), code)) {
+      res.state = SpoolmanState::Error;
+      res.httpStatus = code;
+      snprintf(res.error, sizeof(res.error), "Feld last_dried: %s", err);
       return retryable(code) ? Outcome::Retry : Outcome::Permanent;
     }
     Http cur = request("GET", String("/api/v1/spool/") + job.id);
@@ -293,11 +302,20 @@ Outcome performUpdate(const Job &job, SpoolmanResult &res) {
     for (JsonPairConst kv : curDoc["extra"].as<JsonObjectConst>()) {
       extra[kv.key()] = kv.value();
     }
-    String encoded;  // JSON-kodierter String: "Fabian" mit Anführungszeichen
-    JsonDocument s;
-    s.set(job.owner);
-    serializeJson(s, encoded);
-    extra[SPOOLMAN_OWNER_FIELD_KEY] = encoded;
+    // Werte sind JSON-kodierte Strings: "Fabian" mit Anführungszeichen
+    auto encode = [](const char *text) {
+      String encoded;
+      JsonDocument s;
+      s.set(text);
+      serializeJson(s, encoded);
+      return encoded;
+    };
+    if (job.hasOwner) {
+      extra[SPOOLMAN_OWNER_FIELD_KEY] = encode(job.owner);
+    }
+    if (job.hasDried) {
+      extra[SPOOLMAN_DRIED_FIELD_KEY] = encode(job.dried);
+    }
   }
 
   String body;
@@ -336,7 +354,15 @@ uint32_t nowEpoch() {
 void doUpdate(const Job &job) {
   SpoolmanResult res;
   Outcome outcome = performUpdate(job, res);
-  if (outcome == Outcome::Retry) {
+  if (outcome == Outcome::Ok && job.hasDried) {
+    // Zuletzt gescannte Spule im Zwischenspeicher nachziehen, damit Anzeige und Webseite sofort den neuen Stand zeigen
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    if (lookupResult.state == SpoolmanState::Found && lookupResult.spool.id == job.id) {
+      strlcpy(lookupResult.spool.lastDried, job.dried, sizeof(lookupResult.spool.lastDried));
+    }
+    xSemaphoreGive(mutex);
+  }
+  if (outcome == Outcome::Retry && !job.hasDried) {  // Trocknungs-Eintrag wird nicht eingereiht, der Fehler wird angezeigt
     QueueEntry e;
     e.spoolId = job.id;
     e.remaining = job.remaining;
@@ -750,6 +776,19 @@ void spoolmanRequestUpdate(int spoolId, float remaining, const char *location, c
     job.hasOwner = true;
     strlcpy(job.owner, owner, sizeof(job.owner));
   }
+  enqueue(job, writeResult, "");
+}
+
+void spoolmanRequestMarkDried(int spoolId, const char *date) {
+  if (!date || !date[0]) {
+    return;
+  }
+  Job job = {};
+  job.type = JobType::Update;
+  job.id = spoolId;
+  job.remaining = -1;
+  job.hasDried = true;
+  strlcpy(job.dried, date, sizeof(job.dried));
   enqueue(job, writeResult, "");
 }
 

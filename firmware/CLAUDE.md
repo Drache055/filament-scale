@@ -277,6 +277,14 @@ Geprüft gegen **Spoolman 0.27.0** (`http://spoolman.local:7912`). API-Präfix `
 ### 7.7 Debug-Endpunkte (mit Passwort)
 - `POST /api/spoolman/lookup?uid=..&id=..`, `/api/spoolman/update?id=..&remaining=..&location=..&owner=..`, `/api/spoolman/link?id=..&uid=..`. Ergebnis über `GET /api/spoolman` (`lookup`, `write`).
 
+### 7.8 Trocknungs-Erinnerung
+- Logik in `core/drying_core` (reine Funktionen, Tests `test/test_drying`), Einstellungen in `storage/drying` (NVS-Namespace `drying`, Schlüssel `cfg` als JSON).
+- Je Material ein Intervall in Tagen (0 = keine Erinnerung), dazu ein Intervall für alle anderen Materialien (`default_days`, Standard 0) und ein **Box-Faktor** (1 bis 10, Standard 3). Ist an der Spule ein Ort (Box) gesetzt, gilt sie als luftdicht gelagert und das Intervall wird mit dem Faktor multipliziert. Namensvergleich ohne Groß-/Kleinschreibung. Richtwerte beim ersten Start (Annahme, nicht geprüft): PLA 90, PETG 30, ABS 60, ASA 60, TPU 30, PA 14, PC 14, PVA 7 Tage.
+- **Zuletzt getrocknet:** Extra-Feld `last_dried` (Text, `JJJJ-MM-TT`, lokales Datum) an der Spule in Spoolman; der Client legt es bei Bedarf an (wie `owner`, andere Extra-Felder bleiben erhalten). Eintragen: `spoolmanRequestMarkDried`. Dieser Auftrag wird bei Netzwerkfehlern **nicht** in die Offline-Warteschlange gestellt, Fehler zeigt `GET /api/spoolman` (`write`). Ohne gestellte Uhr (NTP) ist Eintragen nicht möglich.
+- Status: `Due` (Intervall abgelaufen, genau am letzten Tag + Intervall), `Ok` (noch n Tage), `NoRecord` (nie eingetragen, **keine** Warnung) und `Off` (Erinnerung aus, Material ohne Intervall oder Uhr unbekannt).
+- Anzeige am Gerät: „Trocknen fällig!“ auf dem Screen „Spule erkannt“ des Wiegeablaufs (nur Hinweis, der Screen steht nur kurz). Menü → NFC (Admin) zeigt Status und Datum der aufliegenden Spule und bietet **Trocknung eintragen** (heutiges Datum).
+- Webseite (Admin): Spoolman → Karte „Trocknung“ (Einstellungen), „Zuletzt gescannte Spule“ zeigt den Status und hat den Button „Trocknung eintragen“. API: `GET/POST /api/drying` (Einstellungen), `POST /api/drying/log?id=<Spoolman-ID>`, `/api/spoolman` liefert je Spule `last_dried` und `drying` (`state`, `interval_days`, `days_left`).
+
 ---
 
 ## 8. Architektur
@@ -310,6 +318,7 @@ src/
   core/queue_core             Warteschlangen-Logik (ohne Arduino, getestet)
   core/weigh_core             Wiegeablauf-Logik (ohne Arduino, getestet)
   core/simple_core            Einfache Waage, Ablauf-Logik (ohne Arduino, getestet)
+  core/drying_core            Trocknungs-Erinnerung: Intervalle, Datum, Status (ohne Arduino, getestet)
   core/update_core            Online-Update: Versionsvergleich, GitHub-Release auswerten (ohne Arduino, getestet)
   core/diag_core              Selbstdiagnose: Zustände der Komponenten → Befund-Codes (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
@@ -326,6 +335,7 @@ src/
   storage/admin, users        Admin, Benutzer, PINs
   storage/catalog             Filament-Katalog
   storage/devicepw            Geräte-Passwort
+  storage/drying              Trocknungs-Einstellungen (NVS), Status je Spule
   storage/devmode             Betriebsart (smart/einfach), Leerspule der einfachen Waage
   storage/queue               Offline-Warteschlange (Datei)
   ui/                         Screens (ui.cpp, screens_menu.cpp, screen_weigh.cpp, screen_simple.cpp), theme, fonts
@@ -347,6 +357,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Schwellen (Stabilität, „leer“, „hinzugefügt“, Timeout), Defaults in `config.h`
 - Bildschirmschoner, Display-VCOMS, Gerätesprache, Benutzer, Katalog, Admin-Daten
 - Betriebsart und Leerspule der einfachen Waage (`devmode`)
+- Trocknungs-Erinnerung (`drying`, siehe 7.8)
 
 ---
 
@@ -357,7 +368,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core` und `core/simple_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core` und `core/drying_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---
@@ -486,6 +497,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Geräte-Passwort (`devicepw`).
 - **QR-Code zur Spule** (5.1): Anzeige und Scannen mit einem Handy, Speicherbedarf von `lv_qrcode` auf dem ESP32. Der Screen ist gerendert, der QR-Code in der Vorschau mit OpenCV gelesen.
 - **Einfache Waage** und Rolle „Nur wiegen“ (5.4): Ablauf am Gerät, Umschalten auf der Webseite, Benutzer-Spalte. Logik nativ getestet, Screens gerendert, Webseite nur mit `node --check` geprüft.
+- **Trocknungs-Erinnerung** (7.8): Logik nativ getestet, Webseite nur mit `node --check` geprüft. Nicht gegen eine echte Spoolman-Instanz geprüft: Anlegen und Schreiben des Extra-Felds `last_dried`, Anzeige am Gerät und Webseiten-Karte.
 - Hotspot-Start beim Boot ohne gespeicherte Daten, Beitreten mit einem Handy, automatischer Rückfall nach einer Minute ohne Verbindung.
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
 

@@ -24,6 +24,7 @@
 #include "storage/catalog.h"
 #include "storage/devmode.h"
 #include "storage/devicepw.h"
+#include "storage/drying.h"
 #include "storage/users.h"
 #include "web_page.h"
 #include "wifi.h"
@@ -896,6 +897,15 @@ static void handleSpoolmanGet() {
     sp["remaining"] = r.spool.remaining;
     sp["empty_spool"] = r.spool.emptySpool;
     sp["filament_weight"] = r.spool.filamentWeight;
+    sp["last_dried"] = r.spool.lastDried;
+    DryingStatus ds = dryingStatusFor(r.spool);
+    JsonObject dr = sp["drying"].to<JsonObject>();
+    dr["state"] = ds.state == DryingState::Due        ? "due"
+                  : ds.state == DryingState::Ok       ? "ok"
+                  : ds.state == DryingState::NoRecord ? "none"
+                                                      : "off";
+    dr["interval_days"] = ds.intervalDays;
+    dr["days_left"] = ds.daysLeft;
   }
   SpoolmanResult w = spoolmanWriteResult();
   JsonObject wr = doc["write"].to<JsonObject>();
@@ -980,6 +990,53 @@ static void handleSpoolmanLink() {
     return;
   }
   spoolmanRequestLinkTag(id, uid.c_str());
+  server.send(200, "text/plain", "ok");
+}
+
+// Trocknungs-Erinnerung: Einstellungen lesen/schreiben (Admin) und eine Trocknung mit heutigem Datum eintragen
+static void handleDryingGet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  deserializeJson(doc, dryingConfigToJson(dryingConfig()));
+  doc["clock"] = dryingToday() >= 0;
+  sendJson(doc);
+}
+
+static void handleDryingSet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  DryingConfig cfg = dryingConfig();
+  std::string error;
+  if (!dryingConfigFromJson(server.arg("plain").c_str(), cfg, &error)) {
+    server.send(400, "text/plain", error.c_str());
+    return;
+  }
+  if (!dryingSetConfig(cfg)) {
+    server.send(500, "text/plain", "Speichern fehlgeschlagen");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+static void handleDryingLog() {
+  if (!requireAdmin()) {
+    return;
+  }
+  int id = server.arg("id").toInt();
+  char today[11];
+  if (id <= 0) {
+    server.send(400, "text/plain", "id fehlt");
+    return;
+  }
+  if (!dryingTodayText(today)) {
+    server.send(409, "text/plain", "Uhr nicht gestellt");
+    return;
+  }
+  spoolmanRequestMarkDried(id, today);
+  logPrintf("[DRY] Spule %d: getrocknet am %s (Webseite)\n", id, today);
   server.send(200, "text/plain", "ok");
 }
 
@@ -1333,6 +1390,9 @@ static void webStart() {
   server.on("/api/spoolman/lookup", HTTP_POST, handleSpoolmanLookup);
   server.on("/api/spoolman/update", HTTP_POST, handleSpoolmanUpdate);
   server.on("/api/spoolman/link", HTTP_POST, handleSpoolmanLink);
+  server.on("/api/drying", HTTP_GET, handleDryingGet);
+  server.on("/api/drying", HTTP_POST, handleDryingSet);
+  server.on("/api/drying/log", HTTP_POST, handleDryingLog);
   server.on("/api/language", HTTP_POST, handleLanguageSet);
   server.on("/api/mode", HTTP_POST, handleModeSet);
   server.on("/api/users/weigh", HTTP_POST, handleUsersWeighOnly);
