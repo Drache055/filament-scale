@@ -31,6 +31,8 @@ struct Job {
   char location[65];
   bool hasOwner;
   char owner[24];
+  bool archive;   // Spule archivieren (leer)
+  char tagUid[21];  // dabei diesen Tag von der Spule lösen (leer = keiner)
 };
 
 QueueHandle_t jobs = nullptr;
@@ -267,6 +269,9 @@ Outcome performUpdate(const Job &job, SpoolmanResult &res) {
   if (job.hasLocation) {
     patch["location"] = job.location;
   }
+  if (job.archive) {
+    patch["archived"] = true;
+  }
   if (job.hasOwner) {
     if (!ensureOwnerField(err, sizeof(err), code)) {
       res.state = SpoolmanState::Error;
@@ -304,6 +309,14 @@ Outcome performUpdate(const Job &job, SpoolmanResult &res) {
       parseSpool(doc.as<JsonObjectConst>(), res.spool);
     }
     res.state = SpoolmanState::Found;
+    if (job.archive && job.tagUid[0]) {
+      // Tag lösen, damit er für eine neue Spule frei wird. Schlägt das fehl (z. B. 404, Tag nicht verknüpft),
+      // bleibt die Spule trotzdem archiviert.
+      Http u = request("DELETE", String("/api/v1/spool/") + job.id + "/tag/" + job.tagUid);
+      logPrintf("[SPOOLMAN] Spule %d archiviert, Tag %s lösen: HTTP %d\n", job.id, job.tagUid, u.code);
+    } else if (job.archive) {
+      logPrintf("[SPOOLMAN] Spule %d archiviert\n", job.id);
+    }
     return Outcome::Ok;
   }
   res.state = SpoolmanState::Error;
@@ -329,6 +342,8 @@ void doUpdate(const Job &job) {
     e.hasLocation = job.hasLocation;
     strlcpy(e.location, job.location, sizeof(e.location));
     strlcpy(e.owner, job.hasOwner ? job.owner : "", sizeof(e.owner));
+    e.archive = job.archive;
+    strlcpy(e.tagUid, job.tagUid, sizeof(e.tagUid));
     e.timestamp = nowEpoch();
     if (queueAdd(e)) {
       res.queued = true;
@@ -357,6 +372,8 @@ void processQueue() {
       job.hasOwner = true;
       strlcpy(job.owner, e.owner, sizeof(job.owner));
     }
+    job.archive = e.archive;
+    strlcpy(job.tagUid, e.tagUid, sizeof(job.tagUid));
     SpoolmanResult res;
     Outcome o = performUpdate(job, res);
     if (o == Outcome::Ok) {
@@ -716,8 +733,11 @@ SpoolmanResult spoolmanLookupResult() {
   return copy;
 }
 
-void spoolmanRequestUpdate(int spoolId, float remaining, const char *location, const char *owner) {
+void spoolmanRequestUpdate(int spoolId, float remaining, const char *location, const char *owner, bool archive,
+                           const char *tagUid) {
   Job job = {};
+  job.archive = archive;
+  strlcpy(job.tagUid, archive && tagUid ? tagUid : "", sizeof(job.tagUid));
   job.type = JobType::Update;
   job.id = spoolId;
   job.remaining = remaining;

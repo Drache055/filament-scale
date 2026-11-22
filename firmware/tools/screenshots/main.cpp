@@ -470,7 +470,7 @@ int main(int argc, char **argv) {
   advance(400);
   setWeight(1254);
   advance(400);
-  lv_obj_send_event(lv_obj_get_child(lv_screen_active(), 3), LV_EVENT_CLICKED, nullptr);  // QR-Button neben dem Titel
+  lv_obj_send_event(lv_obj_get_child(lv_screen_active(), -1), LV_EVENT_CLICKED, nullptr);  // QR-Button neben dem Titel (zuletzt angelegt)
   advance(100);
   shot("qr_spule");
   uiShowHome();
