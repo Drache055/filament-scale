@@ -14,6 +14,7 @@
 #include "i18n/i18n.h"
 #include "util/log.h"
 #include "core/diag_core.h"
+#include "core/uid_check.h"
 #include "net/fwupdate.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
@@ -951,8 +952,8 @@ static void handleSpoolmanLookup() {
   String uid = server.arg("uid");
   uid.toUpperCase();
   int id = server.hasArg("id") ? server.arg("id").toInt() : -1;
-  if (uid.length() > 20 || (uid.length() == 0 && id < 0)) {
-    server.send(400, "text/plain", "uid (Hex, max. 20 Zeichen) oder id angeben");
+  if ((uid.length() > 0 && !isValidTagUid(uid.c_str())) || (uid.length() == 0 && id < 0)) {
+    server.send(400, "text/plain", "uid (Hex, 8 bis 20 Zeichen) oder id angeben");
     return;
   }
   spoolmanRequestLookup(uid.c_str(), id);
@@ -985,8 +986,8 @@ static void handleSpoolmanLink() {
   int id = server.arg("id").toInt();
   String uid = server.arg("uid");
   uid.toUpperCase();
-  if (id <= 0 || uid.length() == 0 || uid.length() > 20) {
-    server.send(400, "text/plain", "id und uid (Hex, max. 20 Zeichen) angeben");
+  if (id <= 0 || !isValidTagUid(uid.c_str())) {
+    server.send(400, "text/plain", "id und uid (Hex, 8 bis 20 Zeichen) angeben");
     return;
   }
   spoolmanRequestLinkTag(id, uid.c_str());
