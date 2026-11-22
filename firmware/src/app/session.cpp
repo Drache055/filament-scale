@@ -50,7 +50,14 @@ void handleTag(const NfcState &n) {
     }
   } else if (n.content.kind == TagKind::User) {
     User u;
-    if (n.content.user.id >= 0 && usersFind((uint16_t)n.content.user.id, u)) {
+    bool known = n.content.user.id > 0 && usersFind((uint16_t)n.content.user.id, u);
+    UserTagCheck check = known ? tagCheckUserToken(usersTagToken(u.id).c_str(), n.content.user.token)
+                               : UserTagCheck::Invalid;
+    if (known && check == UserTagCheck::Outdated) {
+      // Tag im alten Format (nur ID): meldet nicht mehr an, der Admin muss ihn neu schreiben
+      setNotice(tr(Str::UserTagOutdated), 1);
+      logPrintf("[USER] Benutzer-Tag ohne Token (ID %u), bitte im Web neu schreiben\n", u.id);
+    } else if (known && check == UserTagCheck::Ok) {
       xSemaphoreTake(mutex, portMAX_DELAY);
       active = true;
       current = u;
@@ -63,7 +70,8 @@ void handleTag(const NfcState &n) {
       logPrintf("[USER] Angemeldet: %s (ID %u)\n", u.name, u.id);
     } else {
       setNotice(tr(Str::UserUnknown), 1);
-      logPrintf("[USER] Unbekannter Benutzer-Tag (ID %d, Name '%s')\n", n.content.user.id, n.content.user.name);
+      logPrintf("[USER] Unbekannter oder ungültiger Benutzer-Tag (ID %d, Name '%s')\n", n.content.user.id,
+                n.content.user.name);
     }
   } else {
     // Spulen-Tags (und Tags ohne bekanntes Format, z. B. eine Spule mit fremdem Tag) in Spoolman nachschlagen

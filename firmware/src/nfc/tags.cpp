@@ -30,6 +30,7 @@ TagContent tagParse(const char *json, size_t len) {
     tag.kind = TagKind::User;
     tag.user.id = doc["id"] | -1;
     copyStr(tag.user.name, sizeof(tag.user.name), doc["name"]);
+    copyStr(tag.user.token, sizeof(tag.user.token), doc["token"]);
   } else if (strcmp(type, "admin") == 0) {
     tag.kind = TagKind::Admin;
     copyStr(tag.admin.token, sizeof(tag.admin.token), doc["token"]);
@@ -75,11 +76,12 @@ size_t tagBuildSpool(const SpoolTag &spool, char *out, size_t cap) {
   return serializeJson(doc, out, cap);
 }
 
-size_t tagBuildUser(int id, const char *name, char *out, size_t cap) {
+size_t tagBuildUser(int id, const char *name, const char *token, char *out, size_t cap) {
   JsonDocument doc;
   doc["type"] = "user";
   doc["id"] = id;
   doc["name"] = name;
+  doc["token"] = token;
   if (measureJson(doc) + 1 > cap) {
     return 0;
   }
@@ -94,4 +96,23 @@ size_t tagBuildAdmin(const char *token, char *out, size_t cap) {
     return 0;
   }
   return serializeJson(doc, out, cap);
+}
+
+UserTagCheck tagCheckUserToken(const char *stored, const char *presented) {
+  if (!presented || !presented[0]) {
+    return UserTagCheck::Outdated;
+  }
+  if (!stored || !stored[0]) {
+    return UserTagCheck::Invalid;
+  }
+  size_t ls = strlen(stored), lp = strlen(presented);
+  if (ls != lp) {
+    return UserTagCheck::Invalid;
+  }
+  // Vergleich ohne frühen Abbruch
+  uint8_t diff = 0;
+  for (size_t i = 0; i < ls; i++) {
+    diff |= (uint8_t)(stored[i] ^ presented[i]);
+  }
+  return diff == 0 ? UserTagCheck::Ok : UserTagCheck::Invalid;
 }

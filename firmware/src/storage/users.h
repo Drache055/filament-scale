@@ -4,6 +4,7 @@
 #include "config.h"
 
 // Benutzerliste (NVS). Jeder Benutzer hat eine fortlaufende ID, die auch auf seinem NFC-Tag steht.
+// Der Tag enthält zusätzlich ein geheimes Token (NVS-Schlüssel "tok<id>"), damit die ID allein nicht anmeldet.
 struct User {
   uint16_t id = 0;
   char name[USER_NAME_LEN] = "";
@@ -24,8 +25,12 @@ bool usersSetLang(uint16_t id, uint8_t lang);  // 0 = Gerätesprache, 1 = Deutsc
 bool usersSetPin(uint16_t id, const char *pin, String &error);  // leerer Text entfernt die PIN
 bool usersHasPin(uint16_t id);
 bool usersCheckPin(uint16_t id, const char *pin);
+// Benutzer-Tag: erzeugt und speichert ein neues Token (ein älterer Tag des Benutzers wird ungültig). Leer, wenn es den Benutzer nicht gibt.
+String usersNewTagToken(uint16_t id);
+bool usersHasTagToken(uint16_t id);  // false: noch nie ein Tag mit Token geschrieben (alter Tag muss neu geschrieben werden)
+String usersTagToken(uint16_t id);   // gespeichertes Token, leer = keins
 bool usersFindByName(const char *name, User &out);  // Groß-/Kleinschreibung egal
 bool usersGenericEnabled();
 void usersSetGenericEnabled(bool on);
 
-String usersJson();                         // [{"id":1,"name":"Fabian","lang":"de","tare":false}], lang "" = Gerätesprache
+String usersJson();                         // [{"id":1,"name":"Fabian","lang":"de","tare":false}], lang "" = Gerätesprache, tag false = Tag neu schreiben
