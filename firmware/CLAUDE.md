@@ -324,6 +324,7 @@ src/
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
+  net/usbsetup                Einrichtung per USB (Webseite, 12.1)
   net/fwupdate                Online-Update aus den GitHub-Releases (eigener Task)
   net/webserver, websession   Weboberfläche, Login, Rollen
   net/web_page.h              HTML/JS der Weboberfläche
@@ -417,6 +418,11 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Ohne gespeicherte Daten startet **sofort** der Hotspot `Filamentwaage-Setup` (Passwort = Geräte-Passwort, siehe 13.2) und Home zeigt „WLAN einrichten: …“. Ein Captive Portal leitet die Prüf-URLs der Betriebssysteme und jeden fremden Host auf `http://192.168.4.1/#wifi` (Wildcard-DNS, `net/webserver.cpp`, `captiveRedirect`).
 - Kann sich das Gerät mit gespeicherten Daten eine Minute lang nicht verbinden, startet der Hotspot ebenfalls, parallel zu den Verbindungsversuchen. Er endet, sobald das Gerät eine Minute stabil verbunden ist (`WIFI_AP_STABLE_MS`) und niemand daran hängt.
 
+- **Einrichtung per USB (Standardweg nach dem Flashen):** Webseite `docs/bauen.html#einrichten` (`docs/setup.js`, Web Serial, 115200 Baud) schickt SSID, WLAN-Passwort und neues Admin-Passwort. Protokoll: Improv-Serial-Rahmen (`IMPROV`, Version 1, Typ, Länge, Daten, 8-Bit-Prüfsumme, `\n`) mit eigenen RPC-Befehlen `0x80` Hello (Antwort: Name, Firmware, Chip, gespeicherte SSID, Standardpasswort aktiv), `0x81` Setup (`[SSID, WLAN-Passwort, Admin-Passwort]`), `0x82` Netzwerkliste (je Netz ein Ergebnis, zum Schluss ein leeres). Logik in `core/usb_setup_core` (nativ getestet), Gerät in `net/usbsetup`, Aufruf aus `loop()` vor den Textbefehlen.
+- Ablauf Setup: Prüfung (SSID 1 bis 32, WLAN-Passwort leer oder 8 bis 63, Admin-Passwort wie 11.2 und nicht `Filament`) → Zustand „Provisioning“ → `wifiProvision` verbindet ohne Neustart (max. 20 s) → nur bei Erfolg WLAN-Daten und Admin-Passwort speichern → Zustand „Provisioned“ + Ergebnis mit `http://<IP>/`. Bei Fehler Fehlerpaket (`0x03` keine Verbindung, `0x80`–`0x82` ungültige Eingabe), nichts wird gespeichert, die alten Zugangsdaten bzw. der Hotspot bleiben. Der Hotspot endet wie üblich nach einer Minute stabiler Verbindung.
+- Die Improv-Standardbefehle (`0x01`–`0x04`) beantwortet die Waage absichtlich nicht, sonst fragt der ESP-Web-Tools-Dialog zusätzlich nach dem WLAN. Paketinhalte gehen nie in den Zeilenpuffer oder das Log, Passwörter werden nach der Verarbeitung im RAM überschrieben. Wer USB-Zugang hat, kann ohnehin `admin reset` ausführen, deshalb ist die Einrichtung jederzeit möglich, nicht nur beim ersten Start.
+- **Am Gerät nicht geprüft:** ganzer USB-Einrichtungsablauf, insbesondere ob sich der native USB-Port nach dem Flashen neu anmeldet (dann fragt der Browser erneut nach dem Anschluss) und ob das Öffnen des Ports die Waage neu startet (die Seite fragt bis zu 16 s nach).
+
 ### 12.2 Serielle Notbedienung
 - USB, 115200 Baud, Zeilenende `\n`: `wifi set <SSID>|<Passwort>`, `wifi reset`, `wifi status`, `admin reset` (siehe 11.2), `reboot`.
 
@@ -493,6 +499,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - **HX711:** verdrahtet und kalibriert (laut Fabian, 22.11.2026, mit einem früheren Firmware-Stand). Keine ungültigen Lesungen mehr.
 
 ### 14.2 Am Gerät nicht geprüft
+- **Einrichtung per USB** (12.1): Protokoll nativ getestet, `docs/setup.js` nur mit `node --check` geprüft. Nicht geprüft: Ablauf mit echter Waage und Chrome/Edge, Neuanmeldung des USB-Ports nach dem Flashen, Neustart beim Öffnen des Ports, Netzwerksuche während eines laufenden Verbindungsversuchs.
 - **Wiegeablauf** mit echter Waage, Box-Tag und Spoolman, inklusive „Neue Box anlegen“. Die Firmware baut, die Logik ist nativ getestet, die Screens sind aus dem echten UI-Code gerendert.
 - Geräte-Passwort (`devicepw`).
 - **QR-Code zur Spule** (5.1): Anzeige und Scannen mit einem Handy, Speicherbedarf von `lv_qrcode` auf dem ESP32. Der Screen ist gerendert, der QR-Code in der Vorschau mit OpenCV gelesen.

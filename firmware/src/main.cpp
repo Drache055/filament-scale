@@ -9,6 +9,7 @@
 #include "net/fwupdate.h"
 #include "net/ota.h"
 #include "net/spoolman.h"
+#include "net/usbsetup.h"
 #include "net/webserver.h"
 #include "net/wifi.h"
 #include "scale/scale.h"
@@ -110,14 +111,18 @@ static void handleSerialCommand(String line) {
 void loop() {
   static String line;
   while (Serial.available()) {
-    char c = Serial.read();
-    if (c == '\n' || c == '\r') {
-      if (line.length()) {
-        handleSerialCommand(line);
+    String text;  // Pakete der USB-Einrichtung (Webseite) herausfiltern, der Rest sind Textbefehle
+    usbSetupFeed((uint8_t)Serial.read(), text);
+    for (size_t i = 0; i < text.length(); i++) {
+      char c = text[i];
+      if (c == '\n' || c == '\r') {
+        if (line.length()) {
+          handleSerialCommand(line);
+        }
+        line = "";
+      } else if (line.length() < 200) {
+        line += c;
       }
-      line = "";
-    } else if (line.length() < 200) {
-      line += c;
     }
   }
   vTaskDelay(pdMS_TO_TICKS(50));

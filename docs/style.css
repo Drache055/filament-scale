@@ -131,6 +131,15 @@ pre{background:var(--surface);border:1px solid var(--line);border-radius:var(--r
 /* Web-Flasher */
 .flashbox{margin:18px 0;padding:22px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
 .flashbox .cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0}
+.setup{display:grid;gap:14px;max-width:520px}
+.setup label{display:grid;gap:6px;font-weight:500}
+.setup .row{display:flex;gap:8px;flex-wrap:wrap}
+.setup .row input{flex:1;min-width:0}
+.setup input{font:inherit;padding:9px 11px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--ink);min-width:0;width:100%;box-sizing:border-box}
+.setup p{margin:0}
+.setup-status:empty{display:none}
+.setup-status.ok{color:#2e9d5b}
+.setup-status.err{color:#d0453b}
 .fwver select{font:inherit;padding:6px 8px;margin-left:6px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 esp-web-install-button{--esp-tools-button-color:var(--accent)}
 

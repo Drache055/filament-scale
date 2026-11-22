@@ -102,8 +102,28 @@
   <li><span data-l="de">Klicke auf „Firmware installieren“ und wähle den seriellen Anschluss der Waage aus.</span><span data-l="en">Click “Install firmware” and pick the scale’s serial port.</span></li>
   <li><span data-l="de">Beim ersten Mal „Gerät löschen“ anhaken. Das entfernt alte Einstellungen und sorgt für einen sauberen Start.</span><span data-l="en">On the first install tick “Erase device”. This removes old settings and gives a clean start.</span></li>
   <li><span data-l="de">Warte, bis der Vorgang fertig ist (ca. 1 bis 2 Minuten). Die Waage startet neu.</span><span data-l="en">Wait until it finishes (about 1 to 2 minutes). The scale restarts.</span></li>
+  <li><span data-l="de">Schließe das Installationsfenster und richte die Waage mit der Maske darunter ein.</span><span data-l="en">Close the install dialog and set up the scale with the form below.</span></li>
 </ol>
-<p class="note"><span data-l="de"><b>Danach:</b> Auf dem Display steht „WLAN einrichten: Filamentwaage-Setup“ mit einem <b>Passwort</b>. Das Passwort erzeugt die Waage beim ersten Start zufällig, jede Waage hat ein eigenes. Verbinde dich damit, wie in der <a href="anleitung.html">Anleitung</a> beschrieben.</span><span data-l="en"><b>Afterwards:</b> the display shows “Set up WiFi: Filamentwaage-Setup” together with a <b>password</b>. The scale generates it randomly at first boot, every scale has its own. Join with it as described in the <a href="anleitung.html">user guide</a>.</span></p>
+<h3 id="einrichten"><span data-l="de">Waage einrichten (WLAN und Admin-Passwort)</span><span data-l="en">Set up the scale (Wi-Fi and admin password)</span></h3>
+<p><span data-l="de">Direkt nach dem Flashen, über dasselbe USB-Kabel. Schließe zuerst das Installationsfenster. Ein Hotspot ist dafür nicht nötig.</span><span data-l="en">Right after flashing, over the same USB cable. Close the install dialog first. No hotspot needed.</span></p>
+<div class="flashbox">
+  <form id="setup-form" class="setup" autocomplete="off">
+    <label><span data-l="de">WLAN-Name (SSID)</span><span data-l="en">Wi-Fi name (SSID)</span>
+      <span class="row"><input name="ssid" list="setup-ssids" required maxlength="32" autocomplete="off"><button type="button" id="setup-scan" class="btn ghost"><span data-l="de">Netzwerke suchen</span><span data-l="en">Scan networks</span></button></span></label>
+    <datalist id="setup-ssids"></datalist>
+    <label><span data-l="de">WLAN-Passwort (leer bei offenem WLAN)</span><span data-l="en">Wi-Fi password (empty for an open network)</span>
+      <input name="wifipw" type="password" maxlength="63" autocomplete="off"></label>
+    <label><span data-l="de">Neues Admin-Passwort (4 bis 32 Zeichen)</span><span data-l="en">New admin password (4 to 32 characters)</span>
+      <input name="adminpw" type="password" required minlength="4" maxlength="32" autocomplete="new-password"></label>
+    <label><span data-l="de">Admin-Passwort wiederholen</span><span data-l="en">Repeat admin password</span>
+      <input name="adminpw2" type="password" required minlength="4" maxlength="32" autocomplete="new-password"></label>
+    <p><button type="submit" id="setup-go" class="btn big"><span data-l="de">Waage einrichten</span><span data-l="en">Set up scale</span></button></p>
+    <p id="setup-status" class="setup-status" role="status" aria-live="polite"></p>
+  </form>
+  <p id="setup-unsupported" class="muted" hidden><span data-l="de">Dieser Browser unterstützt kein Web Serial. Bitte Chrome, Edge oder Opera am Computer nutzen oder den Hotspot verwenden.</span><span data-l="en">This browser does not support Web Serial. Please use Chrome, Edge or Opera on a computer, or use the hotspot.</span></p>
+  <p class="muted"><span data-l="de">Die Waage verbindet sich sofort mit dem WLAN und speichert die Daten erst, wenn das klappt. Die Passwörter gehen nur per USB an die Waage, werden nirgends gespeichert und nicht protokolliert. Fragt der Browser erneut nach dem Anschluss, wähle wieder die Waage. Antwortet sie nicht, Stecker kurz ziehen und erneut versuchen.</span><span data-l="en">The scale connects to the Wi-Fi right away and only saves the data once that works. The passwords only go to the scale over USB, are not stored anywhere and not logged. If the browser asks for the port again, pick the scale again. If it does not answer, unplug it briefly and retry.</span></p>
+</div>
+<p class="note"><span data-l="de"><b>Ohne USB-Einrichtung (Rückfall):</b> Hat die Waage kein WLAN gespeichert, steht auf dem Display „WLAN einrichten: Filamentwaage-Setup“ mit einem <b>Passwort</b>. Das Passwort erzeugt die Waage beim ersten Start zufällig, jede Waage hat ein eigenes. Verbinde dich damit, wie in der <a href="anleitung.html">Anleitung</a> beschrieben, und ändere danach das Admin-Passwort.</span><span data-l="en"><b>Without USB setup (fallback):</b> if the scale has no Wi-Fi saved, the display shows “Set up WiFi: Filamentwaage-Setup” together with a <b>password</b>. The scale generates it randomly at first boot, every scale has its own. Join with it as described in the <a href="anleitung.html">user guide</a> and change the admin password afterwards.</span></p>
 <ul>
   <li><span data-l="de">Verbindet sich der Browser nicht, halte die <b>BOOT</b>-Taste gedrückt, während du das USB-Kabel einsteckst, und versuche es noch einmal.</span><span data-l="en">If the browser cannot connect, hold the <b>BOOT</b> button while plugging in the USB cable and try again.</span></li>
   <li><span data-l="de">Das Web-Image ist ein Standard-Build: kein voreingestelltes WLAN, die Spoolman-Adresse steht auf <code>http://spoolman.local:7912</code> und lässt sich in der Weboberfläche ändern, das Theme hat die Standardwerte.</span><span data-l="en">The web image is a stock build: no preset Wi-Fi, the Spoolman address defaults to <code>http://spoolman.local:7912</code> and can be changed in the web UI, the theme uses its defaults.</span></li>
@@ -136,7 +156,7 @@ OTA_PASSWORD=&lt;device-password&gt; pio run -e waage-ota -t uploadfs    # Theme
   <li><span data-l="de"><b>NFC:</b> Menü → NFC zeigt den aufliegenden Tag. Einen Box-Tag und einen Filament-Tag schreiben.</span><span data-l="en"><b>NFC:</b> Menu → NFC shows the tag on the scale. Write a box tag and a filament tag.</span></li>
   <li><span data-l="de"><b>Spoolman:</b> URL eintragen, Status auf der Webseite prüfen, Spule zuordnen.</span><span data-l="en"><b>Spoolman:</b> enter the URL, check the status in the web UI, assign a spool.</span></li>
   <li><span data-l="de"><b>Erster Durchlauf</b> mit einer Testspule, bevor du echte Bestände aktualisierst.</span><span data-l="en"><b>First run</b> with a test spool before you update real inventory.</span></li>
-  <li><span data-l="de"><b>Zugang ändern:</b> Admin-Passwort und Geräte-PIN auf der Webseite unter Benutzer → Admin setzen.</span><span data-l="en"><b>Change credentials:</b> set admin password and device PIN in the web UI under Users → Admin.</span></li>
+  <li><span data-l="de"><b>Zugang ändern:</b> Geräte-PIN (und, falls nicht per USB eingerichtet, das Admin-Passwort) auf der Webseite unter Benutzer → Admin setzen.</span><span data-l="en"><b>Change credentials:</b> set the device PIN (and, if not set up via USB, the admin password) in the web UI under Users → Admin.</span></li>
 </ol>
 
 <h2 id="tipps"><span data-l="de">Tipps &amp; Probleme</span><span data-l="en">Tips &amp; problems</span></h2>
@@ -162,6 +182,7 @@ pio test -e native</code></pre>
 </div></footer>
 <script type="module" src="https://unpkg.com/esp-web-tools@10.1.1/dist/web/install-button.js?module"></script>
 <script src="app.js"></script>
+<script src="setup.js"></script>
 <script>
 (function(){
   var box=document.getElementById('fw-versions'),sel=document.getElementById('fw-select'),btn=document.getElementById('fw-install');

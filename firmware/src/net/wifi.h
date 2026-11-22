@@ -18,6 +18,9 @@ int wifiRssi();  // dBm, nur sinnvoll wenn verbunden
 bool wifiHasCredentials();
 String wifiSavedSsid();               // "" = keine gespeichert (Hotspot)
 bool wifiSaveCredentials(const char *ssid, const char *password, String &error);
+// Einrichtung per USB: verbindet sofort (ohne Neustart) und speichert die Daten nur bei Erfolg. Blockiert bis timeoutMs.
+// Scheitert die Verbindung, bleibt alles wie vorher (alte Zugangsdaten bzw. Hotspot).
+bool wifiProvision(const char *ssid, const char *password, uint32_t timeoutMs, String &error);
 void wifiResetCredentials();          // Zugangsdaten löschen, nach dem Neustart startet der Hotspot
 String wifiScanJson();                // blockiert einige Sekunden: [{"ssid","rssi","open"}]
 

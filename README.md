@@ -32,7 +32,7 @@ The box weight never has to be known. Example from the device screens:
 - Web interface for calibration, users, filament catalog, Spoolman, Wi-Fi, log and system settings
 - Drying reminder per material (longer interval for spools stored in a box), last drying date kept in Spoolman, can be switched off in the web UI
 - Length in metres on the confirm screen, QR code to the spool in Spoolman, archiving of empty spools, OpenPrintTag data format, selectable load sensor, self-diagnosis in the web UI
-- Wi-Fi setup through a hotspot with captive portal, firmware updates over Wi-Fi (OTA from PlatformIO, or one click in the web UI from GitHub releases, with stable, release-candidate and test channels)
+- Wi-Fi and admin password set up over USB right after flashing (form on the web flasher page), hotspot with captive portal as fallback, firmware updates over Wi-Fi (OTA from PlatformIO, or one click in the web UI from GitHub releases, with stable, release-candidate and test channels)
 - German and English, language per user
 
 ## Hardware
@@ -68,7 +68,7 @@ pio run -e waage -t upload                       # first flash over USB
 pio run -e waage -t uploadfs                     # theme data
 ```
 
-After that, updates go over Wi-Fi. Without Wi-Fi credentials the scale opens the hotspot `Filamentwaage-Setup`.
+Then close the install dialog and enter Wi-Fi and a new admin password in the setup form below it; the data goes to the scale over USB. After that, updates go over Wi-Fi. Without Wi-Fi credentials the scale opens the hotspot `Filamentwaage-Setup` as a fallback.
 
 **Updating:** you only flash once. After that the admin opens the web UI, goes to **System → Firmware update**, checks GitHub for new releases and installs one with **Update now**. The scale never updates on its own. Channels: **stable** (`v1.2`), **release candidate** (`v1.3-rc1`) and **test** (`v1.3-beta1`). Settings, users and calibration are kept; if an update fails, the current firmware keeps running.
 
