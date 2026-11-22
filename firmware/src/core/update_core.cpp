@@ -229,6 +229,7 @@ bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, 
   f["assets"][0]["name"] = true;
   f["assets"][0]["size"] = true;
   f["assets"][0]["browser_download_url"] = true;
+  f["assets"][0]["digest"] = true;
   JsonDocument doc;
   if (read(doc, DeserializationOption::Filter(filter)) || !doc.is<JsonArrayConst>()) {
     error = "Antwort von GitHub ist kein gültiges JSON";
@@ -238,6 +239,7 @@ bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, 
   FwVersion bestVer;
   const char *bestUrl = nullptr;
   uint32_t bestSize = 0;
+  char bestSha[65] = "";
   for (JsonObjectConst r : doc.as<JsonArrayConst>()) {
     const char *tag = r["tag_name"] | "";
     FwVersion v = fwParseVersion(tag);
@@ -249,12 +251,14 @@ bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, 
     }
     const char *url = nullptr;
     uint32_t size = 0;
+    char sha[65] = "";
     for (JsonObjectConst a : r["assets"].as<JsonArrayConst>()) {
       const char *name = a["name"] | "";
       const char *u = a["browser_download_url"] | "";
       if (endsWith(name, "-ota.bin") && fwAllowedUrl(u) && strlen(u) < sizeof(out.otaUrl)) {
         url = u;
         size = a["size"] | 0u;
+        fwParseDigest(a["digest"] | "", sha);  // fehlt oder ungültig: sha bleibt leer, die Installation lehnt dann ab
         break;
       }
     }
@@ -267,6 +271,7 @@ bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, 
       bestVer = v;
       bestUrl = url;
       bestSize = size;
+      memcpy(bestSha, sha, sizeof(bestSha));
     }
   }
   if (!found) {
@@ -277,6 +282,7 @@ bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, 
   out.channel = fwReleaseChannel(tag, best["prerelease"] | false);
   copy(out.otaUrl, sizeof(out.otaUrl), bestUrl);
   out.otaSize = bestSize;
+  memcpy(out.otaSha256, bestSha, sizeof(out.otaSha256));
   copy(out.pageUrl, sizeof(out.pageUrl), best["html_url"] | "");
   const char *body = best["body"] | "";
   size_t n = strlen(body);
@@ -293,6 +299,36 @@ bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, 
 }
 
 }  // namespace
+
+bool fwParseDigest(const char *digest, char out[65]) {
+  out[0] = 0;
+  if (!digest || strncmp(digest, "sha256:", 7) != 0) {
+    return false;
+  }
+  const char *h = digest + 7;
+  if (strlen(h) != 64) {
+    return false;
+  }
+  for (int i = 0; i < 64; i++) {
+    if (!isxdigit((unsigned char)h[i])) {
+      return false;
+    }
+  }
+  for (int i = 0; i < 64; i++) {
+    out[i] = (char)tolower((unsigned char)h[i]);
+  }
+  out[64] = 0;
+  return true;
+}
+
+void fwHashToHex(const uint8_t hash[32], char out[65]) {
+  static const char *DIGITS = "0123456789abcdef";
+  for (int i = 0; i < 32; i++) {
+    out[2 * i] = DIGITS[hash[i] >> 4];
+    out[2 * i + 1] = DIGITS[hash[i] & 15];
+  }
+  out[64] = 0;
+}
 
 bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
   auto read = [&](JsonDocument &doc, auto filter) { return deserializeJson(doc, json, len, filter); };

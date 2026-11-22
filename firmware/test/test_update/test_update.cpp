@@ -206,6 +206,50 @@ void test_parse_releases_edge_cases() {
   TEST_ASSERT_FALSE(fwParseReleases(obj, strlen(obj), FwChannel::Stable, r, found, err));
 }
 
+void test_digest() {
+  char out[65];
+  const char *hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  std::string d = std::string("sha256:") + hex;
+  TEST_ASSERT_TRUE(fwParseDigest(d.c_str(), out));
+  TEST_ASSERT_EQUAL_STRING(hex, out);
+  std::string up = "sha256:0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
+  TEST_ASSERT_TRUE(fwParseDigest(up.c_str(), out));
+  TEST_ASSERT_EQUAL_STRING(hex, out);  // wird klein geschrieben
+  TEST_ASSERT_FALSE(fwParseDigest(nullptr, out));
+  TEST_ASSERT_FALSE(fwParseDigest("", out));
+  TEST_ASSERT_FALSE(fwParseDigest("sha1:0123", out));
+  TEST_ASSERT_FALSE(fwParseDigest("sha256:abc", out));
+  TEST_ASSERT_FALSE(fwParseDigest(("md5:" + std::string(hex)).c_str(), out));
+  TEST_ASSERT_FALSE(fwParseDigest(("sha256:" + std::string(hex) + "0").c_str(), out));
+  TEST_ASSERT_FALSE(fwParseDigest(("sha256:g" + std::string(hex).substr(1)).c_str(), out));
+  TEST_ASSERT_EQUAL_STRING("", out);
+  uint8_t h[32];
+  for (int i = 0; i < 32; i++) {
+    h[i] = (uint8_t)(i * 8 + 1);
+  }
+  fwHashToHex(h, out);
+  TEST_ASSERT_EQUAL_STRING("0109111921293139414951596169717981899199a1a9b1b9c1c9d1d9e1e9f1f9", out);
+}
+
+void test_release_digest() {
+  const char *hex = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  std::string json = std::string("[{\"tag_name\":\"v1.3\",\"assets\":[") +
+                     "{\"name\":\"f-factory.bin\",\"digest\":\"sha256:" + std::string(64, 'b') + "\"," +
+                     "\"browser_download_url\":\"https://github.com/f-factory.bin\"}," +
+                     "{\"name\":\"f-ota.bin\",\"size\":5,\"digest\":\"sha256:" + hex + "\"," +
+                     "\"browser_download_url\":\"https://github.com/f-ota.bin\"}]}]";
+  FwRelease r;
+  bool found = false;
+  const char *err = nullptr;
+  TEST_ASSERT_TRUE(fwParseReleases(json.c_str(), json.size(), FwChannel::Stable, r, found, err));
+  TEST_ASSERT_TRUE(found);
+  TEST_ASSERT_EQUAL_STRING(hex, r.otaSha256);  // Digest des OTA-Assets, nicht des Factory-Images
+  // ohne digest-Feld (ältere Release): gefunden, aber ohne Prüfsumme
+  TEST_ASSERT_TRUE(fwParseReleases(RELEASES, strlen(RELEASES), FwChannel::Stable, r, found, err));
+  TEST_ASSERT_TRUE(found);
+  TEST_ASSERT_EQUAL_STRING("", r.otaSha256);
+}
+
 void test_notes_cut_at_utf8_boundary() {
   std::string body(FW_NOTES_LEN - 1, 'a');
   body += "\xC3\xA4\xC3\xA4";  // "ää": das erste ä beginnt beim letzten erlaubten Byte
@@ -231,6 +275,8 @@ int main() {
   RUN_TEST(test_pick_per_channel);
   RUN_TEST(test_pick_from_stream);
   RUN_TEST(test_parse_releases_edge_cases);
+  RUN_TEST(test_digest);
+  RUN_TEST(test_release_digest);
   RUN_TEST(test_notes_cut_at_utf8_boundary);
   return UNITY_END();
 }
