@@ -369,7 +369,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core` und `core/drying_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core`, `core/drying_core`, `core/update_core`, `core/diag_core`, `core/sensor_core`, `core/spool_url` und `core/usb_setup_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---
@@ -471,7 +471,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - `OTA_PASSWORD` gilt nur für das Flashen per WLAN und das Setup-WLAN, nicht für die Webseite.
 
 ### 13.3 Releases und Web-Flasher
-- `.github/workflows/release.yml` läuft bei jedem Tag `v*`. Er baut mit der Vorlage `secrets.h.example` `firmware.factory.bin` (Bootloader 0x0, Partitionen 0x8000, boot_app0 0xe000, Firmware 0x10000, von PlatformIO zusammengesetzt) und legt eine GitHub-Release mit Factory-Image, OTA-Image (`firmware.bin`) und `docs/cad/filament-scale.step` an.
+- `.github/workflows/release.yml` läuft bei jedem Tag `v*`. Er baut mit der Vorlage `secrets.h.example` `firmware.factory.bin` (Bootloader 0x0, Partitionen 0x8000, boot_app0 0xe000, Firmware 0x10000, von PlatformIO zusammengesetzt) und legt eine GitHub-Release mit Factory-Image, OTA-Image (`filament-scale-<tag>-ota.bin`) und `docs/cad/filament-scale.step` an.
 - Tags mit Bindestrich werden Pre-Releases. Nur stabile Tags schreibt `tools/update_flasher.py` nach `docs/firmware/<tag>/` und `versions.json`; die höchste Version liegt zusätzlich als `docs/firmware/manifest.json` (Standard des Flash-Buttons). Der Workflow committet das direkt auf `main`.
 
 ### 13.4 UI-Style, Schriften, Screenshots
