@@ -51,6 +51,8 @@
   "max_temp": "220",
   "spoolman_id": 42
 }</code></pre>
+<h3 id="openprinttag">OpenPrintTag</h3>
+<p><span data-l="de">Die Waage liest und schreibt Spulen auch im Format OpenPrintTag (offener Standard von Prusa Research, MIME-Typ <code>application/vnd.openprinttag</code>, Daten als CBOR). Beim Schreiben (Menü → NFC → Filament) wählst du OpenSpool oder OpenPrintTag. <b>Einschränkung:</b> Der Standard ist für NFC-V (ISO 15693) definiert, der PN532 kann das nicht. Echte OpenPrintTag-Spulen (z. B. von Prusament) erkennt die Waage deshalb nicht. Sie nutzt nur dasselbe Datenformat auf NTAG215/216. Ob Drucker oder Apps solche Tags lesen, ist nicht geprüft. Die Spule findet Spoolman über die UID, ein OpenPrintTag wird beim Zuordnen nicht überschrieben.</span><span data-l="en">The scale also reads and writes spools in the OpenPrintTag format (open standard by Prusa Research, MIME type <code>application/vnd.openprinttag</code>, data as CBOR). When writing (Menu → NFC → Filament) you choose OpenSpool or OpenPrintTag. <b>Limitation:</b> the standard is defined for NFC-V (ISO 15693), which the PN532 cannot do. Real OpenPrintTag spools (e.g. from Prusament) are therefore not detected. The scale only uses the same data format on NTAG215/216. Whether printers or apps read such tags is untested. Spoolman finds the spool by UID, and an OpenPrintTag is not overwritten when linking.</span></p>
 <h3><span data-l="de">Box-, Benutzer- und Admin-Tag</span><span data-l="en">Box, user and admin tags</span></h3>
 <pre><code>{ "type": "box",   "id": "BOX-03", "name": "Box 03" }
 { "type": "user",  "id": 3, "name": "Fabian" }
@@ -83,12 +85,14 @@
   <tr><th><span data-l="de">Spule laden</span><span data-l="en">Load spool</span></th><td><code>GET /api/v1/spool/{id}</code></td></tr>
   <tr><th><span data-l="de">Per UID suchen</span><span data-l="en">Find by UID</span></th><td><code>GET /api/v1/spool?tag=&lt;UID&gt;&amp;allow_archived=true&amp;limit=1</code></td></tr>
   <tr><th><span data-l="de">Tag verknüpfen</span><span data-l="en">Link tag</span></th><td><code>POST /api/v1/spool/{id}/tag</code> <span class="muted">(409 = <span data-l="de">gehört schon einer anderen Spule</span><span data-l="en">already belongs to another spool</span>)</span></td></tr>
-  <tr><th><span data-l="de">Speichern</span><span data-l="en">Save</span></th><td><code>PATCH /api/v1/spool/{id}</code> <span class="muted">remaining_weight, location, owner</span></td></tr>
+  <tr><th><span data-l="de">Speichern</span><span data-l="en">Save</span></th><td><code>PATCH /api/v1/spool/{id}</code> <span class="muted">remaining_weight, location, owner, last_dried, archived</span></td></tr>
+  <tr><th><span data-l="de">Tag lösen</span><span data-l="en">Detach tag</span></th><td><code>DELETE /api/v1/spool/{id}/tag/{uid}</code> <span class="muted">(<span data-l="de">beim Archivieren</span><span data-l="en">when archiving</span>)</span></td></tr>
 </table>
 <h3><span data-l="de">Gut zu wissen</span><span data-l="en">Good to know</span></h3>
 <ul>
   <li><span data-l="de"><code>remaining_weight</code> nimmt Spoolman nur an, wenn die Filamentsorte ein Füllgewicht (<code>filament.weight</code>) hat. Sonst kommt ein Fehler, den die Waage anzeigt.</span><span data-l="en">Spoolman only accepts <code>remaining_weight</code> when the filament has a net weight (<code>filament.weight</code>). Otherwise it returns an error, which the scale shows.</span></li>
   <li><span data-l="de"><b>Besitzer:</b> Der angemeldete Benutzer wird als <code>owner</code> eingetragen. Lege dafür in Spoolman unter Einstellungen → Extra Fields → Spool ein Textfeld <code>owner</code> an. Andere Extra-Felder der Spule bleiben erhalten, die Waage führt sie beim Schreiben zusammen.</span><span data-l="en"><b>Owner:</b> the signed-in user is written as <code>owner</code>. Create a text field <code>owner</code> in Spoolman under Settings → Extra Fields → Spool. Other extra fields of the spool are preserved, the scale merges them when writing.</span></li>
+  <li><span data-l="de"><b>Zuletzt getrocknet:</b> Für die Trocknungs-Erinnerung schreibt die Waage das Datum (<code>JJJJ-MM-TT</code>) in das Extra-Feld <code>last_dried</code> und legt es bei Bedarf an. Das Eintragen einer Trocknung wird bei Netzwerkfehlern nicht in die Warteschlange gestellt.</span><span data-l="en"><b>Last dried:</b> for the drying reminder the scale writes the date (<code>YYYY-MM-DD</code>) to the extra field <code>last_dried</code> and creates it when needed. Logging a drying is not queued on network errors.</span></li>
   <li><span data-l="de"><b>Offline:</b> Bei Netzwerkfehlern oder HTTP 5xx landet das Update in der Warteschlange, bei 4xx wird es verworfen und gezählt. Home zeigt „Ausstehende Updates“.</span><span data-l="en"><b>Offline:</b> on network errors or HTTP 5xx the update is queued, on 4xx it is dropped and counted. Home shows “Pending updates”.</span></li>
 </ul>
 

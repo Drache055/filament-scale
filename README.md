@@ -30,6 +30,8 @@ The box weight never has to be known. Example from the device screens:
 - Users sign in with their own tag and are recorded as spool owner; settings are admin only
 - Simple scale mode (set by the admin): "Weigh filament" for a spool alone or box + spool, no sign-in, no NFC, no Spoolman; users can also get a "weigh only" role
 - Web interface for calibration, users, filament catalog, Spoolman, Wi-Fi, log and system settings
+- Drying reminder per material (longer interval for spools stored in a box), last drying date kept in Spoolman, can be switched off in the web UI
+- Length in metres on the confirm screen, QR code to the spool in Spoolman, archiving of empty spools, OpenPrintTag data format, selectable load sensor, self-diagnosis in the web UI
 - Wi-Fi setup through a hotspot with captive portal, firmware updates over Wi-Fi (OTA from PlatformIO, or one click in the web UI from GitHub releases, with stable, release-candidate and test channels)
 - German and English, language per user
 
