@@ -6,6 +6,7 @@
 #include "nfc/nfc.h"
 #include "app/session.h"
 #include "bus/i2c_bus.h"
+#include "net/fwupdate.h"
 #include "net/ota.h"
 #include "net/spoolman.h"
 #include "net/webserver.h"
@@ -50,6 +51,7 @@ void setup() {
   devicePwBegin();  // vor dem net-Task: Hotspot und OTA brauchen das Geräte-Passwort
   adminBegin();  // vor dem net-Task, die Webseite fragt die Sperre ab
   devModeBegin();  // vor dem net-Task und session/spoolman/ui: alle fragen die Betriebsart ab
+  fwUpdateBegin();  // vor dem net-Task, die Webseite fragt den Update-Zustand ab
   xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 0);
   if (!LittleFS.begin(true)) {
     logPrintln("[BOOT] LittleFS konnte nicht gemountet werden");

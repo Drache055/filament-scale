@@ -286,9 +286,11 @@ src/
   core/queue_core             Warteschlangen-Logik (ohne Arduino, getestet)
   core/weigh_core             Wiegeablauf-Logik (ohne Arduino, getestet)
   core/simple_core            Einfache Waage, Ablauf-Logik (ohne Arduino, getestet)
+  core/update_core            Online-Update: Versionsvergleich, GitHub-Release auswerten (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
+  net/fwupdate                Online-Update aus den GitHub-Releases (eigener Task)
   net/webserver, websession   Weboberfläche, Login, Rollen
   net/web_page.h              HTML/JS der Weboberfläche
   net/spoolman                Spoolman-Client
@@ -388,6 +390,16 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 ### 12.5 Weboberfläche
 - Menü: Übersicht, Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log, System. Zweisprachig, folgt der Gerätesprache. Login siehe 11.4.
 - Design wie die Projektseite (`docs/style.css`): dunkel, enge große Headlines, Pill-Buttons und -Navigation, weicher Farbverlauf, Karten, Akzent blau. Tokens als CSS-Variablen in `web_page.h` (`:root`), systemeigene Schriften (offline, kein Webfont/CDN). Am Gerät nicht geprüft.
+
+### 12.6 Online-Update (GitHub-Releases)
+- Webseite → System → Firmware-Update (nur Admin): „Nach Updates suchen“ fragt `https://api.github.com/repos/<FW_UPDATE_REPO>/releases/latest` (nur stabile Releases, keine Entwürfe/Pre-Releases; ohne Token, Limit 60 Anfragen/h je IP). Ist der Tag neuer als die eingebaute Version, zeigt die Seite Version und Release Notes (auf 3000 Byte gekürzt) und „Jetzt aktualisieren“. Übersicht → Gerät zeigt die Version, der Menüpunkt System einen Punkt, wenn ein Update bereitsteht.
+- Version: `tools/version.py` (PlatformIO-Pre-Skript) setzt `FW_VERSION` aus der Umgebungsvariable `FW_VERSION` (Release-Workflow: der Tag), sonst `git describe --tags --always --dirty`, sonst `dev`. Vergleich in `core/update_core`: numerisch (`v1.10` > `v1.9`), `v1.2-beta` < `v1.2`, `v1.2-3-gabc` (Stand nach dem Tag) > `v1.2`. Bei unbekannter eigener Version (`dev`, reiner Hash) wird jede stabile Release angeboten.
+- Installation in `net/fwupdate.cpp` (eigener Task, 12 KB Stack, Kern 0): Asset `*-ota.bin` per HTTPS laden, Weiterleitungen selbst verfolgen (nur `https://github.com` und `*.githubusercontent.com`), Zertifikate über das eingebaute CA-Bundle des Arduino-Cores (`useBuiltinCACertBundle()`). Vorher Prüfung: zweiter App-Slot vorhanden, Image passt hinein, Größe = Asset-Größe der Release. Schreiben mit `Update`; `Update.end()` prüft das Image und schaltet erst dann den Boot-Slot um. Bei jedem Fehler `Update.abort()`, die laufende Firmware bleibt aktiv. Nach Erfolg Neustart nach 2,5 s.
+- Automatische Prüfung 60 s nach der WLAN-Verbindung, danach täglich (nach Fehler stündlich). Es wird nie automatisch installiert. Im Einrichtungs-Hotspot keine Prüfung.
+- Nur die Firmware wird ersetzt. LittleFS (Theme, Katalog, Warteschlange) und NVS (WLAN, Benutzer, Kalibrierung) bleiben. Neue Dateien unter `data/` kommen so nicht aufs Gerät.
+- Kein automatischer Rollback: Startet die neue Firmware, aber funktioniert nicht, hilft ArduinoOTA, USB oder der Web-Flasher.
+- API: `GET /api/update[?notes=1]`, `POST /api/update/check`, `POST /api/update/install` (alle Admin).
+- Am Gerät nicht geprüft (Stand der Einführung).
 
 ---
 

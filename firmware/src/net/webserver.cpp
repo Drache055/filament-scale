@@ -13,6 +13,7 @@
 #include "display/display.h"
 #include "i18n/i18n.h"
 #include "util/log.h"
+#include "net/fwupdate.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "scale/scale.h"
@@ -210,6 +211,9 @@ static void handleStatus() {
     doc["psram_free"] = ESP.getFreePsram();
     doc["slot"] = esp_ota_get_running_partition()->label;
     doc["admin_lock"] = adminLockEnabled();
+    doc["fw_version"] = fwVersion();
+    FwUpdStatus fu = fwUpdateStatus();
+    doc["fw_update"] = fu.available ? fu.latest : "";
   }
   sendJson(doc);
 }
@@ -1075,6 +1079,60 @@ static void handleReboot() {
   rebootAt = millis() + 600;
 }
 
+// ---- Online-Update (GitHub-Releases) ----
+static void handleUpdateGet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  FwUpdStatus st = fwUpdateStatus();
+  static const char *STATES[] = {"idle", "checking", "ready", "downloading", "done", "error"};
+  JsonDocument doc;
+  doc["version"] = fwVersion();
+  doc["state"] = STATES[(int)st.state];
+  doc["checked"] = st.checked;
+  doc["checked_s"] = st.checkedSecondsAgo;
+  doc["available"] = st.available;
+  doc["no_release"] = st.noRelease;
+  doc["latest"] = st.latest;
+  doc["page_url"] = st.pageUrl;
+  doc["done"] = st.done;
+  doc["total"] = st.total;
+  doc["error"] = st.error;
+  if (server.hasArg("notes")) {
+    bool cut = false;
+    doc["notes"] = fwUpdateNotes(&cut);
+    doc["notes_cut"] = cut;
+  }
+  sendJson(doc);
+}
+
+static void handleUpdateCheck() {
+  if (!requireAdmin()) {
+    return;
+  }
+  if (!wifiConnected()) {
+    server.send(409, "text/plain", "Kein WLAN (im Einrichtungs-Hotspot ist keine Prüfung möglich)");
+    return;
+  }
+  if (!fwUpdateCheckNow()) {
+    server.send(409, "text/plain", "Update läuft bereits");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+static void handleUpdateInstall() {
+  if (!requireAdmin()) {
+    return;
+  }
+  String error;
+  if (!fwUpdateInstall(error)) {
+    server.send(409, "text/plain", error);
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+}
+
 // Captive Portal: Im Hotspot leiten die Prüf-URLs der Betriebssysteme (und jeder fremde Host) auf die Einrichtungsseite
 static bool captiveRedirect() {
   if (!wifiApActive()) {
@@ -1149,6 +1207,9 @@ static void webStart() {
   server.on("/api/screensaver", HTTP_POST, handleScreensaverSet);
   server.on("/api/log", HTTP_GET, handleLog);
   server.on("/api/reboot", HTTP_POST, handleReboot);
+  server.on("/api/update", HTTP_GET, handleUpdateGet);
+  server.on("/api/update/check", HTTP_POST, handleUpdateCheck);
+  server.on("/api/update/install", HTTP_POST, handleUpdateInstall);
   // Prüf-URLs von Android, iOS/macOS, Windows und Firefox
   for (const char *path : {"/generate_204", "/gen_204", "/hotspot-detect.html", "/library/test/success.html",
                            "/connecttest.txt", "/ncsi.txt", "/fwlink", "/redirect", "/canonical.html", "/success.txt"}) {
