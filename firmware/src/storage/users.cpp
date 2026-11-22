@@ -116,6 +116,11 @@ bool usersAdd(const char *name, String &error, uint16_t *newId) {
       return false;
     }
   }
+  // Die Webseite behandelt diese Namen als Admin bzw. Generic-Konto.
+  if (strcasecmp(n.c_str(), "admin") == 0 || strcasecmp(n.c_str(), "generic") == 0) {
+    error = "Name „admin“ bzw. „generic“ ist reserviert";
+    return false;
+  }
   bool ok = false;
   xSemaphoreTake(mutex, portMAX_DELAY);
   if (count >= USERS_MAX) {

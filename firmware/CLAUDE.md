@@ -378,6 +378,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 11.1 Benutzer (Besitzer)
 - Die Webseite legt Benutzer an (`storage/users.cpp`, NVS, max. 16, ID fortlaufend) und löst das Schreiben des Benutzer-Tags aus. Benutzer legen sich nicht selbst an, das geht nur mit Admin-Rechten.
+- Die Namen `admin` und `generic` (ohne Beachtung der Groß-/Kleinschreibung) sind reserviert: `usersAdd` lehnt sie ab, weil die Webseite sie als Admin- bzw. Generic-Konto behandelt. Bereits im NVS vorhandene Benutzer mit diesen Namen bleiben bestehen, nur das Anlegen ist gesperrt (am Gerät nicht geprüft).
 - Ein Benutzer-Tag an der Waage meldet an (`app/session.cpp`), maßgeblich ist die ID in der Benutzerliste. Ein gelöschter Benutzer wird abgemeldet und sein Tag ist ungültig.
 - Abmeldung nach `USER_TIMEOUT_MS` (15 min) ohne Spulen-/Box-Scan oder per Tippen auf den Namen in der Statusleiste von Home.
 
