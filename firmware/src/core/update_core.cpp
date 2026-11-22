@@ -315,10 +315,10 @@ bool fwParseDigest(const char *digest, char out[65]) {
 }
 
 void fwHashToHex(const uint8_t hash[32], char out[65]) {
-  static const char *HEX = "0123456789abcdef";
+  static const char *DIGITS = "0123456789abcdef";
   for (int i = 0; i < 32; i++) {
-    out[2 * i] = HEX[hash[i] >> 4];
-    out[2 * i + 1] = HEX[hash[i] & 15];
+    out[2 * i] = DIGITS[hash[i] >> 4];
+    out[2 * i + 1] = DIGITS[hash[i] & 15];
   }
   out[64] = 0;
 }
