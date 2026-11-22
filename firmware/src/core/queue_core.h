@@ -11,6 +11,8 @@ struct QueueEntry {
   bool hasLocation = false;
   char location[65] = "";
   char owner[24] = "";        // leer = nicht ändern
+  bool archive = false;       // Spule nach dem Update archivieren (leer)
+  char tagUid[21] = "";       // Tag, der dabei von der Spule gelöst wird (leer = keiner)
   uint32_t timestamp = 0;     // Unix-Zeit, 0 = Uhr war noch nicht gestellt
 };
 
