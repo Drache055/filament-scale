@@ -14,4 +14,6 @@ String webSessionCreate(WebRole role, uint16_t userId);          // gibt das Tok
 bool webSessionGet(const String &token, WebSession &out);        // gültig? verlängert die Sitzung
 void webSessionDestroy(const String &token);
 void webSessionsDropUser(uint16_t userId);                       // Benutzer gelöscht oder PIN geändert
-void webSessionsDropAdminExcept(const String &keepToken);        // Admin-Passwort geändert
+void webSessionsDropAdminExcept(const String &keepToken);        // Admin-Passwort geändert (eigene Sitzung bleibt)
+void webSessionsDropAdmin();                                      // Admin-Passwort per USB gesetzt oder zurückgesetzt
+void webSessionsDropGeneric();                                    // Generic-PIN geändert oder Generic abgeschaltet

@@ -92,10 +92,17 @@
   <a class="btn big ghost" href="cad/filament-scale.step" download="Filament-Scale-V1.0.step"><span data-l="de">3D-Modell herunterladen (STEP)</span><span data-l="en">Download 3D model (STEP)</span></a>
   </div>
   <p class="fwver muted" id="fw-versions" hidden>
+    <span id="fw-channel-box" hidden><label for="fw-channel"><span data-l="de">Kanal:</span><span data-l="en">Channel:</span></label>
+    <select id="fw-channel">
+      <option value="stable"></option>
+      <option value="rc"></option>
+      <option value="test"></option>
+    </select></span>
     <label for="fw-select"><span data-l="de">Firmware-Version:</span><span data-l="en">Firmware version:</span></label>
     <select id="fw-select"></select>
   </p>
-  <p class="muted"><span data-l="de">Standard ist die neueste stabile Version. Alle Versionen mit Änderungen und Dateien stehen unter <a href="https://github.com/Drache055/filament-scale/releases">Releases auf GitHub</a>. Das 3D-Modell (Gehäuse V1.0 mit Komponenten) lässt sich in Fusion, FreeCAD und anderen CAD-Programmen öffnen.</span><span data-l="en">The default is the latest stable version. All versions with changes and files are listed under <a href="https://github.com/Drache055/filament-scale/releases">Releases on GitHub</a>. The 3D model (enclosure V1.0 with components) opens in Fusion, FreeCAD and other CAD tools.</span></p>
+  <p class="note" id="fw-pre" hidden><span data-l="de"><b>Vorabversion:</b> Release-Kandidaten und Tests sind weniger erprobt und können Fehler enthalten. Für den Alltag die stabile Version nehmen.</span><span data-l="en"><b>Pre-release:</b> release candidates and test builds are less proven and may contain bugs. Use the stable version for everyday use.</span></p>
+  <p class="muted"><span data-l="de">Standard ist die neueste stabile Version; Release-Kandidaten und Tests wählst du über den Kanal (wie beim Online-Update). Alle Versionen mit Änderungen und Dateien stehen unter <a href="https://github.com/Drache055/filament-scale/releases">Releases auf GitHub</a>. Das 3D-Modell (Gehäuse V1.0 mit Komponenten) lässt sich in Fusion, FreeCAD und anderen CAD-Programmen öffnen.</span><span data-l="en">The default is the latest stable version; pick release candidates and test builds via the channel (as with the online update). All versions with changes and files are listed under <a href="https://github.com/Drache055/filament-scale/releases">Releases on GitHub</a>. The 3D model (enclosure V1.0 with components) opens in Fusion, FreeCAD and other CAD tools.</span></p>
 </div>
 <ol>
   <li><span data-l="de">Verbinde die Waage per USB-C mit dem Computer.</span><span data-l="en">Connect the scale to your computer via USB-C.</span></li>
@@ -185,16 +192,37 @@ pio test -e native</code></pre>
 <script src="setup.js"></script>
 <script>
 (function(){
-  var box=document.getElementById('fw-versions'),sel=document.getElementById('fw-select'),btn=document.getElementById('fw-install');
-  fetch('firmware/versions.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():[]}).then(function(list){
-    if(!list.length)return;
-    list.forEach(function(v,i){
+  var box=document.getElementById('fw-versions'),sel=document.getElementById('fw-select'),btn=document.getElementById('fw-install'),
+      chBox=document.getElementById('fw-channel-box'),chSel=document.getElementById('fw-channel'),pre=document.getElementById('fw-pre');
+  var list=[];
+  function fill(){
+    var ch=chSel.value,items=list.filter(function(v){return v.channel===ch});
+    sel.innerHTML='';
+    items.forEach(function(v){
       var o=document.createElement('option');
-      o.value=i?'firmware/'+v.tag+'/manifest.json':'firmware/manifest.json';
+      o.value=v.url;
       o.textContent=v.tag+(v.date?' · '+v.date:'');
       sel.appendChild(o);
     });
+    pre.hidden=ch==='stable';
+    if(items.length){btn.setAttribute('manifest',items[0].url);btn.manifest=items[0].url}
+  }
+  fetch('firmware/versions.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():[]}).then(function(all){
+    if(!all.length)return;
+    var firstStable=true;
+    list=all.map(function(v){
+      var ch=v.channel||'stable',url='firmware/'+v.tag+'/manifest.json';
+      if(ch==='stable'&&firstStable){url='firmware/manifest.json';firstStable=false}
+      return {tag:v.tag,date:v.date,channel:ch,url:url};
+    });
+    var have={};list.forEach(function(v){have[v.channel]=1});
+    if(!have.stable)list.push({tag:'Standard',channel:'stable',url:'firmware/manifest.json'});
+    have.stable=1;
+    Array.prototype.forEach.call(chSel.options,function(o){if(!have[o.value])o.remove()});
+    chBox.hidden=chSel.options.length<2;
     sel.onchange=function(){btn.setAttribute('manifest',sel.value);btn.manifest=sel.value};
+    chSel.onchange=fill;
+    fill();
     box.hidden=false;
   }).catch(function(){});
 })();

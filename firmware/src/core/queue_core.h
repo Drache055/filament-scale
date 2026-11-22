@@ -21,6 +21,8 @@ bool queueEntryFromLine(const std::string &line, QueueEntry &out);
 std::vector<QueueEntry> queueParse(const std::string &text);   // ungültige Zeilen werden übersprungen
 std::string queueSerialize(const std::vector<QueueEntry> &list);
 
-// Neuen Eintrag anhängen. Ältere Einträge zur selben Spule werden durch den neuesten ersetzt.
+// Neuen Eintrag anhängen. Ältere Einträge zur selben Spule werden mit dem neuesten zusammengeführt:
+// Der neue Eintrag gewinnt, nicht gesetzte Felder (Gewicht, Ort, Besitzer, Tag) bleiben vom älteren erhalten,
+// ein vorgemerktes Archivieren geht nicht verloren.
 // Bei mehr als maxEntries Einträgen fallen die ältesten weg.
 void queueAddEntry(std::vector<QueueEntry> &list, const QueueEntry &e, size_t maxEntries);

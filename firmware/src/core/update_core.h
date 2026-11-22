@@ -1,6 +1,11 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#ifdef ARDUINO
+#include <Stream.h>
+#else
+#include <istream>
+#endif
 
 // Online-Update (CLAUDE.md 12.6): Versionsvergleich und Auswertung der GitHub-Release. Reine Logik ohne Hardwarezugriff.
 
@@ -50,6 +55,7 @@ struct FwRelease {
   FwChannel channel = FwChannel::Stable;
   char otaUrl[FW_URL_LEN] = "";   // browser_download_url des Assets "*-ota.bin"
   uint32_t otaSize = 0;
+  char otaSha256[65] = "";        // SHA-256 des OTA-Assets (64 Hex-Zeichen, klein) aus dem digest-Feld von GitHub; leer: unbekannt
   char pageUrl[FW_URL_LEN] = "";  // html_url der Release
   char notes[FW_NOTES_LEN + 1] = "";
   bool notesCut = false;
@@ -60,5 +66,20 @@ struct FwRelease {
 // true und found=false: keine passende Release. false: JSON kaputt (error gesetzt).
 bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error);
 
+// Wie oben, liest die Antwort aber direkt aus dem Stream (HTTP-Body) mit ArduinoJson-Filter. Die ganze Antwort
+// (bei 15 Releases weit über 100 KB) liegt nie im RAM, nur die gefilterten Felder.
+#ifdef ARDUINO
+bool fwParseReleases(Stream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+#else
+bool fwParseReleases(std::istream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+#endif
+
 // Ist url ein erlaubter Download-Link (https, github.com bzw. *.githubusercontent.com)?
 bool fwAllowedUrl(const char *url);
+
+// "sha256:<64 Hex-Zeichen>" (digest-Feld der GitHub-Release-Assets) nach out (klein geschrieben, 65 Bytes) übernehmen.
+// false bei anderem Algorithmus oder falscher Länge/Zeichen; out bleibt dann leer.
+bool fwParseDigest(const char *digest, char out[65]);
+
+// 32 Byte Hash als 64 Hex-Zeichen (klein) nach out (65 Bytes)
+void fwHashToHex(const uint8_t hash[32], char out[65]);

@@ -14,7 +14,9 @@
 #include "display/display.h"
 #include "i18n/i18n.h"
 #include "util/log.h"
+#include "core/auth_throttle.h"
 #include "core/diag_core.h"
+#include "core/uid_check.h"
 #include "net/fwupdate.h"
 #include "net/ota.h"
 #include "net/spoolman.h"
@@ -40,16 +42,28 @@ static uint32_t apPwApplyAt = 0;  // neues Hotspot-Passwort übernehmen, nachdem
 // Admin: Benutzer "admin" mit dem Admin-Passwort (Login-Seite, Cookie "sid"; Basic-Auth für Skripte).
 // User: Name + PIN (nur wiegen, NFC lesen, WLAN-Status, Tara mit Recht, eigene Sprache und PIN). Generic: wie User ohne Tara.
 // Ist die Admin-Sperre aus, darf jeder alles.
-static uint8_t authFailures = 0;
-static uint32_t authBlockedUntil = 0;
+// Fehlversuch-Sperre pro Client-IP (core/auth_throttle): ein Angreifer sperrt nur sich selbst aus,
+// nicht den Admin an einem anderen Rechner. Wartezeit steigt mit jeder Sperre (30 s bis 15 min).
+static AuthThrottle authThrottle;
 
-static bool authBlocked() { return (int32_t)(authBlockedUntil - millis()) > 0; }
+static uint32_t clientIp() { return (uint32_t)server.client().remoteIP(); }
+
+static bool authBlocked() { return authThrottleBlockedMs(authThrottle, clientIp(), millis()) > 0; }
 
 static void authFailed() {
-  if (++authFailures >= 5) {
-    authFailures = 0;
-    authBlockedUntil = millis() + 30000;
-    logPrintln("[WEB] 5 Fehlversuche bei der Anmeldung, 30 s gesperrt");
+  IPAddress ip = server.client().remoteIP();
+  uint32_t ms = authThrottleFail(authThrottle, (uint32_t)ip, millis());
+  if (ms) {
+    logPrintf("[WEB] %u Fehlversuche von %s, Anmeldung %lu s gesperrt\n", (unsigned)AUTH_FAILS_PER_LOCK,
+              ip.toString().c_str(), (unsigned long)(ms / 1000));
+  }
+}
+
+// Nur eine Admin-Anmeldung setzt den Zähler zurück: sonst könnte jemand mit eigener PIN (oder Generic ohne PIN)
+// zwischen den Rateversuchen kurz erfolgreich anmelden und so nie gesperrt werden
+static void authSucceeded(WebRole role) {
+  if (role == WebRole::Admin) {
+    authThrottleSuccess(authThrottle, clientIp());
   }
 }
 
@@ -99,7 +113,7 @@ static WebWho currentWho() {
       return nullptr;
     });
     if (ok) {
-      authFailures = 0;
+      authSucceeded(WebRole::Admin);
       w.role = WebRole::Admin;
     } else {
       authFailed();
@@ -283,7 +297,7 @@ static void handleLogin() {
     server.send(401, "text/plain", "Name oder PIN falsch");
     return;
   }
-  authFailures = 0;
+  authSucceeded(role);
   String token = webSessionCreate(role, userId);
   server.sendHeader("Set-Cookie", "sid=" + token + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=" + String(WEB_SESSION_MS / 1000));
   WebWho w;
@@ -654,7 +668,12 @@ static void handleUsersPin() {
     server.send(error == "Benutzer nicht gefunden" ? 404 : 400, "text/plain", error);
     return;
   }
-  webSessionsDropUser(id);  // wer mit der alten PIN angemeldet war, muss sich neu anmelden
+  // wer mit der alten PIN angemeldet war, muss sich neu anmelden (id 0 = Generic-Sitzungen)
+  if (id == 0) {
+    webSessionsDropGeneric();
+  } else {
+    webSessionsDropUser(id);
+  }
   server.send(200, "application/json", usersJson());
 }
 
@@ -669,6 +688,9 @@ static void handleGenericSet() {
     return;
   }
   usersSetGenericEnabled(doc["enabled"].as<bool>());
+  if (!doc["enabled"].as<bool>()) {
+    webSessionsDropGeneric();  // bestehende Generic-Sitzungen enden sofort
+  }
   server.send(200, "text/plain", "ok");
 }
 
@@ -958,8 +980,8 @@ static void handleSpoolmanLookup() {
   String uid = server.arg("uid");
   uid.toUpperCase();
   int id = server.hasArg("id") ? server.arg("id").toInt() : -1;
-  if (uid.length() > 20 || (uid.length() == 0 && id < 0)) {
-    server.send(400, "text/plain", "uid (Hex, max. 20 Zeichen) oder id angeben");
+  if ((uid.length() > 0 && !isValidTagUid(uid.c_str())) || (uid.length() == 0 && id < 0)) {
+    server.send(400, "text/plain", "uid (Hex, 8 bis 20 Zeichen) oder id angeben");
     return;
   }
   spoolmanRequestLookup(uid.c_str(), id);
@@ -992,8 +1014,8 @@ static void handleSpoolmanLink() {
   int id = server.arg("id").toInt();
   String uid = server.arg("uid");
   uid.toUpperCase();
-  if (id <= 0 || uid.length() == 0 || uid.length() > 20) {
-    server.send(400, "text/plain", "id und uid (Hex, max. 20 Zeichen) angeben");
+  if (id <= 0 || !isValidTagUid(uid.c_str())) {
+    server.send(400, "text/plain", "id und uid (Hex, 8 bis 20 Zeichen) angeben");
     return;
   }
   spoolmanRequestLinkTag(id, uid.c_str());
