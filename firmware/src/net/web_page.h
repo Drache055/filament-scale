@@ -414,7 +414,7 @@ function applyLang(l){
 
 let toastTimer;
 function say(msg,c){const m=$('toast');m.textContent=msg;m.className='show '+(c||'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{m.className=''},4500)}
-async function api(path,opt){const r=await fetch(path,opt);if(!r.ok){if(r.status===401&&ME)showLogin();throw new Error((await r.text())||('HTTP '+r.status))}return r}
+async function api(path,opt){opt=opt||{};if(opt.method&&opt.method!=='GET')opt.headers=Object.assign({'X-Requested-With':'fetch'},opt.headers);const r=await fetch(path,opt);if(!r.ok){if(r.status===401&&ME)showLogin();throw new Error((await r.text())||('HTTP '+r.status))}return r}
 const post=(p,body)=>api(p,{method:'POST',headers:{'Content-Type':'text/plain'},body});
 
 /* ---- Menü ---- */
@@ -820,7 +820,7 @@ async function boot(){
 }
 async function doLogin(name,secret){
   $('lerr').textContent='';
-  try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({name,secret})});
+  try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'text/plain','X-Requested-With':'fetch'},body:JSON.stringify({name,secret})});
     if(!r.ok)throw new Error((await r.text())||('HTTP '+r.status));
     loaded.users=loaded.catalog=loaded.system=loaded.wifi=loaded.log=false;
     setRole(await r.json())}

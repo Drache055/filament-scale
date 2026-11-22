@@ -14,6 +14,7 @@
 #include "i18n/i18n.h"
 #include "util/log.h"
 #include "core/diag_core.h"
+#include "core/web_guard.h"
 #include "net/fwupdate.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
@@ -1345,70 +1346,94 @@ static void handleCaptive() {
   }
 }
 
+// Schutz gegen DNS-Rebinding und CSRF, vor jedem Handler: fremder Host-Header wird abgewiesen
+// (im Hotspot auf die Einrichtungsseite umgeleitet), alles außer GET braucht den Header WEB_GUARD_HEADER.
+static bool requestAllowed(HTTPMethod method) {
+  if (!webHostAllowed(server.hostHeader().c_str(), OTA_HOSTNAME)) {
+    if (!captiveRedirect()) {
+      server.send(403, "text/plain", "Unbekannter Host, bitte IP-Adresse oder " OTA_HOSTNAME ".local verwenden");
+    }
+    return false;
+  }
+  if (method != HTTP_GET && !webGuardHeaderOk(server.header(WEB_GUARD_HEADER).c_str())) {
+    server.send(403, "text/plain", "Header " WEB_GUARD_HEADER " fehlt");
+    return false;
+  }
+  return true;
+}
+
+static void route(const char *path, HTTPMethod method, WebServer::THandlerFunction fn) {
+  server.on(path, method, [method, fn]() {
+    if (requestAllowed(method)) {
+      fn();
+    }
+  });
+}
+
 static void webStart() {
-  server.on("/", HTTP_GET, []() { server.send_P(200, "text/html; charset=utf-8", WEB_PAGE); });
-  server.on("/api/status", HTTP_GET, handleStatus);
-  server.on("/api/tare", HTTP_POST, handleTare);
-  server.on("/api/calibrate", HTTP_POST, handleCalibrate);
-  server.on("/api/sensor", HTTP_GET, handleSensorGet);
-  server.on("/api/sensor", HTTP_POST, handleSensorSet);
-  server.on("/api/theme", HTTP_GET, handleThemeGet);
-  server.on("/api/theme", HTTP_POST, handleThemePost);
-  server.on("/api/catalog", HTTP_GET, handleCatalogGet);
-  server.on("/api/catalog", HTTP_POST, handleCatalogPost);
-  server.on("/api/touch/reset", HTTP_POST, handleTouchReset);
-  server.on("/api/users", HTTP_GET, handleUsersGet);
-  server.on("/api/users", HTTP_POST, handleUsersAdd);
-  server.on("/api/users/delete", HTTP_POST, handleUsersDelete);
-  server.on("/api/users/write", HTTP_POST, handleUsersWrite);
-  server.on("/api/users/lang", HTTP_POST, handleUsersLang);
-  server.on("/api/users/tare", HTTP_POST, handleUsersTare);
-  server.on("/api/users/pin", HTTP_POST, handleUsersPin);
-  server.on("/api/users/catalog", HTTP_POST, handleUsersCatalog);
-  server.on("/api/catalog/sync", HTTP_POST, handleCatalogSyncRequest);
-  server.on("/api/catalog/sync", HTTP_GET, handleCatalogSyncGet);
-  server.on("/api/generic", HTTP_POST, handleGenericSet);
-  server.on("/api/me", HTTP_GET, handleMe);
-  server.on("/api/login", HTTP_POST, handleLogin);
-  server.on("/api/logout", HTTP_POST, handleLogout);
-  server.on("/api/me/lang", HTTP_POST, handleMeLang);
-  server.on("/api/me/pin", HTTP_POST, handleMePin);
-  server.on("/api/admin", HTTP_GET, handleAdminGet);
-  server.on("/api/admin/password", HTTP_POST, handleAdminPassword);
-  server.on("/api/admin/lock", HTTP_POST, handleAdminLock);
-  server.on("/api/admin/pin", HTTP_POST, handleAdminPin);
-  server.on("/api/admin/tag", HTTP_POST, handleAdminTag);
-  server.on("/api/nfc/write", HTTP_GET, handleNfcWriteStatus);
-  server.on("/api/diag", HTTP_GET, handleDiag);
-  server.on("/api/spoolman", HTTP_GET, handleSpoolmanGet);
-  server.on("/api/spoolman", HTTP_POST, handleSpoolmanUrl);
-  server.on("/api/spoolman/check", HTTP_POST, handleSpoolmanCheck);
-  server.on("/api/spoolman/list", HTTP_POST, handleSpoolListRequest);
-  server.on("/api/spoolman/list", HTTP_GET, handleSpoolListGet);
-  server.on("/api/spoolman/queue/flush", HTTP_POST, handleQueueFlush);
-  server.on("/api/spoolman/queue/clear", HTTP_POST, handleQueueClear);
-  server.on("/api/spoolman/lookup", HTTP_POST, handleSpoolmanLookup);
-  server.on("/api/spoolman/update", HTTP_POST, handleSpoolmanUpdate);
-  server.on("/api/spoolman/link", HTTP_POST, handleSpoolmanLink);
-  server.on("/api/drying", HTTP_GET, handleDryingGet);
-  server.on("/api/drying", HTTP_POST, handleDryingSet);
-  server.on("/api/drying/log", HTTP_POST, handleDryingLog);
-  server.on("/api/language", HTTP_POST, handleLanguageSet);
-  server.on("/api/mode", HTTP_POST, handleModeSet);
-  server.on("/api/users/weigh", HTTP_POST, handleUsersWeighOnly);
-  server.on("/api/wifi", HTTP_GET, handleWifiGet);
-  server.on("/api/wifi", HTTP_POST, handleWifiSave);
-  server.on("/api/wifi/scan", HTTP_GET, handleWifiScan);
-  server.on("/api/wifi/reset", HTTP_POST, handleWifiReset);
-  server.on("/api/wifi/ap", HTTP_POST, handleWifiAp);
-  server.on("/api/screensaver", HTTP_GET, handleScreensaverGet);
-  server.on("/api/screensaver", HTTP_POST, handleScreensaverSet);
-  server.on("/api/log", HTTP_GET, handleLog);
-  server.on("/api/reboot", HTTP_POST, handleReboot);
-  server.on("/api/update", HTTP_GET, handleUpdateGet);
-  server.on("/api/update/check", HTTP_POST, handleUpdateCheck);
-  server.on("/api/update/install", HTTP_POST, handleUpdateInstall);
-  server.on("/api/update/channel", HTTP_POST, handleUpdateChannel);
+  route("/", HTTP_GET, []() { server.send_P(200, "text/html; charset=utf-8", WEB_PAGE); });
+  route("/api/status", HTTP_GET, handleStatus);
+  route("/api/tare", HTTP_POST, handleTare);
+  route("/api/calibrate", HTTP_POST, handleCalibrate);
+  route("/api/sensor", HTTP_GET, handleSensorGet);
+  route("/api/sensor", HTTP_POST, handleSensorSet);
+  route("/api/theme", HTTP_GET, handleThemeGet);
+  route("/api/theme", HTTP_POST, handleThemePost);
+  route("/api/catalog", HTTP_GET, handleCatalogGet);
+  route("/api/catalog", HTTP_POST, handleCatalogPost);
+  route("/api/touch/reset", HTTP_POST, handleTouchReset);
+  route("/api/users", HTTP_GET, handleUsersGet);
+  route("/api/users", HTTP_POST, handleUsersAdd);
+  route("/api/users/delete", HTTP_POST, handleUsersDelete);
+  route("/api/users/write", HTTP_POST, handleUsersWrite);
+  route("/api/users/lang", HTTP_POST, handleUsersLang);
+  route("/api/users/tare", HTTP_POST, handleUsersTare);
+  route("/api/users/pin", HTTP_POST, handleUsersPin);
+  route("/api/users/catalog", HTTP_POST, handleUsersCatalog);
+  route("/api/catalog/sync", HTTP_POST, handleCatalogSyncRequest);
+  route("/api/catalog/sync", HTTP_GET, handleCatalogSyncGet);
+  route("/api/generic", HTTP_POST, handleGenericSet);
+  route("/api/me", HTTP_GET, handleMe);
+  route("/api/login", HTTP_POST, handleLogin);
+  route("/api/logout", HTTP_POST, handleLogout);
+  route("/api/me/lang", HTTP_POST, handleMeLang);
+  route("/api/me/pin", HTTP_POST, handleMePin);
+  route("/api/admin", HTTP_GET, handleAdminGet);
+  route("/api/admin/password", HTTP_POST, handleAdminPassword);
+  route("/api/admin/lock", HTTP_POST, handleAdminLock);
+  route("/api/admin/pin", HTTP_POST, handleAdminPin);
+  route("/api/admin/tag", HTTP_POST, handleAdminTag);
+  route("/api/nfc/write", HTTP_GET, handleNfcWriteStatus);
+  route("/api/diag", HTTP_GET, handleDiag);
+  route("/api/spoolman", HTTP_GET, handleSpoolmanGet);
+  route("/api/spoolman", HTTP_POST, handleSpoolmanUrl);
+  route("/api/spoolman/check", HTTP_POST, handleSpoolmanCheck);
+  route("/api/spoolman/list", HTTP_POST, handleSpoolListRequest);
+  route("/api/spoolman/list", HTTP_GET, handleSpoolListGet);
+  route("/api/spoolman/queue/flush", HTTP_POST, handleQueueFlush);
+  route("/api/spoolman/queue/clear", HTTP_POST, handleQueueClear);
+  route("/api/spoolman/lookup", HTTP_POST, handleSpoolmanLookup);
+  route("/api/spoolman/update", HTTP_POST, handleSpoolmanUpdate);
+  route("/api/spoolman/link", HTTP_POST, handleSpoolmanLink);
+  route("/api/drying", HTTP_GET, handleDryingGet);
+  route("/api/drying", HTTP_POST, handleDryingSet);
+  route("/api/drying/log", HTTP_POST, handleDryingLog);
+  route("/api/language", HTTP_POST, handleLanguageSet);
+  route("/api/mode", HTTP_POST, handleModeSet);
+  route("/api/users/weigh", HTTP_POST, handleUsersWeighOnly);
+  route("/api/wifi", HTTP_GET, handleWifiGet);
+  route("/api/wifi", HTTP_POST, handleWifiSave);
+  route("/api/wifi/scan", HTTP_GET, handleWifiScan);
+  route("/api/wifi/reset", HTTP_POST, handleWifiReset);
+  route("/api/wifi/ap", HTTP_POST, handleWifiAp);
+  route("/api/screensaver", HTTP_GET, handleScreensaverGet);
+  route("/api/screensaver", HTTP_POST, handleScreensaverSet);
+  route("/api/log", HTTP_GET, handleLog);
+  route("/api/reboot", HTTP_POST, handleReboot);
+  route("/api/update", HTTP_GET, handleUpdateGet);
+  route("/api/update/check", HTTP_POST, handleUpdateCheck);
+  route("/api/update/install", HTTP_POST, handleUpdateInstall);
+  route("/api/update/channel", HTTP_POST, handleUpdateChannel);
   // Prüf-URLs von Android, iOS/macOS, Windows und Firefox
   for (const char *path : {"/generate_204", "/gen_204", "/hotspot-detect.html", "/library/test/success.html",
                            "/connecttest.txt", "/ncsi.txt", "/fwlink", "/redirect", "/canonical.html", "/success.txt"}) {
@@ -1419,8 +1444,8 @@ static void webStart() {
       server.send(404, "text/plain", "nicht gefunden");
     }
   });
-  static const char *collected[] = {"Cookie"};
-  server.collectHeaders(collected, 1);
+  static const char *collected[] = {"Cookie", WEB_GUARD_HEADER};
+  server.collectHeaders(collected, 2);
   server.begin();
   logPrintf("[WEB] Server läuft auf http://%s/\n", wifiConnected() ? wifiIp().c_str() : wifiApIp().c_str());
 }
