@@ -177,6 +177,7 @@ static void handleStatus() {
   doc["stable"] = r.stable;
   doc["overload"] = r.overload;
   doc["weight"] = r.grams;
+  doc["sensor"] = sensorTypeName(scaleSensorActive().type);
   NfcState n = nfcGet();
   JsonObject nfc = doc["nfc"].to<JsonObject>();
   nfc["module"] = n.moduleReady;
@@ -366,7 +367,7 @@ static void handleTare() {
   if (scaleTare()) {
     server.send(200, "text/plain", "ok");
   } else {
-    server.send(409, "text/plain", "HX711 liefert keine Daten");
+    server.send(409, "text/plain", "Wägesensor liefert keine Daten");
   }
 }
 
@@ -382,7 +383,79 @@ static void handleCalibrate() {
   if (scaleCalibrate(grams)) {
     server.send(200, "text/plain", "ok");
   } else {
-    server.send(409, "text/plain", "Signal zu klein oder HX711 ohne Daten (erst Tara, dann Gewicht auflegen)");
+    server.send(409, "text/plain", "Signal zu klein oder Wägesensor ohne Daten (erst Tara, dann Gewicht auflegen)");
+  }
+}
+
+// ---- Wägesensor: Typ und Pins (Admin). Wirksam nach dem Neustart, Kalibrierung gilt pro Sensortyp. ----
+static void sensorToJson(JsonObject o, const SensorConfig &c) {
+  o["type"] = sensorTypeId(c.type);
+  JsonArray pins = o["pins"].to<JsonArray>();
+  for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+    pins.add(c.pin[i]);
+  }
+}
+
+static void handleSensorGet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  sensorToJson(doc["active"].to<JsonObject>(), scaleSensorActive());
+  sensorToJson(doc["stored"].to<JsonObject>(), scaleSensorStored());
+  doc["restart"] = scaleSensorActive() != scaleSensorStored();
+  JsonArray free = doc["free"].to<JsonArray>();
+  int n = 0;
+  const int *p = sensorFreePins(n);
+  for (int i = 0; i < n; i++) {
+    free.add(p[i]);
+  }
+  JsonObject defs = doc["defaults"].to<JsonObject>();
+  for (int t = 0; t < SENSOR_TYPE_COUNT; t++) {
+    SensorConfig d = sensorDefault((SensorType)t);
+    JsonArray a = defs[sensorTypeId(d.type)].to<JsonArray>();
+    for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+      a.add(d.pin[i]);
+    }
+  }
+  String out;
+  serializeJson(doc, out);
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", out);
+}
+
+// Body: {"type":"nau7802","pins":[47,48,-1],"reboot":true}
+static void handleSensorSet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server.arg("plain"))) {
+    server.send(400, "text/plain", "Ungültiges JSON");
+    return;
+  }
+  SensorConfig c;
+  if (!sensorTypeParse(doc["type"] | "", c.type)) {
+    server.send(400, "text/plain", "Unbekannter Sensortyp");
+    return;
+  }
+  JsonArray pins = doc["pins"].as<JsonArray>();
+  if (pins.size() != SENSOR_PIN_COUNT) {
+    server.send(400, "text/plain", "pins: drei Einträge erwartet (-1 = nicht belegt)");
+    return;
+  }
+  for (int i = 0; i < SENSOR_PIN_COUNT; i++) {
+    int v = pins[i] | -1;
+    c.pin[i] = (v < -1 || v > 48) ? 127 : (int8_t)v;
+  }
+  const char *err = nullptr;
+  if (!scaleSensorSave(c, err)) {
+    server.send(400, "text/plain", err ? err : "Ungültige Sensorwahl");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
+  if (doc["reboot"] | false) {
+    rebootAt = millis() + 600;
   }
 }
 
@@ -1235,6 +1308,8 @@ static void webStart() {
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/tare", HTTP_POST, handleTare);
   server.on("/api/calibrate", HTTP_POST, handleCalibrate);
+  server.on("/api/sensor", HTTP_GET, handleSensorGet);
+  server.on("/api/sensor", HTTP_POST, handleSensorSet);
   server.on("/api/theme", HTTP_GET, handleThemeGet);
   server.on("/api/theme", HTTP_POST, handleThemePost);
   server.on("/api/catalog", HTTP_GET, handleCatalogGet);

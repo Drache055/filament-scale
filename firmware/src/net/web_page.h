@@ -153,6 +153,15 @@ h3{font-size:15px;margin:18px 0 8px}
       <input id="ref" type="number" min="1" max="5000" step="1" value="200"> <span>g</span>
       <button id="cal" data-i18n="calibrate">Kalibrieren</button></div>
   </div>
+  <div class="card">
+    <div class="label" data-i18n="sensor">Wägesensor</div>
+    <div class="row"><select id="stype"><option value="hx711">HX711 / HX710B</option><option value="nau7802">NAU7802 (I²C)</option><option value="ads1232">ADS1232 / ADS1231</option></select></div>
+    <div class="row" id="spins" style="margin-top:8px"></div>
+    <p style="color:var(--dim)" id="shint"></p>
+    <p style="color:var(--dim)" data-i18n="sensor_cal_hint"></p>
+    <p class="warn" id="srestart" style="display:none" data-i18n="sensor_restart"></p>
+    <div class="row"><button id="ssave" data-i18n="sensor_save">Speichern und neu starten</button></div>
+  </div>
 </section>
 
 <!-- Benutzer -->
@@ -330,7 +339,7 @@ de:{
 m_overview:'Übersicht',m_calibration:'Kalibrierung',m_users:'Benutzer',m_catalog:'Filament-Katalog',m_spoolman:'Spoolman',m_wifi:'WLAN',m_log:'Log',m_system:'System',
 weight:'Gewicht',tare:'Tara',cur_user:'Angemeldeter Benutzer',nobody:'niemand',last_scan:'Zuletzt gescannte Spule',device:'Gerät',wlan:'WLAN',ip:'IP-Adresse',signal:'Signal',uptime:'Laufzeit',mem:'Freier RAM / PSRAM',
 status:'Status',raw_net:'Rohwert (netto)',procedure:'Ablauf',cal1:'Waage leeren und <b>Tara</b> drücken.',cal2:'Ein Gewicht mit bekannter Masse auflegen (je schwerer, desto genauer).',cal3:'Die Masse eingeben und <b>Kalibrieren</b> drücken.',calibrate:'Kalibrieren',
-no_hx711:'HX711 nicht gefunden',not_calibrated:'Nicht kalibriert',calibrated:'Kalibriert',overload:'Überlast',stable:'stabil',no_connection:'Keine Verbindung',
+no_sensor:'{0} nicht gefunden',sensor:'Wägesensor',sensor_save:'Speichern und neu starten',sensor_restart:'Gespeicherte Auswahl ist noch nicht aktiv, Neustart nötig.',sensor_cal_hint:'Die Kalibrierung wird pro Sensortyp gespeichert. Nach dem ersten Wechsel auf einen Sensor neu kalibrieren.',sensor_confirm:'Sensor {0} speichern und Gerät neu starten?',sensor_none:'– (nicht belegt)',sensor_bus:'Touch-Bus',sh_hx711:'Standard. Versorgung 3,3 V (DOUT darf keine 5 V führen). HX710B-Module laufen mit demselben Treiber.',sh_nau7802:'I²C, Adresse 0x2A, 3,3 V. SCL = GPIO47 und SDA = GPIO48 nutzt den Touch-Bus mit (Header P2 Pin 5 und 6, keine weiteren Pins), andere Pins bekommen einen eigenen Bus. Am Gerät nicht geprüft.',sh_ads1232:'2-Draht wie HX711. PDWN ist optional (sonst am Modul fest auf 3,3 V). Verstärkung und Datenrate (10 SPS) per Lötbrücke am Modul. Am Gerät nicht geprüft.',not_calibrated:'Nicht kalibriert',calibrated:'Kalibriert',overload:'Überlast',stable:'stabil',no_connection:'Keine Verbindung',
 users_hint:'Ein Benutzer-Tag an der Waage meldet den Benutzer an, gescanntes Filament gehört dann ihm. Abmeldung nach 15 Minuten ohne Scan oder durch Tippen auf den Namen am Gerät.',
 name:'Name',create:'Anlegen',write_tag:'Tag schreiben',delete:'Löschen',no_users:'Noch keine Benutzer.',confirm_del_user:'Benutzer "{0}" löschen? Sein Tag wird damit ungültig.',user_created:'Benutzer angelegt',
 admin:'Admin',admin_hint:'Nur der Admin legt Benutzer an und ändert Einstellungen, am Gerät mit der Geräte-PIN (Ziffernblock) oder dem Admin-Tag, hier mit Benutzer "admin" und dem Passwort. Ist die Sperre aus, darf jeder alles ändern. Notfall: serieller Befehl "admin reset" (USB).',admin_default_warn:'Das Standardpasswort ist noch aktiv. Bitte ein eigenes Passwort setzen.',admin_lock:'Admin-Sperre aktiv',new_password:'Neues Passwort',change_password:'Passwort ändern',write_admin_tag:'Admin-Tag schreiben',confirm_unlock:'Sperre abschalten? Danach darf jeder im Netzwerk und am Gerät alle Einstellungen ändern.',lock_on:'Sperre eingeschaltet',lock_off:'Sperre abgeschaltet',pw_changed:'Passwort geändert (der Browser fragt beim nächsten Speichern neu)',lang_device:'Gerätesprache',dev_pin:'Geräte-PIN (4 bis 6 Ziffern)',set_dev_pin:'Geräte-PIN setzen',dev_pin_warn:'Die Standard-Geräte-PIN (1234) ist noch aktiv. Bitte eine eigene PIN setzen.',dev_pin_saved:'Geräte-PIN gespeichert',sync_title:'Abgleich mit Spoolman',sync_hint:'Neue Hersteller und Filamenttypen aus Spoolman werden automatisch alle 10 Minuten übernommen. Vorhandene Einträge bleiben unverändert, es wird nichts gelöscht. Der Temperaturbereich kommt aus der Düsentemperatur der Filamente in Spoolman (bei nur einem Wert +/- 10 °C), sonst aus üblichen Werten. Bitte bei Bedarf prüfen.',sync_now:'Jetzt abgleichen',sync_running:'Abgleich läuft ...',sync_ok:'Abgleich: {0} neue Hersteller, {1} neue Typen (gelesen: {2} Hersteller, {3} Typen)',sync_skip:', {0} nicht übernommen (Name zu lang oder Liste voll)',sync_err:'Abgleich fehlgeschlagen: {0}',sync_never:'Noch kein Abgleich seit dem Start',sync_ago:' · vor {0} s',cat_right:'Darf den Filament-Katalog pflegen',filament:'Filament',at_device:'Am Gerät',login_title:'Anmelden',login_name:'Name',login_secret:'PIN / Passwort',login:'Anmelden',logout:'Abmelden',generic_login:'Generic (nur ansehen)',wifi_connected:'Verbunden',wifi_disconnected:'Nicht verbunden',my_settings:'Meine Einstellungen',my_lang:'Meine Sprache',old_pin:'Alte PIN',new_pin:'Neue PIN',change_pin:'PIN ändern',pin_changed:'PIN geändert',pin_rules:'PIN: 4 bis 6 Ziffern.',pin_set:'PIN setzen',pin_change:'PIN ändern',pin_prompt:'Neue PIN (4 bis 6 Ziffern, leer = PIN entfernen):',pin_optional:'PIN (optional)',generic:'Generic-Zugang',generic_on:'Generic-Zugang aktiv (nur wiegen und NFC lesen)',set_pin:'PIN setzen',pin_saved:'PIN gespeichert',no_pin_hint:'ohne PIN kein Zugang über die Webseite',tare_right:'Darf am Gerät tarieren',k_admin:'Admin',
@@ -359,7 +368,7 @@ en:{
 m_overview:'Overview',m_calibration:'Calibration',m_users:'Users',m_catalog:'Filament catalog',m_spoolman:'Spoolman',m_wifi:'WiFi',m_log:'Log',m_system:'System',
 weight:'Weight',tare:'Tare',cur_user:'Logged-in user',nobody:'nobody',last_scan:'Last scanned spool',device:'Device',wlan:'WiFi',ip:'IP address',signal:'Signal',uptime:'Uptime',mem:'Free RAM / PSRAM',
 status:'Status',raw_net:'Raw value (net)',procedure:'Procedure',cal1:'Empty the scale and press <b>Tare</b>.',cal2:'Place a weight of known mass (the heavier, the more accurate).',cal3:'Enter the mass and press <b>Calibrate</b>.',calibrate:'Calibrate',
-no_hx711:'HX711 not found',not_calibrated:'Not calibrated',calibrated:'Calibrated',overload:'Overload',stable:'stable',no_connection:'No connection',
+no_sensor:'{0} not found',sensor:'Load sensor',sensor_save:'Save and restart',sensor_restart:'The saved selection is not active yet, restart required.',sensor_cal_hint:'Calibration is stored per sensor type. Calibrate again after switching to a sensor for the first time.',sensor_confirm:'Save sensor {0} and restart the device?',sensor_none:'– (not connected)',sensor_bus:'touch bus',sh_hx711:'Default. Supply 3.3 V (DOUT must not carry 5 V). HX710B modules work with the same driver.',sh_nau7802:'I²C, address 0x2A, 3.3 V. SCL = GPIO47 and SDA = GPIO48 shares the touch bus (header P2 pins 5 and 6, no extra pins), other pins get a bus of their own. Not tested on the device.',sh_ads1232:'2-wire like the HX711. PDWN is optional (otherwise tied to 3.3 V on the module). Gain and data rate (10 SPS) are set by solder jumpers on the module. Not tested on the device.',not_calibrated:'Not calibrated',calibrated:'Calibrated',overload:'Overload',stable:'stable',no_connection:'No connection',
 users_hint:'A user tag held to the scale logs the user in; scanned filament then belongs to them. Logout after 15 minutes without a scan or by tapping the name on the device.',
 name:'Name',create:'Create',write_tag:'Write tag',delete:'Delete',no_users:'No users yet.',confirm_del_user:'Delete user "{0}"? Their tag becomes invalid.',user_created:'User created',
 admin:'Admin',admin_hint:'Only the admin creates users and changes settings, on the device with the device PIN (number pad) or admin tag, here with user "admin" and the password. With the lock off, everyone may change everything. Emergency: serial command "admin reset" (USB).',admin_default_warn:'The default password is still active. Please set your own password.',admin_lock:'Admin lock active',new_password:'New password',change_password:'Change password',write_admin_tag:'Write admin tag',confirm_unlock:'Turn the lock off? Everyone on the network and at the device may then change all settings.',lock_on:'Lock turned on',lock_off:'Lock turned off',pw_changed:'Password changed (the browser will ask again on the next save)',lang_device:'Device language',dev_pin:'Device PIN (4 to 6 digits)',set_dev_pin:'Set device PIN',dev_pin_warn:'The default device PIN (1234) is still active. Please set your own PIN.',dev_pin_saved:'Device PIN saved',sync_title:'Sync with Spoolman',sync_hint:'New manufacturers and filament types from Spoolman are imported automatically every 10 minutes. Existing entries stay unchanged and nothing is deleted. The temperature range comes from the nozzle temperature of the filaments in Spoolman (+/- 10 °C if there is only one value), otherwise from common values. Please check if needed.',sync_now:'Sync now',sync_running:'Syncing ...',sync_ok:'Sync: {0} new manufacturers, {1} new types (read: {2} manufacturers, {3} types)',sync_skip:', {0} not imported (name too long or list full)',sync_err:'Sync failed: {0}',sync_never:'No sync since start yet',sync_ago:' · {0} s ago',cat_right:'May maintain the filament catalog',filament:'Filament',at_device:'At the device',login_title:'Log in',login_name:'Name',login_secret:'PIN / password',login:'Log in',logout:'Log out',generic_login:'Generic (view only)',wifi_connected:'Connected',wifi_disconnected:'Not connected',my_settings:'My settings',my_lang:'My language',old_pin:'Old PIN',new_pin:'New PIN',change_pin:'Change PIN',pin_changed:'PIN changed',pin_rules:'PIN: 4 to 6 digits.',pin_set:'Set PIN',pin_change:'Change PIN',pin_prompt:'New PIN (4 to 6 digits, empty = remove PIN):',pin_optional:'PIN (optional)',generic:'Generic access',generic_on:'Generic access active (weigh and read NFC only)',set_pin:'Set PIN',pin_saved:'PIN saved',no_pin_hint:'without a PIN there is no web access',tare_right:'May tare at the device',k_admin:'Admin',
@@ -404,7 +413,7 @@ const post=(p,body)=>api(p,{method:'POST',headers:{'Content-Type':'text/plain'},
 /* ---- Menü ---- */
 const PAGES=['overview','calibration','users','catalog','spoolman','wifi','log','system'];
 const loaded={};
-const ONLOAD={spoolman:()=>loadDry(),users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS();loadFw(true)},wifi:()=>loadWifi(),log:()=>startLog()};
+const ONLOAD={calibration:()=>loadSensor(),spoolman:()=>loadDry(),users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS();loadFw(true)},wifi:()=>loadWifi(),log:()=>startLog()};
 function show(langOnly){
   let p=location.hash.slice(1);if(!PAGES.includes(p)||(p!=='overview'&&!(ME&&(ME.role==='admin'||(p==='catalog'&&ME.catalog)))))p='overview';
   document.querySelectorAll('.page').forEach(e=>e.classList.toggle('active',e.id==='p-'+p));
@@ -421,7 +430,7 @@ function dur(s){const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.fl
 function render(d){
   if(d.lang&&d.lang!==LANG)applyLang(d.lang);
   const st=$('state');let w='-- g',mini='';
-  if(!d.valid){st.textContent=t('no_hx711');st.className='err'}
+  if(!d.valid){st.textContent=t('no_sensor',d.sensor||'Sensor');st.className='err'}
   else if(!d.calibrated){st.textContent=t('not_calibrated');st.className='warn'}
   else{w=(Math.round(d.weight*10)/10).toFixed(1)+' g';mini=w;
     if(d.overload){st.textContent=t('overload');st.className='err'}
@@ -430,7 +439,7 @@ function render(d){
   $('weight').textContent=w;$('mini').textContent=mini;
   $('rawnet').textContent=d.valid?d.raw_net:'-';
   const cs=$('calstate');
-  if(!d.valid){cs.textContent=t('no_hx711');cs.className='val err'}
+  if(!d.valid){cs.textContent=t('no_sensor',d.sensor||'Sensor');cs.className='val err'}
   else if(d.calibrated){cs.textContent=t('calibrated');cs.className='val ok'}
   else{cs.textContent=t('not_calibrated');cs.className='val warn'}
   $('wifishort').textContent=d.wifi?t('wifi_connected')+(d.ssid?' ('+d.ssid+')':''):t('wifi_disconnected');$('wifishort').className='val '+(d.wifi?'ok':'err');
@@ -460,6 +469,28 @@ async function poll(){
   setTimeout(poll,500)
 }
 $('tare').onclick=$('tare2').onclick=async()=>{try{await post('/api/tare','');say(t('tare_done'),'ok')}catch(e){say(t('tare_fail',e.message),'err')}};
+/* ---- Wägesensor ---- */
+const SROLES={hx711:['SCK','DOUT'],nau7802:['SCL','SDA'],ads1232:['SCLK','DOUT','PDWN']};
+let SENS=null;
+function sensorPins(type,pins){
+  const box=$('spins');box.innerHTML='';
+  SROLES[type].forEach((role,i)=>{
+    const l=document.createElement('label');l.className='row';l.style.marginRight='12px';
+    const sp=document.createElement('span');sp.textContent=role;l.appendChild(sp);
+    const sel=document.createElement('select');sel.dataset.idx=i;
+    const opts=[];if(i===2)opts.push([-1,t('sensor_none')]);
+    if(type==='nau7802')opts.push([i===0?47:48,'GPIO'+(i===0?47:48)+' ('+t('sensor_bus')+')']);
+    SENS.free.forEach(p=>opts.push([p,'GPIO'+p]));
+    opts.forEach(([v,txt])=>{const o=document.createElement('option');o.value=v;o.textContent=txt;sel.appendChild(o)});
+    sel.value=pins[i];l.appendChild(sel);box.appendChild(l)});
+  $('shint').textContent=t('sh_'+type);
+}
+async function loadSensor(){try{SENS=await(await api('/api/sensor')).json();$('stype').value=SENS.stored.type;sensorPins(SENS.stored.type,SENS.stored.pins);$('srestart').style.display=SENS.restart?'':'none'}catch(e){say(t('load_fail',e.message),'err')}}
+$('stype').onchange=()=>{const ty=$('stype').value;sensorPins(ty,ty===SENS.stored.type?SENS.stored.pins:SENS.defaults[ty])};
+$('ssave').onclick=async()=>{const ty=$('stype').value,pins=[-1,-1,-1];
+  document.querySelectorAll('#spins select').forEach(s=>{pins[+s.dataset.idx]=+s.value});
+  if(!confirm(t('sensor_confirm',$('stype').selectedOptions[0].textContent)))return;
+  try{await post('/api/sensor',JSON.stringify({type:ty,pins,reboot:true}));say(t('rebooting'),'ok')}catch(e){say(e.message,'err')}};
 $('cal').onclick=async()=>{try{await post('/api/calibrate?grams='+encodeURIComponent($('ref').value),'');say(t('cal_done'),'ok')}catch(e){say(t('cal_fail',e.message),'err')}};
 
 /* ---- Spoolman ---- */

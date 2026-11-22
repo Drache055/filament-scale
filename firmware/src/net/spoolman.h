@@ -54,7 +54,10 @@ SpoolmanResult spoolmanLookupResult();
 
 // Spule aktualisieren. remaining < 0 = nicht ändern, location/owner nullptr = nicht ändern.
 // owner wird im Extra-Feld "owner" gespeichert (das Feld wird bei Bedarf angelegt, andere Extra-Felder bleiben erhalten).
-void spoolmanRequestUpdate(int spoolId, float remaining, const char *location, const char *owner);
+// archive = Spule zusätzlich archivieren (archived=true); tagUid (nur mit archive) wird dabei von der Spule gelöst
+// (DELETE /spool/{id}/tag/{uid}). Beides bleibt auch in der Offline-Warteschlange erhalten.
+void spoolmanRequestUpdate(int spoolId, float remaining, const char *location, const char *owner, bool archive = false,
+                           const char *tagUid = nullptr);
 // "Zuletzt getrocknet" (Extra-Feld "last_dried", Format JJJJ-MM-TT) an der Spule setzen; das Feld wird bei Bedarf angelegt.
 // Dieser Auftrag wird bei Netzwerkfehlern nicht in die Warteschlange gestellt (Ergebnis über spoolmanWriteResult).
 void spoolmanRequestMarkDried(int spoolId, const char *date);

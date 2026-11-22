@@ -32,6 +32,19 @@ void test_line_roundtrip() {
   TEST_ASSERT_EQUAL_UINT32(1760000000u, out.timestamp);
 }
 
+void test_archive_roundtrip() {
+  QueueEntry in = entry(5, 0, "Box 01");
+  in.archive = true;
+  strcpy(in.tagUid, "04A1B2C3D4E5F6");
+  QueueEntry out;
+  TEST_ASSERT_TRUE(queueEntryFromLine(queueEntryToLine(in), out));
+  TEST_ASSERT_TRUE(out.archive);
+  TEST_ASSERT_EQUAL_STRING("04A1B2C3D4E5F6", out.tagUid);
+  // Ohne Archivieren bleibt die Zeile unverändert
+  TEST_ASSERT_NULL(strstr(queueEntryToLine(entry(5, 0)).c_str(), "archive"));
+  TEST_ASSERT_FALSE(queueEntryFromLine("{\"spool_id\":5}", out) ? out.archive : true);
+}
+
 void test_optional_fields_stay_optional() {
   QueueEntry in = entry(7, -1);  // nur Owner/Ort/Gewicht weglassen
   std::string line = queueEntryToLine(in);
@@ -86,6 +99,7 @@ void test_serialize_parse_roundtrip() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_line_roundtrip);
+  RUN_TEST(test_archive_roundtrip);
   RUN_TEST(test_optional_fields_stay_optional);
   RUN_TEST(test_newest_entry_per_spool_wins);
   RUN_TEST(test_oldest_entries_drop_when_full);
