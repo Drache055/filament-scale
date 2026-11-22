@@ -211,7 +211,18 @@ h3{font-size:15px;margin:18px 0 8px}
       <button id="smsave" data-i18n="save">Speichern</button><button id="smcheck" class="sec" data-i18n="check">Prüfen</button></div>
     <div id="smstate" style="margin-top:10px"></div>
   </div>
-  <div class="card"><div class="label" data-i18n="last_scan">Zuletzt gescannte Spule</div><div id="lastscan2">-</div></div>
+  <div class="card"><div class="label" data-i18n="last_scan">Zuletzt gescannte Spule</div><div id="lastscan2">-</div>
+    <div class="row" style="margin-top:12px"><button id="drylog" class="sec" style="display:none" data-i18n="dry_log">Trocknung eintragen</button></div></div>
+  <div class="card">
+    <div class="label" data-i18n="drying">Trocknung</div>
+    <p class="hint" data-i18n="dry_hint"></p>
+    <label class="row"><input type="checkbox" id="dry_en"><span data-i18n="dry_enabled">Erinnerung aktiv</span></label>
+    <div class="item" style="margin-top:10px"><span class="name" data-i18n="dry_factor">Faktor für Lagerung in der Box</span><input class="n" type="number" id="dry_factor" min="1" max="10"></div>
+    <div class="item"><span class="name" data-i18n="dry_default">Intervall für andere Materialien (Tage, 0 = aus)</span><input class="n" type="number" id="dry_def" min="0" max="3650"></div>
+    <div class="label" style="margin-top:14px" data-i18n="dry_materials">Intervall je Material (Tage, 0 = aus)</div>
+    <div id="dry_mats"></div>
+    <div class="row"><button id="dry_add" class="sec" data-i18n="dry_add">+ Material</button><button id="dry_save" data-i18n="save">Speichern</button></div>
+  </div>
   <div class="card">
     <div class="label" data-i18n="queue">Offline-Warteschlange</div>
     <p class="hint" data-i18n="queue_hint"></p>
@@ -333,6 +344,7 @@ ap_hint:'Sind keine WLAN-Daten gespeichert oder kann sich das Gerät eine Minute
 change_wifi:'WLAN ändern',wifi_hint:'Das Gerät speichert die Zugangsdaten und startet neu. Falsche Daten sind unproblematisch: Nach einer Minute ohne Verbindung öffnet das Gerät wieder den Hotspot.',scan:'Netzwerke suchen',scanning:'Suche ...',ssid:'Netzwerkname (SSID)',password:'Passwort',save_restart:'Speichern & neu starten',wifi_reset:'WLAN-Daten löschen',
 wifi_saved:'Gespeichert, Gerät startet neu und verbindet sich ...',confirm_wifi_reset:'Gespeicherte WLAN-Daten löschen? Das Gerät startet neu und öffnet den Hotspot, bis ein WLAN eingerichtet ist.',no_networks:'Keine Netzwerke gefunden',ssid_missing:'Bitte einen Netzwerknamen eingeben',
 pause:'Pause',resume:'Weiter',clear_view:'Anzeige leeren',download:'Herunterladen',
+drying:'Trocknung',dry_hint:'Erinnert, wenn eine Spule nach dem Intervall ihres Materials wieder getrocknet werden sollte. Das Datum der letzten Trocknung steht in Spoolman (Extra-Feld "last_dried"). Spulen in einer Box (Ort gesetzt) gelten als luftdicht gelagert: ihr Intervall wird mit dem Faktor multipliziert. Spulen ohne eingetragene Trocknung werden nicht gemahnt. Die Richtwerte sind Annahmen und lassen sich ändern.',dry_enabled:'Erinnerung aktiv',dry_factor:'Faktor für Lagerung in der Box (1 = kein Unterschied)',dry_default:'Intervall für andere Materialien (Tage, 0 = aus)',dry_materials:'Intervall je Material (Tage, 0 = aus)',dry_add:'+ Material',dry_saved:'Trocknungs-Einstellungen gespeichert',dry_log:'Trocknung eintragen',dry_logged:'Trocknung eingetragen',dry_due:'Trocknen fällig',dry_ok:'Getrocknet {0}, noch {1} Tage',dry_none:'Trocknung nicht erfasst',dry_noclock:'Uhr nicht gestellt, Eintragen nicht möglich',ph_days:'Tage',
 mode:'Betriebsart',mode_smart:'Smarte Waage (NFC, Anmeldung, Spoolman)',mode_simple:'Einfache Waage (nur wiegen, ohne Anmeldung und Spoolman)',mode_hint:'Einfache Waage: Am Gerät gibt es nur "Filament wiegen" (Spule allein oder Box + Spule). Benutzer-Tags melden nicht an, Spulen werden nicht in Spoolman nachgeschlagen, Spoolman wird nicht abgefragt. Jeder darf tarieren. Einstellungen bleiben beim Admin.',mode_set:'Betriebsart gespeichert',sm_off:'aus (einfache Waage)',weigh_only:'Nur wiegen',weigh_only_right:'Sieht am Gerät nur "Filament wiegen", ohne Spoolman',
 language:'Sprache',lang_hint:'Gilt für die Anzeige am Gerät (es springt dabei zum Startbildschirm) und für diese Webseite.',lang_set:'Sprache auf Deutsch gestellt',
 screensaver:'Bildschirmschoner',ss_hint:'Nach der eingestellten Zeit ohne Berührung, Tag oder Gewichtsänderung wird die Anzeige gedimmt, später ausgeschaltet. 0 = nie. Der erste Tipp weckt nur auf.',dim_after:'Dimmen nach',off_after:'Aus nach',ss_saved:'Bildschirmschoner gespeichert',
@@ -361,6 +373,7 @@ ap_hint:'If no WiFi credentials are saved, or the device cannot connect for a mi
 change_wifi:'Change WiFi',wifi_hint:'The device stores the credentials and restarts. Wrong credentials are not a problem: after a minute without a connection the device opens the hotspot again.',scan:'Scan networks',scanning:'Scanning ...',ssid:'Network name (SSID)',password:'Password',save_restart:'Save & restart',wifi_reset:'Delete WiFi credentials',
 wifi_saved:'Saved, device restarts and connects ...',confirm_wifi_reset:'Delete saved WiFi credentials? The device restarts and opens the hotspot until a WiFi is set up.',no_networks:'No networks found',ssid_missing:'Please enter a network name',
 pause:'Pause',resume:'Resume',clear_view:'Clear view',download:'Download',
+drying:'Drying',dry_hint:'Reminds you when a spool should be dried again after the interval of its material. The date of the last drying is stored in Spoolman (extra field "last_dried"). Spools in a box (location set) count as airtight: their interval is multiplied by the factor. Spools without a logged drying are not reminded. The default values are assumptions and can be changed.',dry_enabled:'Reminder enabled',dry_factor:'Factor for storage in a box (1 = no difference)',dry_default:'Interval for other materials (days, 0 = off)',dry_materials:'Interval per material (days, 0 = off)',dry_add:'+ Material',dry_saved:'Drying settings saved',dry_log:'Log drying',dry_logged:'Drying logged',dry_due:'Drying due',dry_ok:'Dried {0}, {1} days left',dry_none:'No drying logged',dry_noclock:'Clock not set, cannot log',ph_days:'days',
 mode:'Operating mode',mode_smart:'Smart scale (NFC, login, Spoolman)',mode_simple:'Simple scale (weigh only, no login, no Spoolman)',mode_hint:'Simple scale: the device only offers "Weigh filament" (spool alone or box + spool). User tags do not log in, spools are not looked up in Spoolman and Spoolman is not contacted. Everyone may tare. Settings stay with the admin.',mode_set:'Operating mode saved',sm_off:'off (simple scale)',weigh_only:'Weigh only',weigh_only_right:'Only sees "Weigh filament" on the device, no Spoolman',
 language:'Language',lang_hint:'Applies to the display on the device (it jumps to the home screen) and to this web page.',lang_set:'Language set to English',
 screensaver:'Screensaver',ss_hint:'After the set time without touch, tag or weight change the display is dimmed, later switched off. 0 = never. The first tap only wakes it up.',dim_after:'Dim after',off_after:'Off after',ss_saved:'Screensaver saved',
@@ -391,7 +404,7 @@ const post=(p,body)=>api(p,{method:'POST',headers:{'Content-Type':'text/plain'},
 /* ---- Menü ---- */
 const PAGES=['overview','calibration','users','catalog','spoolman','wifi','log','system'];
 const loaded={};
-const ONLOAD={users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS();loadFw(true)},wifi:()=>loadWifi(),log:()=>startLog()};
+const ONLOAD={spoolman:()=>loadDry(),users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS();loadFw(true)},wifi:()=>loadWifi(),log:()=>startLog()};
 function show(langOnly){
   let p=location.hash.slice(1);if(!PAGES.includes(p)||(p!=='overview'&&!(ME&&(ME.role==='admin'||(p==='catalog'&&ME.catalog)))))p='overview';
   document.querySelectorAll('.page').forEach(e=>e.classList.toggle('active',e.id==='p-'+p));
@@ -451,8 +464,16 @@ $('cal').onclick=async()=>{try{await post('/api/calibrate?grams='+encodeURICompo
 
 /* ---- Spoolman ---- */
 let smUrlFilled=false,SIMPLE=false;
+function dryText(s){
+  const d=s.drying;if(!d)return '';
+  if(d.state==='due')return ' · '+t('dry_due');
+  if(d.state==='ok')return ' · '+t('dry_ok',s.last_dried,d.days_left);
+  if(d.state==='none')return ' · '+t('dry_none');
+  return '';
+}
+let lastSpoolId=-1,CLOCK=true;
 function lookupText(l){
-  if(l.state==='found'){const s=l.spool;return '#'+s.id+' '+[s.vendor,s.material].filter(Boolean).join(' ')+(s.remaining>=0?', '+Math.round(s.remaining)+' g':'')+(s.location?', '+s.location:'')+(s.owner?', '+t('owner')+' '+s.owner:'')}
+  if(l.state==='found'){const s=l.spool;return '#'+s.id+' '+[s.vendor,s.material].filter(Boolean).join(' ')+(s.remaining>=0?', '+Math.round(s.remaining)+' g':'')+(s.location?', '+s.location:'')+(s.owner?', '+t('owner')+' '+s.owner:'')+dryText(s)}
   if(l.state==='not_found')return t('scan_unknown',l.uid);
   if(l.state==='error')return t('scan_error',l.error);
   return '-';
@@ -466,6 +487,7 @@ async function pollSpoolman(){
     else if(!d.checked){st.textContent=t('checking');st.className='';sh.textContent='...';sh.className='val'}
     else if(d.reachable){st.textContent=t('reachable',d.version);st.className='ok';sh.textContent=t('version',d.version)+(q?' · '+t('pending',q):'');sh.className='val ok'}
     else{st.textContent=t('unreachable');st.className='err';sh.textContent=t('unreach_short')+(q?' · '+t('pending',q):'');sh.className='val err'}
+    lastSpoolId=d.lookup.state==='found'?d.lookup.spool.id:-1;$('drylog').style.display=lastSpoolId>0&&!SIMPLE?'':'none';
     const lt=lookupText(d.lookup);$('lastscan1').textContent=lt;$('lastscan2').textContent=lt;
     const qi=$('queueinfo');qi.textContent=t('queue_info',q)+(d.queue.dropped?t('queue_dropped',d.queue.dropped):'');qi.className='val'+(q?' warn':'')}catch(e){}
   setTimeout(pollSpoolman,3000)
@@ -584,6 +606,31 @@ $('addmaker').onclick=()=>{cat.manufacturers.push('');renderCat()};
 $('addcolor').onclick=()=>{cat.colors.push({name:'',hex:'FFFFFF'});renderCat()};
 $('loadcat').onclick=loadCat;
 $('savecat').onclick=async()=>{try{await post('/api/catalog',JSON.stringify(cat));say(t('catalog_saved'),'ok');loadCat()}catch(e){say(t('save_fail',e.message),'err')}};
+
+/* ---- Trocknung ---- */
+let dry={enabled:true,box_factor:3,default_days:0,list:[]};
+function renderDry(){
+  $('dry_en').checked=dry.enabled;$('dry_factor').value=dry.box_factor;$('dry_def').value=dry.default_days;
+  const m=$('dry_mats');m.innerHTML='';
+  dry.list.forEach((x,i)=>{
+    const r=document.createElement('div');r.className='item';
+    r.innerHTML='<input maxlength="15"><input class="n" type="number" min="0" max="3650"><button class="sec">&times;</button>';
+    const [a,b]=r.querySelectorAll('input');a.value=x.name;b.value=x.days;a.placeholder=t('ph_type');b.placeholder=t('ph_days');
+    a.oninput=()=>{x.name=a.value};b.oninput=()=>{x.days=+b.value};
+    r.querySelector('button').title=t('remove');r.querySelector('button').onclick=()=>{dry.list.splice(i,1);renderDry()};
+    m.appendChild(r)});
+}
+async function loadDry(){try{const d=await(await api('/api/drying')).json();CLOCK=d.clock;
+  dry={enabled:d.enabled,box_factor:d.box_factor,default_days:d.default_days,list:Object.entries(d.materials).map(([name,days])=>({name,days}))};renderDry()}
+  catch(e){say(t('load_fail',e.message),'err')}}
+$('dry_add').onclick=()=>{dry.list.push({name:'',days:30});renderDry()};
+$('dry_save').onclick=async()=>{
+  const materials={};dry.list.forEach(x=>{if(x.name.trim())materials[x.name.trim()]=x.days|0});
+  try{await post('/api/drying',JSON.stringify({enabled:$('dry_en').checked,box_factor:+$('dry_factor').value,default_days:+$('dry_def').value,materials}));say(t('dry_saved'),'ok');loadDry()}
+  catch(e){say(t('save_fail',e.message),'err')}};
+$('drylog').onclick=async()=>{
+  if(!CLOCK){say(t('dry_noclock'),'err');return}
+  try{await post('/api/drying/log?id='+lastSpoolId,'');say(t('dry_logged'),'ok')}catch(e){say(t('err',e.message),'err')}};
 
 /* ---- WLAN ---- */
 async function loadWifi(){

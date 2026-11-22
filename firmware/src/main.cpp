@@ -17,6 +17,7 @@
 #include "storage/devicepw.h"
 #include "storage/devmode.h"
 #include "storage/catalog.h"
+#include "storage/drying.h"
 #include "storage/queue.h"
 #include "storage/users.h"
 #include "ui/ui.h"
@@ -57,6 +58,7 @@ void setup() {
     logPrintln("[BOOT] LittleFS konnte nicht gemountet werden");
   }
   catalogBegin();
+  dryingBegin();
   queueBegin();
   usersBegin();
   i2cBusBegin();  // vor allen Tasks, die den Bus nutzen (Touch, NFC)

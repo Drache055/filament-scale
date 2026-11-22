@@ -52,6 +52,7 @@
 #define SPOOLMAN_CHECK_MS        30000   // Erreichbarkeitsprüfung im Hintergrund
 #define CATALOG_SYNC_MS          (10UL * 60UL * 1000UL)  // Katalog (Typen, Hersteller) alle 10 min mit Spoolman abgleichen
 #define SPOOLMAN_OWNER_FIELD_KEY "owner" // Extra-Feld an der Spule (Text), wird bei Bedarf angelegt
+#define SPOOLMAN_DRIED_FIELD_KEY "last_dried" // Extra-Feld: zuletzt getrocknet (Text JJJJ-MM-TT), wird bei Bedarf angelegt
 
 // Offline-Warteschlange (Spoolman-Updates)
 #define QUEUE_FILE        "/queue.jsonl"
