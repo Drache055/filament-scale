@@ -182,6 +182,65 @@ void test_pick_from_stream() {
   TEST_ASSERT_FALSE(fwParseReleases(bad, FwChannel::Stable, r, found, err));
 }
 
+// Abgebrochene Übertragung (schwaches WLAN): jeder Anfang der Antwort ist "unvollständig", nie "kein JSON"
+void test_truncated_response() {
+  size_t n = strlen(RELEASES);
+  for (size_t cut = 0; cut < n; cut++) {
+    FwRelease r;
+    bool found = true;
+    const char *err = nullptr;
+    FwParseError kind = FwParseError::None;
+    std::istringstream in(std::string(RELEASES, cut));
+    TEST_ASSERT_FALSE(fwParseReleases(in, FwChannel::Test, r, found, err, &kind));
+    TEST_ASSERT_FALSE(found);
+    TEST_ASSERT_NOT_NULL(err);
+    TEST_ASSERT_EQUAL_INT((int)FwParseError::Incomplete, (int)kind);
+  }
+}
+
+void test_error_kinds() {
+  FwRelease r;
+  bool found = false;
+  const char *err = nullptr;
+  FwParseError kind = FwParseError::None;
+  const char *obj = "{\"message\":\"Not Found\"}";
+  TEST_ASSERT_FALSE(fwParseReleases(obj, strlen(obj), FwChannel::Stable, r, found, err, &kind));
+  TEST_ASSERT_EQUAL_INT((int)FwParseError::Invalid, (int)kind);
+  const char *html = "<html>Bad Gateway</html>";
+  TEST_ASSERT_FALSE(fwParseReleases(html, strlen(html), FwChannel::Stable, r, found, err, &kind));
+  TEST_ASSERT_EQUAL_INT((int)FwParseError::Invalid, (int)kind);
+  TEST_ASSERT_TRUE(fwParseReleases(RELEASES, strlen(RELEASES), FwChannel::Stable, r, found, err, &kind));
+  TEST_ASSERT_EQUAL_INT((int)FwParseError::None, (int)kind);
+}
+
+// Release Notes wie bei v0.2 (Anführungszeichen, <hostname>, Backticks, Apostrophe, Zeilenumbrüche) und eine
+// Release ohne Assets (Workflow lädt noch hoch) davor
+void test_release_notes_with_markdown() {
+  const char *json =
+      "[{\"tag_name\":\"v0.2.1\",\"draft\":false,\"prerelease\":false,\"body\":\"x\",\"assets\":[]},"
+      "{\"tag_name\":\"v0.2\",\"draft\":false,\"prerelease\":false,"
+      "\"html_url\":\"https://github.com/o/r/releases/tag/v0.2\","
+      "\"body\":\"## Upgrade notes\\r\\n- Choosing \\\"erase\\\" wipes all settings.\\r\\n"
+      "- Web UI only answers on its IP or <hostname>.local; router names like *.fritz.box no longer work.\\r\\n"
+      "- Scripts need the header `X-Requested-With` on POST requests (e.g. curl -H 'X-Requested-With: curl').\","
+      "\"assets\":[{\"name\":\"filament-scale-v0.2-factory.bin\",\"size\":5,"
+      "\"browser_download_url\":\"https://github.com/o/r/releases/download/v0.2/filament-scale-v0.2-factory.bin\"},"
+      "{\"name\":\"filament-scale-v0.2-ota.bin\",\"size\":1234,\"digest\":\"sha256:"
+      "2d70b6b9e8c6154a49e405e865dd6fb82f06e20416e1461850ee23b6a3fbe78a\","
+      "\"browser_download_url\":\"https://github.com/o/r/releases/download/v0.2/filament-scale-v0.2-ota.bin\"}]}]";
+  FwRelease r;
+  bool found = false;
+  const char *err = nullptr;
+  std::istringstream in(json);
+  TEST_ASSERT_TRUE(fwParseReleases(in, FwChannel::Stable, r, found, err));
+  TEST_ASSERT_TRUE(found);
+  TEST_ASSERT_EQUAL_STRING("v0.2", r.tag);
+  TEST_ASSERT_EQUAL_UINT32(1234, r.otaSize);
+  TEST_ASSERT_NOT_NULL(strstr(r.notes, "<hostname>.local"));
+  TEST_ASSERT_NOT_NULL(strstr(r.notes, "\"erase\""));
+  TEST_ASSERT_EQUAL_STRING("2d70b6b9e8c6154a49e405e865dd6fb82f06e20416e1461850ee23b6a3fbe78a", r.otaSha256);
+}
+
 void test_parse_releases_edge_cases() {
   FwRelease r;
   bool found = true;
@@ -275,6 +334,9 @@ int main() {
   RUN_TEST(test_pick_per_channel);
   RUN_TEST(test_pick_from_stream);
   RUN_TEST(test_parse_releases_edge_cases);
+  RUN_TEST(test_truncated_response);
+  RUN_TEST(test_error_kinds);
+  RUN_TEST(test_release_notes_with_markdown);
   RUN_TEST(test_digest);
   RUN_TEST(test_release_digest);
   RUN_TEST(test_notes_cut_at_utf8_boundary);

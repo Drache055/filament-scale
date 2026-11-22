@@ -3,6 +3,9 @@
 #include <ArduinoJson.h>
 #include <cctype>
 #include <cstring>
+#ifdef ESP_PLATFORM
+#include <esp_heap_caps.h>
+#endif
 
 namespace {
 
@@ -213,12 +216,41 @@ bool fwAllowedUrl(const char *url) {
 
 namespace {
 
+#ifdef ESP_PLATFORM
+// Gefilterte Felder (bei 15 Releases mit langen Notes einige 10 KB) ins PSRAM, damit der interne RAM für TLS frei bleibt
+struct PsramAllocator : ArduinoJson::Allocator {
+  void *allocate(size_t size) override {
+    void *p = heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    return p ? p : malloc(size);
+  }
+  void deallocate(void *p) override { free(p); }
+  void *reallocate(void *p, size_t size) override {
+    void *n = heap_caps_realloc(p, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    return n ? n : realloc(p, size);
+  }
+};
+PsramAllocator psramAllocator;
+#define FW_JSON_ALLOC &psramAllocator
+#else
+#define FW_JSON_ALLOC ArduinoJson::detail::DefaultAllocator::instance()
+#endif
+
+void setFail(FwParseError *kind, FwParseError k, const char *&error, const char *msg) {
+  error = msg;
+  if (kind) {
+    *kind = k;
+  }
+}
+
 // Gemeinsame Auswertung für Puffer und Stream. Das Filter-Dokument hält nur die benötigten Felder, ArduinoJson liest
 // Eingabe (Puffer, Stream) direkt, es entsteht keine Kopie der ganzen Antwort.
 template <typename ReadFn>
-bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, const char *&error, FwParseError *kind) {
   out = FwRelease();
   found = false;
+  if (kind) {
+    *kind = FwParseError::None;
+  }
   JsonDocument filter;
   JsonObject f = filter.add<JsonObject>();
   f["tag_name"] = true;
@@ -230,9 +262,19 @@ bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, 
   f["assets"][0]["size"] = true;
   f["assets"][0]["browser_download_url"] = true;
   f["assets"][0]["digest"] = true;
-  JsonDocument doc;
-  if (read(doc, DeserializationOption::Filter(filter)) || !doc.is<JsonArrayConst>()) {
-    error = "Antwort von GitHub ist kein gültiges JSON";
+  JsonDocument doc(FW_JSON_ALLOC);
+  DeserializationError de = read(doc, DeserializationOption::Filter(filter));
+  if (de == DeserializationError::IncompleteInput || de == DeserializationError::EmptyInput) {
+    // Bei schwachem WLAN der häufigste Fall: die TLS-Verbindung bricht mitten in der Antwort ab
+    setFail(kind, FwParseError::Incomplete, error, "Antwort von GitHub unvollständig (Verbindung abgebrochen)");
+    return false;
+  }
+  if (de == DeserializationError::NoMemory) {
+    setFail(kind, FwParseError::NoMemory, error, "Zu wenig Speicher für die Antwort von GitHub");
+    return false;
+  }
+  if (de || !doc.is<JsonArrayConst>()) {
+    setFail(kind, FwParseError::Invalid, error, "Antwort von GitHub ist kein gültiges JSON");
     return false;
   }
   JsonObjectConst best;
@@ -330,19 +372,22 @@ void fwHashToHex(const uint8_t hash[32], char out[65]) {
   out[64] = 0;
 }
 
-bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error,
+                     FwParseError *kind) {
   auto read = [&](JsonDocument &doc, auto filter) { return deserializeJson(doc, json, len, filter); };
-  return parseReleases(read, channel, out, found, error);
+  return parseReleases(read, channel, out, found, error, kind);
 }
 
 #ifdef ARDUINO
-bool fwParseReleases(Stream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+bool fwParseReleases(Stream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error,
+                     FwParseError *kind) {
   auto read = [&](JsonDocument &doc, auto filter) { return deserializeJson(doc, stream, filter); };
-  return parseReleases(read, channel, out, found, error);
+  return parseReleases(read, channel, out, found, error, kind);
 }
 #else
-bool fwParseReleases(std::istream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+bool fwParseReleases(std::istream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error,
+                     FwParseError *kind) {
   auto read = [&](JsonDocument &doc, auto filter) { return deserializeJson(doc, stream, filter); };
-  return parseReleases(read, channel, out, found, error);
+  return parseReleases(read, channel, out, found, error, kind);
 }
 #endif
