@@ -94,6 +94,73 @@ void test_provision_timeout_and_fail() {
   TEST_ASSERT_EQUAL((int)ProvState::Failed, (int)p.state());
 }
 
+void test_classify_reason() {
+  TEST_ASSERT_TRUE(wifiClassifyReason(0) == WifiFail::None);
+  TEST_ASSERT_TRUE(wifiClassifyReason(201) == WifiFail::NotFound);
+  TEST_ASSERT_TRUE(wifiClassifyReason(212) == WifiFail::NotFound);
+  TEST_ASSERT_TRUE(wifiClassifyReason(15) == WifiFail::Auth);
+  TEST_ASSERT_TRUE(wifiClassifyReason(202) == WifiFail::Auth);
+  TEST_ASSERT_TRUE(wifiClassifyReason(204) == WifiFail::Auth);
+  TEST_ASSERT_TRUE(wifiClassifyReason(200) == WifiFail::Other);
+  TEST_ASSERT_EQUAL_STRING("notfound", wifiFailName(WifiFail::NotFound));
+  TEST_ASSERT_EQUAL_STRING("auth", wifiFailName(WifiFail::Auth));
+  TEST_ASSERT_EQUAL_STRING("other", wifiFailName(WifiFail::Other));
+  TEST_ASSERT_EQUAL_STRING("", wifiFailName(WifiFail::None));
+}
+
+void test_reconnect_backoff_forever() {
+  ReconnectPolicy p(15000, 120000);
+  p.started(0);  // erster Versuch beim Start
+  TEST_ASSERT_FALSE(p.due(14999, false, false));
+  TEST_ASSERT_FALSE(p.due(15000, false, false));  // Versuch gescheitert, Pause 5 s (1. Fehlschlag)
+  TEST_ASSERT_EQUAL(1, p.failures());
+  TEST_ASSERT_FALSE(p.due(19999, false, false));
+  TEST_ASSERT_TRUE(p.due(20000, false, false));
+  uint32_t t = 20000;
+  const uint32_t pauses[] = {10000, 20000, 30000, 60000, 60000, 60000, 60000};
+  for (uint32_t pause : pauses) {
+    p.started(t);
+    t += 15000;
+    TEST_ASSERT_FALSE(p.due(t, false, false));
+    TEST_ASSERT_FALSE(p.due(t + pause - 1, false, false));
+    t += pause;
+    TEST_ASSERT_TRUE(p.due(t, false, false));  // es geht immer weiter, höchstens 60 s Pause
+  }
+}
+
+void test_reconnect_reset_and_drop() {
+  ReconnectPolicy p(15000, 120000);
+  p.started(0);
+  TEST_ASSERT_FALSE(p.due(15000, false, false));
+  TEST_ASSERT_EQUAL(1, p.failures());
+  TEST_ASSERT_FALSE(p.due(16000, true, false));  // verbunden: alles zurück
+  TEST_ASSERT_EQUAL(0, p.failures());
+  TEST_ASSERT_FALSE(p.due(500000, true, false));
+  TEST_ASSERT_FALSE(p.due(600000, false, false));  // gerade getrennt: 2 s Pause
+  TEST_ASSERT_FALSE(p.due(601999, false, false));
+  TEST_ASSERT_TRUE(p.due(602000, false, false));
+}
+
+void test_reconnect_hotspot_clients_and_external_fail() {
+  ReconnectPolicy p(15000, 120000);
+  p.failed(1000);  // z. B. USB-Einrichtung gescheitert
+  TEST_ASSERT_EQUAL(1, p.failures());
+  TEST_ASSERT_FALSE(p.due(6000, false, true));     // jemand im Hotspot: mindestens 120 s
+  TEST_ASSERT_FALSE(p.due(120999, false, true));
+  TEST_ASSERT_TRUE(p.due(121000, false, true));
+  TEST_ASSERT_TRUE(p.due(6000, false, false));     // ohne Hotspot-Gäste reichen 5 s
+  TEST_ASSERT_EQUAL(120000, p.pauseMs(true));
+}
+
+void test_reconnect_millis_wrap() {
+  ReconnectPolicy p(15000, 120000);
+  uint32_t t0 = 0xFFFFF000u;
+  p.started(t0);
+  TEST_ASSERT_FALSE(p.due(t0 + 14999, false, false));
+  TEST_ASSERT_FALSE(p.due(t0 + 15000, false, false));
+  TEST_ASSERT_TRUE(p.due(t0 + 20000, false, false));
+}
+
 int main(int, char **) {
   UNITY_BEGIN();
   RUN_TEST(test_merge_dedup_hidden_limit);
@@ -102,5 +169,10 @@ int main(int, char **) {
   RUN_TEST(test_scan_millis_wrap);
   RUN_TEST(test_provision_flow);
   RUN_TEST(test_provision_timeout_and_fail);
+  RUN_TEST(test_classify_reason);
+  RUN_TEST(test_reconnect_backoff_forever);
+  RUN_TEST(test_reconnect_reset_and_drop);
+  RUN_TEST(test_reconnect_hotspot_clients_and_external_fail);
+  RUN_TEST(test_reconnect_millis_wrap);
   return UNITY_END();
 }

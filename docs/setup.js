@@ -112,11 +112,20 @@
       say(t('Waage verbindet sich mit „'+ssid+'“ … (bis zu 20 s)','Scale is connecting to “'+ssid+'” … (up to 20 s)'));
       var p=wait(function(type,data){
         if(type===2&&data[0]!==0)return {err:data[0]};
-        if(type===4&&data[0]===CMD_SETUP)return {url:strings(data)[0]};
+        if(type===4&&data[0]===CMD_SETUP){var rs=strings(data);return {url:rs[0],why:rs[1]||''}}
       },40000);
       await send(packet(CMD_SETUP,[ssid,wpw,apw]));
       var r=await p;
       if(r.err){var m=ERR[r.err];say(m?(de()?m[0]:m[1]):t('Unbekannter Fehler','Unknown error'),'err')}
+      else if(!r.url){
+        // Neuere Firmware: Daten gespeichert, WLAN noch nicht verbunden. Die Waage versucht es weiter.
+        form.wifipw.value='';form.adminpw.value='';form.adminpw2.value='';
+        var retry=t(' Die Waage versucht es weiter, auch nach einem Neustart, und verbindet sich, sobald es klappt. Das Admin-Passwort ist gesetzt.',' The scale keeps trying, also after a restart, and connects as soon as it can. The admin password is set.');
+        var fix=t(' Tippfehler? Einfach hier noch einmal einrichten.',' Typo? Just run the setup here again.');
+        if(r.why==='auth')say(t('Gespeichert, aber die Anmeldung bei „'+ssid+'“ ist gescheitert. Meist ist das WLAN-Passwort falsch: bitte hier mit dem richtigen Passwort noch einmal einrichten.','Saved, but signing in to “'+ssid+'” failed. Usually the Wi-Fi password is wrong: please run the setup again with the correct password.')+retry,'err');
+        else if(r.why==='notfound')say(t('Gespeichert. Die Waage findet „'+ssid+'“ gerade nicht (zu weit vom Router? nur 2,4 GHz).','Saved. The scale cannot find “'+ssid+'” right now (too far from the router? 2.4 GHz only).')+retry+fix,'ok');
+        else say(t('Gespeichert, aber noch nicht mit „'+ssid+'“ verbunden.','Saved, but not yet connected to “'+ssid+'”.')+retry+fix,'ok');
+      }
       else{
         form.wifipw.value='';form.adminpw.value='';form.adminpw2.value='';
         st.className='setup-status ok';st.textContent='';

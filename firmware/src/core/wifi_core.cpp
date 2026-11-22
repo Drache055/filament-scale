@@ -90,3 +90,76 @@ ProvState ProvisionJob::step(uint32_t now, bool connected) {
   }
   return state_;
 }
+
+WifiFail wifiClassifyReason(uint8_t reason) {
+  switch (reason) {
+    case 0:
+      return WifiFail::None;
+    case 201:  // NO_AP_FOUND
+    case 212:  // NO_AP_FOUND_IN_RSSI_THRESHOLD
+      return WifiFail::NotFound;
+    case 15:   // 4WAY_HANDSHAKE_TIMEOUT (typisch bei falschem WPA2-Passwort)
+    case 202:  // AUTH_FAIL
+    case 204:  // HANDSHAKE_TIMEOUT
+      return WifiFail::Auth;
+    default:
+      return WifiFail::Other;
+  }
+}
+
+const char *wifiFailName(WifiFail f) {
+  switch (f) {
+    case WifiFail::NotFound:
+      return "notfound";
+    case WifiFail::Auth:
+      return "auth";
+    case WifiFail::Other:
+      return "other";
+    default:
+      return "";
+  }
+}
+
+uint32_t ReconnectPolicy::pauseMs(bool apHasClients) const {
+  static const uint32_t steps[] = {2000, 5000, 10000, 20000, 30000, 60000};
+  const uint32_t last = sizeof(steps) / sizeof(steps[0]) - 1;
+  uint32_t d = steps[failures_ < last ? failures_ : last];
+  if (apHasClients && d < clientPauseMs_) {
+    d = clientPauseMs_;
+  }
+  return d;
+}
+
+bool ReconnectPolicy::due(uint32_t now, bool connected, bool apHasClients) {
+  if (connected) {
+    attempting_ = false;
+    failures_ = 0;
+    wasConnected_ = true;
+    return false;
+  }
+  if (wasConnected_) {
+    wasConnected_ = false;  // Verbindung gerade verloren: kurze Pause, dann neu versuchen
+    attempting_ = false;
+    pauseFrom_ = now;
+  }
+  if (attempting_) {
+    if (now - startedAt_ < attemptMs_) {
+      return false;
+    }
+    failed(now);
+  }
+  return now - pauseFrom_ >= pauseMs(apHasClients);
+}
+
+void ReconnectPolicy::started(uint32_t now) {
+  attempting_ = true;
+  startedAt_ = now;
+}
+
+void ReconnectPolicy::failed(uint32_t now) {
+  attempting_ = false;
+  if (failures_ < 1000) {
+    failures_++;
+  }
+  pauseFrom_ = now;
+}
