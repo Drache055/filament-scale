@@ -654,7 +654,12 @@ static void handleUsersPin() {
     server.send(error == "Benutzer nicht gefunden" ? 404 : 400, "text/plain", error);
     return;
   }
-  webSessionsDropUser(id);  // wer mit der alten PIN angemeldet war, muss sich neu anmelden
+  // wer mit der alten PIN angemeldet war, muss sich neu anmelden (id 0 = Generic-Sitzungen)
+  if (id == 0) {
+    webSessionsDropGeneric();
+  } else {
+    webSessionsDropUser(id);
+  }
   server.send(200, "application/json", usersJson());
 }
 
@@ -669,6 +674,9 @@ static void handleGenericSet() {
     return;
   }
   usersSetGenericEnabled(doc["enabled"].as<bool>());
+  if (!doc["enabled"].as<bool>()) {
+    webSessionsDropGeneric();  // bestehende Generic-Sitzungen enden sofort
+  }
   server.send(200, "text/plain", "ok");
 }
 
