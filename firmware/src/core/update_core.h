@@ -61,17 +61,26 @@ struct FwRelease {
   bool notesCut = false;
 };
 
+// Art des Fehlers beim Auswerten der Release-Liste
+//   Incomplete: Antwort leer oder vorzeitig zu Ende (Verbindung abgebrochen, Zeitüberschreitung); erneuter Versuch sinnvoll
+//   NoMemory:   kein Speicher für die gefilterten Felder
+//   Invalid:    kein JSON oder keine Liste
+enum class FwParseError : uint8_t { None, Incomplete, NoMemory, Invalid };
+
 // Antwort von GET /repos/<owner>/<repo>/releases auswerten (Liste, neueste zuerst) und die höchste Version wählen,
 // die der Kanal erlaubt. Entwürfe, Tags ohne Versionsnummer und Releases ohne OTA-Asset werden übersprungen.
-// true und found=false: keine passende Release. false: JSON kaputt (error gesetzt).
-bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+// true und found=false: keine passende Release. false: Antwort unbrauchbar (error gesetzt, kind = Art des Fehlers).
+bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error,
+                     FwParseError *kind = nullptr);
 
 // Wie oben, liest die Antwort aber direkt aus dem Stream (HTTP-Body) mit ArduinoJson-Filter. Die ganze Antwort
 // (bei 15 Releases weit über 100 KB) liegt nie im RAM, nur die gefilterten Felder.
 #ifdef ARDUINO
-bool fwParseReleases(Stream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+bool fwParseReleases(Stream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error,
+                     FwParseError *kind = nullptr);
 #else
-bool fwParseReleases(std::istream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+bool fwParseReleases(std::istream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error,
+                     FwParseError *kind = nullptr);
 #endif
 
 // Ist url ein erlaubter Download-Link (https, github.com bzw. *.githubusercontent.com)?

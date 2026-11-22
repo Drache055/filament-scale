@@ -72,3 +72,5 @@
 #define FW_UPDATE_INTERVAL_MS (24UL * 60UL * 60UL * 1000UL)  // danach einmal am Tag
 #define FW_UPDATE_RETRY_MS    (60UL * 60UL * 1000UL)      // nach einer fehlgeschlagenen automatischen Prüfung
 #define FW_UPDATE_TIMEOUT_MS  20000                       // ohne Daten so lange, dann Abbruch
+#define FW_UPDATE_ATTEMPTS    3                           // Versuche je Prüfung bei Verbindungsfehlern (schwaches WLAN)
+#define FW_UPDATE_BACKOFF_MS  3000                        // Pause vor dem n-ten erneuten Versuch: n * so lange

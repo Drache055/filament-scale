@@ -5,6 +5,7 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <esp_heap_caps.h>
 #include <esp_ota_ops.h>
 #include <freertos/semphr.h>
 #include <mbedtls/sha256.h>
@@ -46,16 +47,64 @@ void setError(const char *msg) {
 
 String userAgent() { return String("filament-scale/") + FW_VERSION; }
 
-// Sucht die neueste Release im gewählten Kanal. auto_: automatische Prüfung (nur Log, kein Fehlerzustand auf der Webseite)
-bool check(bool auto_) {
-  FwChannel ch = FwChannel::Stable;
-  locked([&]() {
-    ch = status.channel;
-    if (status.state != FwUpdState::Downloading) {
-      status.state = FwUpdState::Checking;
-      status.error[0] = 0;
+// HTTP-Body der Release-Liste. Liest blockweise aus der TLS-Verbindung (ArduinoJson fragt sonst jedes Zeichen einzeln ab),
+// erkennt das Ende der Verbindung sofort statt erst nach dem Stream-Timeout und zählt die Bytes für Log und Fehlermeldung.
+class BodyStream : public Stream {
+ public:
+  BodyStream(NetworkClient &client, uint32_t timeoutMs) : client_(client), timeoutMs_(timeoutMs) {}
+  int available() override { return (int)(len_ - pos_); }
+  int read() override { return (pos_ < len_ || fill()) ? buf_[pos_++] : -1; }
+  int peek() override { return (pos_ < len_ || fill()) ? buf_[pos_] : -1; }
+  size_t readBytes(char *out, size_t n) override {
+    size_t done = 0;
+    while (done < n && (pos_ < len_ || fill())) {
+      size_t k = std::min(n - done, len_ - pos_);
+      memcpy(out + done, buf_ + pos_, k);
+      pos_ += k;
+      done += k;
     }
-  });
+    return done;
+  }
+  size_t write(uint8_t) override { return 0; }
+  uint32_t received() const { return total_; }
+  bool timedOut() const { return timedOut_; }
+
+ private:
+  bool fill() {
+    uint32_t start = millis();
+    for (;;) {
+      int avail = client_.available();
+      if (avail > 0) {
+        int n = client_.read(buf_, std::min((size_t)avail, sizeof(buf_)));
+        if (n > 0) {
+          pos_ = 0;
+          len_ = n;
+          total_ += n;
+          return true;
+        }
+      } else if (!client_.connected()) {
+        return false;  // Verbindung zu Ende (regulär nach der Antwort oder abgebrochen)
+      }
+      if (millis() - start > timeoutMs_) {
+        timedOut_ = true;
+        return false;
+      }
+      vTaskDelay(pdMS_TO_TICKS(5));
+    }
+  }
+
+  NetworkClient &client_;
+  uint32_t timeoutMs_;
+  uint8_t buf_[512];
+  size_t pos_ = 0, len_ = 0;
+  uint32_t total_ = 0;
+  bool timedOut_ = false;
+};
+
+// Ein Abruf der Release-Liste. false: Fehler, msg gesetzt; retry: Verbindungsproblem, ein neuer Versuch ist sinnvoll.
+bool fetchReleases(FwChannel ch, FwRelease &r, bool &found, char *msg, size_t msgSize, bool &retry) {
+  retry = false;
+  found = false;
   WiFiClientSecure client;
   client.useBuiltinCACertBundle();  // Root-Zertifikate aus dem Bundle des Arduino-Cores
   HTTPClient http;
@@ -65,39 +114,89 @@ bool check(bool auto_) {
   // Liste statt /releases/latest, weil diese Pre-Releases auslässt; neueste zuerst
   String url = String("https://api.github.com/repos/") + FW_UPDATE_REPO + "/releases?per_page=" + FW_UPDATE_LIST;
   if (!http.begin(client, url)) {
-    setError("GitHub-Adresse ungültig");
+    snprintf(msg, msgSize, "GitHub-Adresse ungültig");
     return false;
   }
   http.addHeader("Accept", "application/vnd.github+json");
   http.addHeader("X-GitHub-Api-Version", "2022-11-28");
   int code = http.GET();
   if (code != 200) {
-    char msg[96];
     if (code < 0) {
-      snprintf(msg, sizeof(msg), "GitHub nicht erreichbar (%s)", HTTPClient::errorToString(code).c_str());
+      snprintf(msg, msgSize, "GitHub nicht erreichbar (%s)", HTTPClient::errorToString(code).c_str());
+      retry = true;
     } else if (code == 403 || code == 429) {
-      snprintf(msg, sizeof(msg), "GitHub-Abfragelimit erreicht (HTTP %d), später erneut versuchen", code);
+      snprintf(msg, msgSize, "GitHub-Abfragelimit erreicht (HTTP %d), später erneut versuchen", code);
     } else {
-      snprintf(msg, sizeof(msg), "GitHub antwortet mit HTTP %d", code);
+      snprintf(msg, msgSize, "GitHub antwortet mit HTTP %d", code);
+      retry = code >= 500;
     }
     http.end();
+    return false;
+  }
+  int expected = http.getSize();  // Content-Length, -1 wenn unbekannt
+  // Direkt aus dem Stream parsen, die ganze Antwort wird nie als String gehalten
+  BodyStream body(http.getStream(), FW_UPDATE_TIMEOUT_MS);  // ohne Verbindung ein leerer Client: "unvollständig"
+  const char *err = nullptr;
+  FwParseError kind = FwParseError::None;
+  bool ok = fwParseReleases(body, ch, r, found, err, &kind);
+  http.end();
+  if (ok) {
+    return true;
+  }
+  logPrintf("[UPDATE] Release-Liste: %s, %u von %d Bytes empfangen%s, RSSI %d dBm, Heap intern frei %u (größter Block %u)\n",
+            err ? err : "?", (unsigned)body.received(), expected, body.timedOut() ? ", Zeitüberschreitung" : "",
+            (int)WiFi.RSSI(), (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+            (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+  if (kind == FwParseError::Incomplete) {
+    if (expected > 0) {
+      snprintf(msg, msgSize, "Verbindung zu GitHub abgebrochen (%u von %d Bytes)", (unsigned)body.received(), expected);
+    } else {
+      snprintf(msg, msgSize, "Verbindung zu GitHub abgebrochen (%u Bytes)", (unsigned)body.received());
+    }
+    retry = true;
+  } else {
+    snprintf(msg, msgSize, "%s", err ? err : "Releases nicht lesbar");
+  }
+  return false;
+}
+
+// Sucht die neueste Release im gewählten Kanal. auto_: automatische Prüfung (nur Log, kein Fehlerzustand auf der Webseite).
+// Verbindungsfehler (schwaches WLAN) werden bis zu FW_UPDATE_ATTEMPTS-mal wiederholt.
+bool check(bool auto_) {
+  FwChannel ch = FwChannel::Stable;
+  locked([&]() {
+    ch = status.channel;
+    if (status.state != FwUpdState::Downloading) {
+      status.state = FwUpdState::Checking;
+      status.error[0] = 0;
+    }
+  });
+  FwRelease *r = new FwRelease();  // ca. 4 KB, nicht auf den Task-Stack
+  bool found = false;
+  bool ok = false;
+  char msg[96] = "";
+  for (int attempt = 1; attempt <= FW_UPDATE_ATTEMPTS; attempt++) {
+    bool retry = false;
+    ok = fetchReleases(ch, *r, found, msg, sizeof(msg), retry);
+    if (ok || !retry || attempt == FW_UPDATE_ATTEMPTS || !wifiConnected()) {
+      break;
+    }
+    uint32_t wait = attempt * FW_UPDATE_BACKOFF_MS;
+    logPrintf("[UPDATE] Versuch %d: %s, neuer Versuch in %u s\n", attempt, msg, (unsigned)(wait / 1000));
+    vTaskDelay(pdMS_TO_TICKS(wait));
+  }
+  if (!ok) {
+    delete r;
     if (auto_) {
       logPrintf("[UPDATE] Automatische Prüfung: %s\n", msg);
-      locked([]() { status.state = status.available ? FwUpdState::Ready : FwUpdState::Idle; });
+      locked([]() {
+        if (status.state == FwUpdState::Checking) {
+          status.state = status.available ? FwUpdState::Ready : FwUpdState::Idle;
+        }
+      });
     } else {
       setError(msg);
     }
-    return false;
-  }
-  FwRelease *r = new FwRelease();  // ca. 4 KB, nicht auf den Task-Stack
-  const char *err = nullptr;
-  bool found = false;
-  // Direkt aus dem Stream parsen, die ganze Antwort (über 100 KB) wird nie als String gehalten
-  bool ok = fwParseReleases(http.getStream(), ch, *r, found, err);
-  http.end();
-  if (!ok) {
-    delete r;
-    setError(err ? err : "Releases nicht lesbar");
     return false;
   }
   bool avail = found && fwUpdateAvailable(r->tag, FW_VERSION);
@@ -232,7 +331,13 @@ void install() {
   }
   locked([&]() { status.total = len; });
 
-  NetworkClient *stream = http.getStreamPtr();
+  NetworkClient *stream = http.getStreamPtr();  // nullptr, wenn die Verbindung schon wieder weg ist
+  if (!stream) {
+    http.end();
+    Update.abort();
+    setError("Update abgebrochen: Verbindung abgebrochen. Die bisherige Firmware bleibt aktiv.");
+    return;
+  }
   const size_t BUF = 4096;
   uint8_t *buf = (uint8_t *)malloc(BUF);
   uint32_t written = 0, lastData = millis();
