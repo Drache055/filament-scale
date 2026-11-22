@@ -14,9 +14,11 @@ if [ ! -f "$LVOBJ" ]; then
   echo "LVGL übersetzen (einmalig) ..."
   mkdir -p "$BUILD/lv"
   find "$LVGL/src" "$ROOT/src/ui/fonts" -name '*.c' > "$BUILD/lv.list"
+  # md5 gibt es nur unter macOS, unter Linux heißt es md5sum.
+  if command -v md5 >/dev/null 2>&1; then HASH=md5; else HASH=md5sum; fi
   cat > "$BUILD/cc.sh" <<CC
 #!/bin/sh
-o=\$(echo "\$1" | md5)
+o=\$(echo "\$1" | $HASH | cut -d' ' -f1)
 clang -c -O1 -w -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -I$PWD/$ROOT/include -I$PWD/$LVGL -I$PWD/stubs -I$PWD/$ROOT/src/ui -o $BUILD/lv/\$o.o "\$1"
 CC
   chmod +x "$BUILD/cc.sh"

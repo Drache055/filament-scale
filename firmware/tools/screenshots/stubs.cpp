@@ -14,6 +14,7 @@
 MockState mock;
 
 uint32_t millis() { return mock.now; }
+#ifndef STUB_LIBC_STRLCPY
 size_t strlcpy(char *dst, const char *src, size_t size) {
   size_t n = strlen(src);
   if (size) {
@@ -23,6 +24,7 @@ size_t strlcpy(char *dst, const char *src, size_t size) {
   }
   return n;
 }
+#endif
 
 LittleFSClass LittleFS;
 File LittleFSClass::open(const char *path, const char *) {

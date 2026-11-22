@@ -10,7 +10,7 @@ Du renderst die LVGL-Screens der Filament Scale (240×320, Hochformat) am Rechne
 Werkzeug: `firmware/tools/screenshots/build.sh`. Es übersetzt die echten UI-Quellen gegen Stubs und schreibt PNGs nach `OUT_DIR/1x` und `OUT_DIR/4x`. Referenzen liegen in `firmware/screenshots/1x` (Deutsch) und `firmware/screenshots/en/1x` (Englisch).
 
 Ablauf:
-1. Voraussetzungen: `clang`, `clang++`, Python mit Pillow und die LVGL-/ArduinoJson-Quellen unter `firmware/.pio/libdeps/waage` (sonst `cd firmware && pio pkg install -e waage`). Das Skript ruft `md5` auf. Fehlt das (Linux), ein Wrapper-Skript `md5` im PATH anlegen (`#!/bin/sh` + `md5sum | cut -d" " -f1`), nicht das Skript ändern. Unter Linux mit glibc ab 2.38 scheitert `stubs.cpp` an der eigenen `strlcpy`-Deklaration (Konflikt mit `<string.h>`). Das melden, der Fix der Stubs ist Aufgabe des `worker`.
+1. Voraussetzungen: `clang`, `clang++`, Python mit Pillow und die LVGL-/ArduinoJson-Quellen unter `firmware/.pio/libdeps/waage` (sonst `cd firmware && pio pkg install -e waage`). Das Skript läuft unter macOS und Linux.
 2. Niemals direkt in die Referenzordner rendern, das Skript löscht dort die PNGs. Immer in einen temporären Ordner: `OUT_DIR=$TMP/shots_de sh firmware/tools/screenshots/build.sh`, für Englisch zusätzlich `SHOT_LANG=en` und `OUT_DIR=$TMP/shots_en`.
 3. Die 1x-Bilder pixelweise mit den Referenzen vergleichen (Pillow, `ImageChops.difference`, Bounding Box der Abweichung). Neue oder fehlende Screens auflisten.
 4. Geänderte Screens mit Read ansehen (neu und Referenz) und prüfen: abgeschnittene oder überlappende Texte, Elemente außerhalb von 240×320, Buttons unter 48 px Höhe, falsche Sprache, fehlende Umlaute.
