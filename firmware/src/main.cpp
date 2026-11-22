@@ -14,6 +14,7 @@
 #include <LittleFS.h>
 #include "storage/admin.h"
 #include "storage/devicepw.h"
+#include "storage/devmode.h"
 #include "storage/catalog.h"
 #include "storage/queue.h"
 #include "storage/users.h"
@@ -48,6 +49,7 @@ void setup() {
 
   devicePwBegin();  // vor dem net-Task: Hotspot und OTA brauchen das Geräte-Passwort
   adminBegin();  // vor dem net-Task, die Webseite fragt die Sperre ab
+  devModeBegin();  // vor dem net-Task und session/spoolman/ui: alle fragen die Betriebsart ab
   xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 0);
   if (!LittleFS.begin(true)) {
     logPrintln("[BOOT] LittleFS konnte nicht gemountet werden");

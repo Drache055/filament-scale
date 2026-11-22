@@ -11,6 +11,8 @@ Eine ESP32-S3-basierte Waage, die:
 4. das Filament-Restgewicht berechnet und
 5. in **Spoolman** `remaining_weight` und `location` (= Box) der Spule aktualisiert.
 
+Daneben gibt es die Betriebsart **Einfache Waage** (5.4): nur wiegen, ohne Spoolman, Anmeldung und NFC.
+
 ---
 
 ## 2. Hardware
@@ -163,6 +165,22 @@ remaining_weight = spool_gross - empty_spool
 - Ein gültiger Box-Tag hat Vorrang. Der Spulen-Tag, der den Ablauf gestartet hat (UID), wird nie als Box angeboten. Spulen-, Benutzer- und Admin-Tags lösen den Screen nicht aus. ✕ bricht den ganzen Ablauf ab, Timeout wie in den anderen Wartezuständen. Ein eigener Schreibauftrag wird beim Verlassen abgebrochen und quittiert, damit Home wieder Tags auswertet.
 - Annahme: Vorschlag für die Nummer ist 1 bzw. die nach der zuletzt geschriebenen (nur bis zum Neustart), weil es keine Liste vorhandener Boxen gibt.
 
+### 5.4 Einfache Waage (Betriebsart und Rolle „Nur wiegen“)
+- **Betriebsart** (`storage/devmode`, NVS-Namespace `devmode`, Schlüssel `simple`): „Smarte Waage“ (Standard) oder „Einfache Waage“. Umschalten nur der Admin auf der Webseite (System → Betriebsart, `POST /api/mode` mit `{"simple":true|false}`); `/api/status` meldet `simple` an alle Rollen.
+- In der einfachen Waage: Benutzer-Tags melden nicht an (ein angemeldeter Benutzer wird abgemeldet), Spulen-Tags werden nicht nachgeschlagen, der Spoolman-Task ruht (keine Erreichbarkeitsprüfung, kein Katalogabgleich, Warteschlange bleibt liegen), Home zeigt „Einfache Waage“ statt „Spule scannen“ und keine ausstehenden Updates. **Tara darf jeder.** Admin-Anmeldung (PIN, Admin-Tag), Menü und Webseiten-Login bleiben unverändert.
+- **Rolle „Nur wiegen“** (`User.weighOnly`, `POST /api/users/weigh?id=&allow=1|0`, Spalte in Benutzer): In der smarten Waage sieht ein so angemeldeter Benutzer nur „Filament wiegen“; seine Spulen-Tags werden nicht nachgeschlagen, der Spoolman-Ablauf startet nicht.
+- `sessionSimpleWeighAllowed()` = einfache Waage oder Benutzer mit „Nur wiegen“. Dann zeigt Home den Button **Filament wiegen** → Auswahl **Nur Spule** / **Box + Spule**.
+- Ablauf: Logik `core/simple_core` (`SimpleFlow`, Tests `test/test_simple`), Screens `ui/screen_simple.cpp`.
+```
+CLEAR (Waage leeren) ─ leer & stabil ─► Nullpunkt merken
+  ├─ Nur Spule ───────────────────────► MEASURE (Anzeige relativ zum Nullpunkt)
+  └─ Box + Spule ─► WAIT_BOX ─ stabil ≥ 50 g UND [Box tarieren] ─► MEASURE (Anzeige relativ zur Box)
+MEASURE ─ Spule lag stabil ≥ 50 g auf, danach Waage leer ─► IDLE;  [Fertig] ─► IDLE
+```
+- Anzeige in MEASURE live: groß das Filament = Spule gesamt − Leerspule (nie < 0), klein das Gesamtgewicht der Spule (mit Box auch das Boxgewicht). Leerspule mit −10/+10 einstellbar (0 bis 2000 g, 0 = ganze Spule), Start `WEIGH_DEFAULT_EMPTY_G` (250 g), der zuletzt eingestellte Wert steht im NVS (`devmode`/`empty`). Nicht stabile Werte erscheinen gedimmt.
+- Timeout 120 s in CLEAR, WAIT_BOX und in MEASURE, solange noch keine Spule gewogen wurde. Abbrechen jederzeit. `uiShowHome()` bricht auch diesen Ablauf ab (`simpleFlowAbort`).
+- Annahmen (mit Fabian zu klären): Leerspulengewicht wird abgezogen (einstellbar); die Webseite verlangt weiterhin eine Anmeldung; der einfache Ablauf steht in der smarten Waage nur Benutzern mit „Nur wiegen“ offen, nicht allen.
+
 ---
 
 ## 6. Wägezelle
@@ -267,6 +285,7 @@ src/
   bus/i2c_bus                 I²C-Mutex (Touch)
   core/queue_core             Warteschlangen-Logik (ohne Arduino, getestet)
   core/weigh_core             Wiegeablauf-Logik (ohne Arduino, getestet)
+  core/simple_core            Einfache Waage, Ablauf-Logik (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
@@ -278,8 +297,9 @@ src/
   storage/admin, users        Admin, Benutzer, PINs
   storage/catalog             Filament-Katalog
   storage/devicepw            Geräte-Passwort
+  storage/devmode             Betriebsart (smart/einfach), Leerspule der einfachen Waage
   storage/queue               Offline-Warteschlange (Datei)
-  ui/                         Screens (ui.cpp, screens_menu.cpp, screen_weigh.cpp), theme, fonts
+  ui/                         Screens (ui.cpp, screens_menu.cpp, screen_weigh.cpp, screen_simple.cpp), theme, fonts
   util/log, secret            Log-Ringpuffer; Zufall und Salted-SHA-256 für Passwörter/PINs
 test/                         Unity-Tests für env:native
 tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
@@ -296,6 +316,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Kalibrierfaktor, Nulloffset
 - Schwellen (Stabilität, „leer“, „hinzugefügt“, Timeout), Defaults in `config.h`
 - Bildschirmschoner, Display-VCOMS, Gerätesprache, Benutzer, Katalog, Admin-Daten
+- Betriebsart und Leerspule der einfachen Waage (`devmode`)
 
 ---
 
@@ -306,7 +327,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `core/queue_core` und `core/weigh_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `core/queue_core`, `core/weigh_core` und `core/simple_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---
@@ -320,7 +341,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 11.2 Admin, Passwort, Geräte-PIN, Sperre
 - **Admin** (`storage/admin.cpp`, NVS): darf alle Einstellungen am Gerät und auf der Webseite ändern, Benutzer anlegen und die Sperre abschalten. Normale Benutzer dürfen nur wiegen (Spule/Box, Spoolman-Update) und ihre eigene Sprache wählen.
-- Der Admin kann einzelnen Benutzern das **Tara-Recht** (`User.canTare`, `POST /api/users/tare?id=&allow=1|0`) und das Recht **Filament** (Katalog pflegen, `User.canCatalog`, `POST /api/users/catalog?id=&allow=1|0`) geben.
+- Der Admin kann einzelnen Benutzern das **Tara-Recht** (`User.canTare`, `POST /api/users/tare?id=&allow=1|0`) und das Recht **Filament** (Katalog pflegen, `User.canCatalog`, `POST /api/users/catalog?id=&allow=1|0`) geben, außerdem die Rolle **Nur wiegen** (5.4).
 - **Passwort:** am Anfang `Filament`, vom Admin auf der Webseite änderbar (4 bis 32 Zeichen, kein `:`). Gespeichert nur als Salted-SHA-256-Hash. Die Webseite warnt, solange das Standardpasswort aktiv ist.
 - **Geräte-PIN:** Die Bildschirmtastatur ist auf dem kleinen Display nicht nutzbar. Am Gerät meldet sich der Admin deshalb mit einer **Geräte-PIN** (4 bis 6 Ziffern, Ziffernblock) oder dem Admin-Tag an. Am Anfang `1234` (`ADMIN_DEFAULT_PIN`), änderbar auf der Webseite (Benutzer → Admin, `POST /api/admin/pin`, Salted-SHA-256 im NVS); die Seite warnt, solange die Standard-PIN aktiv ist. Das Passwort gilt nur für die Webseite. Nach 5 falschen Eingaben ist die Eingabe 30 s gesperrt.
 - **Admin-Tag:** Die Webseite erzeugt ihn (Benutzer → Admin → Admin-Tag schreiben); es gilt immer nur der zuletzt erzeugte Token. Ein NFC-Tag lässt sich kopieren, das Passwort ist sicherer.
@@ -328,7 +349,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - **Notfall:** serieller Befehl `admin reset` stellt Passwort `Filament`, Geräte-PIN `1234` und die Sperre wieder her und macht den Admin-Tag ungültig.
 
 ### 11.3 Gerät
-- Das Menü ist für alle offen. **Einstellungen** und **NFC** verlangen den Admin (`uiAdminGate`), **Tara** den Admin oder einen angemeldeten Benutzer mit Tara-Recht (`sessionUserMayTare`).
+- Das Menü ist für alle offen. **Einstellungen** und **NFC** verlangen den Admin (`uiAdminGate`), **Tara** den Admin oder einen angemeldeten Benutzer mit Tara-Recht (`sessionUserMayTare`); in der einfachen Waage darf jeder tarieren.
 - Die Admin-Anmeldung endet nach `ADMIN_TIMEOUT_MS` (5 min) ohne Bedienung oder über „Admin abmelden“ im Menü bzw. Tippen auf „Admin“ in der Statusleiste. Danach springt die Anzeige zu Home.
 
 ### 11.4 Webseite
@@ -411,6 +432,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 ### 14.2 Am Gerät nicht geprüft
 - **Wiegeablauf** mit echter Waage, Box-Tag und Spoolman, inklusive „Neue Box anlegen“. Die Firmware baut, die Logik ist nativ getestet, die Screens sind aus dem echten UI-Code gerendert.
 - Geräte-Passwort (`devicepw`).
+- **Einfache Waage** und Rolle „Nur wiegen“ (5.4): Ablauf am Gerät, Umschalten auf der Webseite, Benutzer-Spalte. Logik nativ getestet, Screens gerendert, Webseite nur mit `node --check` geprüft.
 - Hotspot-Start beim Boot ohne gespeicherte Daten, Beitreten mit einem Handy, automatischer Rückfall nach einer Minute ohne Verbindung.
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
 

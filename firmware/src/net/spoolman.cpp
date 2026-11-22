@@ -11,6 +11,7 @@
 #include "config.h"
 #include "secrets.h"
 #include "storage/catalog.h"
+#include "storage/devmode.h"
 #include "storage/queue.h"
 
 #ifndef SPOOLMAN_URL
@@ -618,6 +619,9 @@ void spoolmanTask(void *) {
         case JobType::List: doList(); break;
       }
       continue;
+    }
+    if (devModeSimple()) {
+      continue;  // Einfache Waage: keine Erreichbarkeitsprüfung, kein Abgleich, Warteschlange ruht
     }
     if (checkRequested || millis() - lastCheckMs > SPOOLMAN_CHECK_MS) {
       checkRequested = false;

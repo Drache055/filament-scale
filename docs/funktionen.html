@@ -26,6 +26,7 @@
 <p class="muted"><span data-l="de">Was die Waage kann und wie sie es macht.</span><span data-l="en">What the scale can do and how it does it.</span></p>
 <ul class="toc">
   <li><a href="#wiegen"><span data-l="de">Wiegeablauf</span><span data-l="en">Weighing flow</span></a></li>
+  <li><a href="#einfach"><span data-l="de">Einfache Waage</span><span data-l="en">Simple scale</span></a></li>
   <li><a href="#messung"><span data-l="de">Messung &amp; Kalibrierung</span><span data-l="en">Measuring &amp; calibration</span></a></li>
   <li><a href="#geraet"><span data-l="de">Bedienung am Gerät</span><span data-l="en">On-device UI</span></a></li>
   <li><a href="#web"><span data-l="de">Weboberfläche</span><span data-l="en">Web UI</span></a></li>
@@ -73,6 +74,20 @@
   <img src="img/43_ablauf_6_bestaetigen.png" alt="" style="width:240px;image-rendering:pixelated">
 </div>
 
+<h2 id="einfach"><span data-l="de">Einfache Waage (ohne Spoolman)</span><span data-l="en">Simple scale (without Spoolman)</span></h2>
+<p><span data-l="de">Betriebsart für alle, die die Waage nur als Filamentwaage nutzen wollen. Der Admin stellt sie auf der Webseite unter <b>System → Betriebsart</b> ein. Dann gibt es keine Anmeldung (Benutzer-Tags werden ignoriert), keine Spoolman-Abfragen und keine NFC-Tags. Jeder darf tarieren, Einstellungen bleiben beim Admin.</span><span data-l="en">An operating mode for anyone who just wants a filament scale. The admin switches it on the web page under <b>System → Operating mode</b>. There is no sign-in (user tags are ignored), no Spoolman traffic and no NFC tags. Everyone may tare, settings stay with the admin.</span></p>
+<ol>
+  <li><span data-l="de">Home → <b>Filament wiegen</b>, dann <b>Nur Spule</b> oder <b>Box + Spule</b>.</span><span data-l="en">Home → <b>Weigh filament</b>, then <b>Spool only</b> or <b>Box + spool</b>.</span></li>
+  <li><span data-l="de"><b>Box + Spule:</b> Box auflegen, sobald das Gewicht stabil ist <b>Box tarieren</b>, dann die Spule in die Box stellen.</span><span data-l="en"><b>Box + spool:</b> place the box, tap <b>Tare box</b> once the weight is stable, then put the spool into the box.</span></li>
+  <li><span data-l="de">Angezeigt wird das <b>Filamentgewicht</b> (Spule gesamt minus Leerspule) live. Das Leerspulengewicht stellst du mit −10/+10 ein (0 g = ganze Spule), die Waage merkt sich den letzten Wert. Darunter steht das Gesamtgewicht der Spule.</span><span data-l="en">The <b>filament weight</b> (spool total minus empty spool) is shown live. Set the empty spool weight with −10/+10 (0 g = whole spool); the scale remembers the last value. The spool total is shown below.</span></li>
+  <li><span data-l="de"><b>Fertig</b> oder alles abnehmen führt zurück zu Home.</span><span data-l="en"><b>Done</b> or taking everything off returns to home.</span></li>
+</ol>
+<div class="two" style="margin-top:20px">
+  <img src="img/74_einfach_3_nur_spule_1092g.png" alt="" style="width:240px;image-rendering:pixelated">
+  <img src="img/77_einfach_6_box_und_spule_1254g.png" alt="" style="width:240px;image-rendering:pixelated">
+</div>
+<p><span data-l="de">In der smarten Waage kann der Admin einzelnen Benutzern die Rolle <b>Nur wiegen</b> geben. Meldet sich so ein Benutzer am Gerät an, sieht er nur „Filament wiegen“ und schreibt nichts nach Spoolman.</span><span data-l="en">In the smart scale the admin can give single users the <b>Weigh only</b> role. When such a user signs in on the device, they only see “Weigh filament” and write nothing to Spoolman.</span></p>
+
 <h2 id="messung"><span data-l="de">Messung &amp; Kalibrierung</span><span data-l="en">Measuring &amp; calibration</span></h2>
 <ul>
   <li><span data-l="de"><b>Stabilitätserkennung:</b> Der HX711 liefert 10 Werte pro Sekunde. Über ein Fenster von 10 Werten (ca. 1 s) gilt das Gewicht als stabil, wenn Maximum minus Minimum höchstens 1,0 g beträgt. Ausgegeben wird der Mittelwert.</span><span data-l="en"><b>Stability detection:</b> the HX711 delivers 10 samples per second. Over a window of 10 samples (about 1 s) the weight counts as stable when max minus min is at most 1.0 g. The mean is shown.</span></li>
@@ -113,7 +128,7 @@
 <h2 id="rechte"><span data-l="de">Benutzer &amp; Rechte</span><span data-l="en">Users &amp; roles</span></h2>
 <table>
   <tr><th>Admin</th><td><span data-l="de">Darf alles: Einstellungen, Benutzer, Katalog, Sperre. Webseite mit Name <code>admin</code> und Passwort, am Gerät mit PIN oder Admin-Tag.</span><span data-l="en">Can do everything: settings, users, catalog, lock. Web sign-in as <code>admin</code> with the password, on the device with PIN or admin tag.</span></td></tr>
-  <tr><th><span data-l="de">Benutzer</span><span data-l="en">User</span></th><td><span data-l="de">Meldet sich am Gerät per NFC-Tag an (Name wird als <code>owner</code> an die Spule geschrieben), auf der Webseite mit Name und PIN (4–6 Ziffern). Darf wiegen, die eigene Sprache und PIN ändern. Der Admin kann einzelne Rechte freigeben: <b>Tara</b> und <b>Filament</b> (Katalog pflegen).</span><span data-l="en">Signs in on the device via NFC tag (the name is written to the spool as <code>owner</code>), on the web with name and PIN (4–6 digits). Can weigh and change own language and PIN. The admin can grant single permissions: <b>Tare</b> and <b>Filament</b> (maintain the catalog).</span></td></tr>
+  <tr><th><span data-l="de">Benutzer</span><span data-l="en">User</span></th><td><span data-l="de">Meldet sich am Gerät per NFC-Tag an (Name wird als <code>owner</code> an die Spule geschrieben), auf der Webseite mit Name und PIN (4–6 Ziffern). Darf wiegen, die eigene Sprache und PIN ändern. Der Admin kann einzelne Rechte freigeben: <b>Tara</b>, <b>Filament</b> (Katalog pflegen) und <b>Nur wiegen</b> (am Gerät nur der einfache Wiegeablauf, kein Spoolman).</span><span data-l="en">Signs in on the device via NFC tag (the name is written to the spool as <code>owner</code>), on the web with name and PIN (4–6 digits). Can weigh and change own language and PIN. The admin can grant single permissions: <b>Tare</b>, <b>Filament</b> (maintain the catalog) and <b>Weigh only</b> (only the simple weighing flow on the device, no Spoolman).</span></td></tr>
   <tr><th>Generic</th><td><span data-l="de">Nur wiegen und NFC lesen, ohne Tara und Sprache. Der Admin kann das Konto abschalten oder mit einer PIN schützen.</span><span data-l="en">Only weigh and read NFC, no tare, no language. The admin can disable the account or protect it with a PIN.</span></td></tr>
 </table>
 <p class="note warn"><span data-l="de"><b>Wichtig:</b> Standard-Zugang ist Admin-Passwort „Filament“ und Geräte-PIN „1234“. Die Webseite warnt, solange sie aktiv sind. Bitte direkt ändern.</span><span data-l="en"><b>Important:</b> defaults are admin password “Filament” and device PIN “1234”. The web UI warns while they are active. Please change them right away.</span></p>

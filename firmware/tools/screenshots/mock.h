@@ -19,6 +19,8 @@ struct MockState {
   bool userLoggedIn = false;
   bool adminLoggedIn = false;
   bool lockEnabled = true;
+  bool simpleMode = false;  // Betriebsart "Einfache Waage"
+  bool weighOnly = false;   // angemeldeter Benutzer hat "Nur wiegen"
   int queued = 0;
   uint8_t vcoms = 0x24;
   Lang lang = Lang::DE;
