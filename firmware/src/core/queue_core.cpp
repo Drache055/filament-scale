@@ -77,14 +77,33 @@ std::string queueSerialize(const std::vector<QueueEntry> &list) {
 }
 
 void queueAddEntry(std::vector<QueueEntry> &list, const QueueEntry &e, size_t maxEntries) {
+  QueueEntry merged = e;
   for (size_t i = 0; i < list.size();) {
     if (list[i].spoolId == e.spoolId) {
+      // Ältere Angaben bleiben erhalten, wo der neue Eintrag nichts setzt.
+      const QueueEntry &old = list[i];
+      if (merged.remaining < 0) {
+        merged.remaining = old.remaining;
+      }
+      if (!merged.hasLocation && old.hasLocation) {
+        merged.hasLocation = true;
+        strncpy(merged.location, old.location, sizeof(merged.location) - 1);
+      }
+      if (!merged.owner[0]) {
+        strncpy(merged.owner, old.owner, sizeof(merged.owner) - 1);
+      }
+      if (old.archive) {
+        merged.archive = true;  // einmal vorgemerkt, bleibt vorgemerkt
+      }
+      if (!merged.tagUid[0]) {
+        strncpy(merged.tagUid, old.tagUid, sizeof(merged.tagUid) - 1);
+      }
       list.erase(list.begin() + i);
     } else {
       i++;
     }
   }
-  list.push_back(e);
+  list.push_back(merged);
   while (list.size() > maxEntries) {
     list.erase(list.begin());
   }

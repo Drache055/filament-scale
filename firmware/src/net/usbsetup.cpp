@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "core/usb_setup_core.h"
+#include "net/websession.h"
 #include "net/wifi.h"
 #include "storage/admin.h"
 #include "util/log.h"
@@ -80,6 +81,7 @@ void handleSetup(std::vector<std::string> &s) {
     send(buildState(StateReady));
     return;
   }
+  webSessionsDropAdmin();  // Anmeldungen mit dem alten Admin-Passwort enden
   logPrintln("[SETUP] USB-Einrichtung abgeschlossen");
   send(buildState(StateProvisioned));
   send(buildResult(CmdSetup, {(String("http://") + wifiIp() + "/").c_str()}));

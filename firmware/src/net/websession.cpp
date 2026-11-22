@@ -111,3 +111,16 @@ void webSessionsDropAdminExcept(const String &keepToken) {
   }
   xSemaphoreGive(mutex);
 }
+
+void webSessionsDropAdmin() { webSessionsDropAdminExcept(String()); }
+
+void webSessionsDropGeneric() {
+  ensureMutex();
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  for (int i = 0; i < MAX_SESSIONS; i++) {
+    if (entries[i].used && entries[i].session.role == WebRole::Generic) {
+      entries[i].used = false;
+    }
+  }
+  xSemaphoreGive(mutex);
+}
