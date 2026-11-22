@@ -1,4 +1,5 @@
 #include "webserver.h"
+#include "util/secret.h"
 #include "util/log.h"
 
 #include <Arduino.h>
@@ -701,9 +702,9 @@ static void handleUsersWrite() {
     return;
   }
   char json[192];
-  // Neues Token: der bisherige Tag des Benutzers wird damit ungültig
-  String token = usersNewTagToken(u.id);
-  if (token.length() == 0 || tagBuildUser(u.id, u.name, token.c_str(), json, sizeof(json)) == 0) {
+  // Neues Token: gespeichert erst, wenn der Schreibauftrag angenommen ist; der bisherige Tag wird damit ungültig
+  String token = secretRandomHex(16);
+  if (tagBuildUser(u.id, u.name, token.c_str(), json, sizeof(json)) == 0) {
     server.send(500, "text/plain", "Tag-Inhalt zu groß");
     return;
   }
@@ -711,6 +712,7 @@ static void handleUsersWrite() {
     server.send(409, "text/plain", "Es läuft bereits ein Schreibvorgang");
     return;
   }
+  usersSetTagToken(u.id, token);
   logPrintf("[WEB] Benutzer-Tag für '%s' angefordert\n", u.name);
   server.send(200, "text/plain", "ok");
 }

@@ -295,19 +295,18 @@ bool usersCheckPin(uint16_t id, const char *pin) {
   return secretEqual(secretHash(salt, pin), stored.substring(16));
 }
 
-String usersNewTagToken(uint16_t id) {
+bool usersSetTagToken(uint16_t id, const String &token) {
   User u;
-  if (id == 0 || !usersFind(id, u)) {
-    return "";
+  if (id == 0 || token.length() != 32 || !usersFind(id, u)) {
+    return false;
   }
-  String token = secretRandomHex(16);  // 32 Hex-Zeichen
   char key[12];
   tokenKey(id, key, sizeof(key));
   Preferences p;
   p.begin("users", false);
   p.putString(key, token);
   p.end();
-  return token;
+  return true;
 }
 
 String usersTagToken(uint16_t id) {

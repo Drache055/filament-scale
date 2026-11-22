@@ -25,8 +25,8 @@ bool usersSetLang(uint16_t id, uint8_t lang);  // 0 = Gerätesprache, 1 = Deutsc
 bool usersSetPin(uint16_t id, const char *pin, String &error);  // leerer Text entfernt die PIN
 bool usersHasPin(uint16_t id);
 bool usersCheckPin(uint16_t id, const char *pin);
-// Benutzer-Tag: erzeugt und speichert ein neues Token (ein älterer Tag des Benutzers wird ungültig). Leer, wenn es den Benutzer nicht gibt.
-String usersNewTagToken(uint16_t id);
+// Benutzer-Tag: speichert das Token des zuletzt geschriebenen Tags (ein älterer Tag des Benutzers wird ungültig).
+bool usersSetTagToken(uint16_t id, const String &token);
 bool usersHasTagToken(uint16_t id);  // false: noch nie ein Tag mit Token geschrieben (alter Tag muss neu geschrieben werden)
 String usersTagToken(uint16_t id);   // gespeichertes Token, leer = keins
 bool usersFindByName(const char *name, User &out);  // Groß-/Kleinschreibung egal
