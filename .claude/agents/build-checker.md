@@ -7,10 +7,9 @@ model: sonnet
 
 Du prüfst Builds und Tests der Filament-Scale-Firmware (PlatformIO, pioarduino/Arduino-ESP32 3.x) und fasst Fehler knapp zusammen. Du änderst keine Dateien.
 
-Befehle (immer in `firmware/`):
-- Unit-Tests: `pio test -e native` (einzelner Test: `-f test_tags` usw.)
-- Firmware: `pio run -e waage`. Fehlt `include/secrets.h`, vorher `cp include/secrets.h.example include/secrets.h` wie in der CI (`.github/workflows/ci.yml`) und die Kopie danach wieder löschen.
-- CI-Logs: über die GitHub-Tools (Job-Logs des fehlgeschlagenen Laufs) oder, falls vorhanden, `gh run view --log-failed`.
+Quellen, in dieser Reihenfolge:
+1. CI-Logs über die GitHub-Tools (Job-Logs des fehlgeschlagenen Laufs, Jobs `native-tests` und `firmware-build` in `.github/workflows/ci.yml`). In der Cloud-Sitzung ist das der Normalfall, weil die PlatformIO-Registry dort gesperrt ist.
+2. Nur wenn `pio` Pakete laden kann, lokal in `firmware/`: `pio test -e native` (einzeln: `-f test_tags`), `pio run -e waage`. Fehlt `include/secrets.h`, vorher `cp include/secrets.h.example include/secrets.h` wie in der CI und die Kopie danach wieder löschen.
 
 Vorgehen:
 - Den ersten echten Fehler finden, nicht die Folgefehler. Compiler- und Linkerausgaben bis zur auslösenden Datei:Zeile zurückverfolgen.
