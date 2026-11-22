@@ -101,7 +101,7 @@ Daneben gibt es die Betriebsart **Einfache Waage** (5.4): nur wiegen, ohne Spool
 - Leerer bzw. unbekannter Tag beim Box-Schritt → „Neue Box anlegen“ (siehe 5.3).
 
 ### 4.4 Benutzer- und Admin-Tag
-- Benutzer: `{"type":"user","id":3,"name":"Fabian"}` (siehe 11.1).
+- Benutzer: `{"type":"user","id":3,"name":"Fabian","token":"<32 Hex>"}` (siehe 11.1). Ältere Tags ohne `token` melden nicht mehr an.
 - Admin: `{"type":"admin","token":"<32 Hex>"}` (siehe 11.2).
 
 ### 4.5 Tag-Typ-Erkennung
@@ -371,7 +371,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core` und `core/drying_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core`, `core/drying_core`, `core/update_core`, `core/diag_core`, `core/sensor_core`, `core/spool_url` und `core/usb_setup_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---
@@ -380,7 +380,9 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 11.1 Benutzer (Besitzer)
 - Die Webseite legt Benutzer an (`storage/users.cpp`, NVS, max. 16, ID fortlaufend) und löst das Schreiben des Benutzer-Tags aus. Benutzer legen sich nicht selbst an, das geht nur mit Admin-Rechten.
-- Ein Benutzer-Tag an der Waage meldet an (`app/session.cpp`), maßgeblich ist die ID in der Benutzerliste. Ein gelöschter Benutzer wird abgemeldet und sein Tag ist ungültig.
+- Ein Benutzer-Tag an der Waage meldet an (`app/session.cpp`), maßgeblich sind ID und Token. Ein gelöschter Benutzer wird abgemeldet und sein Tag ist ungültig.
+- **Token pro Benutzer:** Die ID allein meldet nicht an, sonst könnte jeder per Handy-App einen Tag mit `"id":1` schreiben. „Tag schreiben“ erzeugt ein neues geheimes Token (32 Hex, gespeichert mit `usersSetTagToken` sobald der Schreibauftrag angenommen ist, NVS-Schlüssel `tok<id>` im Namespace `users`), das auf den Tag kommt; es gilt nur der zuletzt geschriebene Tag (wie beim Admin-Tag). Prüfung mit `tagCheckUserToken` (`nfc/tags`, nativ getestet, Vergleich ohne frühen Abbruch). Der Inhalt von Benutzer-Tags geht wie beim Admin-Tag nicht an `/api/status`. Ein Tag lässt sich weiterhin 1:1 kopieren; das Token verhindert nur selbst geschriebene Tags.
+- **Migration:** Tags aus älteren Versionen haben kein Token und melden nicht mehr an. Das Gerät zeigt „Tag veraltet, im Web neu schreiben“, die Webseite markiert „Tag schreiben“ mit ⚠, solange für den Benutzer noch kein Tag mit Token geschrieben wurde (`"tag":false` in `/api/users`). Am Gerät nicht geprüft.
 - Abmeldung nach `USER_TIMEOUT_MS` (15 min) ohne Spulen-/Box-Scan oder per Tippen auf den Namen in der Statusleiste von Home.
 
 ### 11.2 Admin, Passwort, Geräte-PIN, Sperre
@@ -402,7 +404,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
   - **Benutzer** (Name + eigene **PIN**, 4 bis 6 Ziffern): Gewicht, NFC, WLAN-Status (verbunden ja/nein), Tara-Knopf nur mit Tara-Recht, eigene Sprache und PIN. Kein Log, keine Einstellungen, keine Benutzerliste (alle anderen Schnittstellen antworten 403). Die PIN setzt der Admin (`POST /api/users/pin?id=&pin=`, leer = entfernen); ohne PIN nur Anmeldung per NFC am Gerät. Eigene PIN ändern mit alter PIN (`POST /api/me/pin`).
   - Mit dem Recht **Filament** zusätzlich die Seite **Filament-Katalog** (`GET/POST /api/catalog`, `/api/catalog/sync`).
   - **Generic** (Name `generic`, am Anfang ohne PIN, vom Admin abschaltbar oder mit PIN schützbar): nur wiegen und NFC lesen, kein Tara, keine Sprache.
-- PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen.
+- PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen. Gilt auch für Admin-Passwort per USB-Einrichtung oder `admin reset` (alle Admin-Sitzungen) sowie für eine geänderte Generic-PIN und das Abschalten von Generic (Generic-Sitzungen). Am Gerät nicht geprüft.
 - `/api/status` enthält für Nicht-Admins keine Gerätedaten (IP, Speicher, Firmware) und keinen Inhalt eines Admin-Tags. Ist die Sperre aus, ist jeder Admin.
 - 5 Fehlversuche (Login oder Basic-Auth, gemeinsam gezählt) sperren die Anmeldung 30 s.
 - **CSRF und DNS-Rebinding** (`core/web_guard`, `requestAllowed` in `net/webserver.cpp`): Jede Route prüft den Host-Header. Erlaubt sind IP-Adressen, `<OTA_HOSTNAME>` und `<OTA_HOSTNAME>.local`, sonst 403 (im Hotspot Umleitung auf die Einrichtungsseite). Router-Namen wie `filamentwaage.fritz.box` sind damit gesperrt. Alles außer GET braucht den Header `X-Requested-With` (beliebiger Wert), die Weboberfläche schickt ihn mit. Fremde Seiten können ihn nur mit CORS-Preflight setzen, den die Waage nicht beantwortet. Das gilt auch bei ausgeschalteter Sperre und im Hotspot.
@@ -440,7 +442,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Design wie die Projektseite (`docs/style.css`): dunkel, enge große Headlines, Pill-Buttons und -Navigation, weicher Farbverlauf, Karten, Akzent blau. Tokens als CSS-Variablen in `web_page.h` (`:root`), systemeigene Schriften (offline, kein Webfont/CDN). Am Gerät nicht geprüft.
 
 ### 12.6 Online-Update (GitHub-Releases)
-- Webseite → System → Firmware-Update (nur Admin): „Nach Updates suchen“ fragt `https://api.github.com/repos/<FW_UPDATE_REPO>/releases?per_page=15` (ohne Token, Limit 60 Anfragen/h je IP; Entwürfe zählen nicht) und wählt die höchste Version, die der Update-Kanal erlaubt. Ist sie neuer als die eingebaute Version, zeigt die Seite Version und Release Notes (auf 3000 Byte gekürzt) und „Jetzt aktualisieren“.
+- Webseite → System → Firmware-Update (nur Admin): „Nach Updates suchen“ fragt `https://api.github.com/repos/<FW_UPDATE_REPO>/releases?per_page=15` (ohne Token, Limit 60 Anfragen/h je IP; Entwürfe zählen nicht) und wählt die höchste Version, die der Update-Kanal erlaubt. Die Antwort wird direkt aus dem HTTP-Stream mit ArduinoJson-Filter gelesen (nie als ganzer String im RAM); nur die gefilterten Felder bleiben im Speicher. Am Gerät nicht geprüft. Ist sie neuer als die eingebaute Version, zeigt die Seite Version und Release Notes (auf 3000 Byte gekürzt) und „Jetzt aktualisieren“.
 - Update-Kanäle (NVS `fwupd`/`ch`, Standard Stable), jeder enthält die stabileren: **Stable** = Tag ohne Bindestrich (`v1.2`), auf GitHub keine Pre-Release. **Release-Kandidat** = zusätzlich Tags mit `-rc` (`v1.3-rc1`) und Pre-Releases ohne Bindestrich. **Test** = zusätzlich jeder andere Bindestrich-Zusatz (`v1.3-beta1`, `v1.3-test2`). Reihenfolge bei gleicher Nummer: Test < Release-Kandidat < Stable, darin nach der Zahl am Ende (`beta2` < `beta10`).
 - Liefert der Kanal nur eine ältere Version als die installierte (z. B. Wechsel von Test zurück auf Stable), bietet die Seite „<Version> installieren (Rückschritt)“ an. Ein Rückschritt behält NVS und LittleFS; ob ältere Firmware mit neueren gespeicherten Daten klarkommt, ist nicht geprüft. Übersicht → Gerät zeigt die Version, der Menüpunkt System einen Punkt, wenn ein Update bereitsteht.
 - Version: `tools/version.py` (PlatformIO-Pre-Skript) setzt `FW_VERSION` aus der Umgebungsvariable `FW_VERSION` (Release-Workflow: der Tag), sonst `git describe --tags --always --dirty`, sonst `dev`. Vergleich in `core/update_core`: numerisch (`v1.10` > `v1.9`), `v1.2-beta` < `v1.2`, `v1.2-3-gabc` (Stand nach dem Tag) > `v1.2`. Bei unbekannter eigener Version (`dev`, reiner Hash) wird jede stabile Release angeboten.
@@ -479,7 +481,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Am Gerät nicht geprüft: Anzeige auf Home und unter Einstellungen → WiFi, Karte Geräte-Passwörter im Browser (nur `node --check`), Neu erzeugen bei laufendem Hotspot (ob verbundene Geräte getrennt werden), ArduinoOTA mit dem neuen OTA-Passwort, Übernahme nach dem Neu erzeugen ohne Neustart.
 
 ### 13.3 Releases und Web-Flasher
-- `.github/workflows/release.yml` läuft bei jedem Tag `v*`. Er baut mit der Vorlage `secrets.h.example` `firmware.factory.bin` (Bootloader 0x0, Partitionen 0x8000, boot_app0 0xe000, Firmware 0x10000, von PlatformIO zusammengesetzt) und legt eine GitHub-Release mit Factory-Image, OTA-Image (`firmware.bin`) und `docs/cad/filament-scale.step` an.
+- `.github/workflows/release.yml` läuft bei jedem Tag `v*`. Er baut mit der Vorlage `secrets.h.example` `firmware.factory.bin` (Bootloader 0x0, Partitionen 0x8000, boot_app0 0xe000, Firmware 0x10000, von PlatformIO zusammengesetzt) und legt eine GitHub-Release mit Factory-Image, OTA-Image (`filament-scale-<tag>-ota.bin`) und `docs/cad/filament-scale.step` an.
 - Tags mit Bindestrich werden Pre-Releases. Nur stabile Tags schreibt `tools/update_flasher.py` nach `docs/firmware/<tag>/` und `versions.json`; die höchste Version liegt zusätzlich als `docs/firmware/manifest.json` (Standard des Flash-Buttons). Der Workflow committet das direkt auf `main`.
 
 ### 13.4 UI-Style, Schriften, Screenshots
