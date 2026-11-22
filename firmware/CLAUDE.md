@@ -370,7 +370,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core` und `core/drying_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core`, `core/drying_core`, `core/update_core`, `core/diag_core`, `core/sensor_core`, `core/spool_url` und `core/usb_setup_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---
@@ -403,7 +403,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
   - **Benutzer** (Name + eigene **PIN**, 4 bis 6 Ziffern): Gewicht, NFC, WLAN-Status (verbunden ja/nein), Tara-Knopf nur mit Tara-Recht, eigene Sprache und PIN. Kein Log, keine Einstellungen, keine Benutzerliste (alle anderen Schnittstellen antworten 403). Die PIN setzt der Admin (`POST /api/users/pin?id=&pin=`, leer = entfernen); ohne PIN nur Anmeldung per NFC am Gerät. Eigene PIN ändern mit alter PIN (`POST /api/me/pin`).
   - Mit dem Recht **Filament** zusätzlich die Seite **Filament-Katalog** (`GET/POST /api/catalog`, `/api/catalog/sync`).
   - **Generic** (Name `generic`, am Anfang ohne PIN, vom Admin abschaltbar oder mit PIN schützbar): nur wiegen und NFC lesen, kein Tara, keine Sprache.
-- PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen.
+- PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen. Gilt auch für Admin-Passwort per USB-Einrichtung oder `admin reset` (alle Admin-Sitzungen) sowie für eine geänderte Generic-PIN und das Abschalten von Generic (Generic-Sitzungen). Am Gerät nicht geprüft.
 - `/api/status` enthält für Nicht-Admins keine Gerätedaten (IP, Speicher, Firmware) und keinen Inhalt eines Admin-Tags. Ist die Sperre aus, ist jeder Admin.
 - 5 Fehlversuche (Login oder Basic-Auth, gemeinsam gezählt) sperren die Anmeldung 30 s.
 - Wer im **geschützten** Setup-WLAN ist (Hotspot-Passwort, 13.2), braucht keine zweite Anmeldung. Ein offener Hotspot zählt nicht als Ausweis.
@@ -479,7 +479,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Am Gerät nicht geprüft: Anzeige auf Home und unter Einstellungen → WiFi, Karte Geräte-Passwörter im Browser (nur `node --check`), Neu erzeugen bei laufendem Hotspot (ob verbundene Geräte getrennt werden), ArduinoOTA mit dem neuen OTA-Passwort, Übernahme nach dem Neu erzeugen ohne Neustart.
 
 ### 13.3 Releases und Web-Flasher
-- `.github/workflows/release.yml` läuft bei jedem Tag `v*`. Er baut mit der Vorlage `secrets.h.example` `firmware.factory.bin` (Bootloader 0x0, Partitionen 0x8000, boot_app0 0xe000, Firmware 0x10000, von PlatformIO zusammengesetzt) und legt eine GitHub-Release mit Factory-Image, OTA-Image (`firmware.bin`) und `docs/cad/filament-scale.step` an.
+- `.github/workflows/release.yml` läuft bei jedem Tag `v*`. Er baut mit der Vorlage `secrets.h.example` `firmware.factory.bin` (Bootloader 0x0, Partitionen 0x8000, boot_app0 0xe000, Firmware 0x10000, von PlatformIO zusammengesetzt) und legt eine GitHub-Release mit Factory-Image, OTA-Image (`filament-scale-<tag>-ota.bin`) und `docs/cad/filament-scale.step` an.
 - Tags mit Bindestrich werden Pre-Releases. Nur stabile Tags schreibt `tools/update_flasher.py` nach `docs/firmware/<tag>/` und `versions.json`; die höchste Version liegt zusätzlich als `docs/firmware/manifest.json` (Standard des Flash-Buttons). Der Workflow committet das direkt auf `main`.
 
 ### 13.4 UI-Style, Schriften, Screenshots

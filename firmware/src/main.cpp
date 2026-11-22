@@ -11,6 +11,7 @@
 #include "net/spoolman.h"
 #include "net/usbsetup.h"
 #include "net/webserver.h"
+#include "net/websession.h"
 #include "net/wifi.h"
 #include "scale/scale.h"
 #include <LittleFS.h>
@@ -101,6 +102,7 @@ static void handleSerialCommand(String line) {
               wifiApActive() ? "an" : "aus");
   } else if (lower == "admin reset") {
     adminReset();
+    webSessionsDropAdmin();
   } else if (lower == "reboot") {
     ESP.restart();
   } else if (line.length()) {
