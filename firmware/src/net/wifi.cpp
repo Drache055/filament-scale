@@ -14,7 +14,7 @@ namespace {
 
 bool apActive = false;
 DNSServer dns;
-bool hasCredentials = false;
+volatile bool hasCredentials = false;
 uint32_t lastConnectedMs = 0;   // letzter Zeitpunkt, an dem verbunden war (bzw. Start)
 uint32_t connectedSinceMs = 0;  // seit wann ohne Unterbrechung verbunden
 bool wasConnected = false;
@@ -138,6 +138,35 @@ bool wifiSaveCredentials(const char *ssid, const char *password, String &error) 
   prefs.putBool("mig", true);
   prefs.end();
   logPrintf("[NET] WLAN-Zugangsdaten für '%s' gespeichert\n", s.c_str());
+  return true;
+}
+
+bool wifiProvision(const char *ssid, const char *password, uint32_t timeoutMs, String &error) {
+  String s(ssid ? ssid : "");
+  s.trim();
+  logPrintf("[NET] USB-Einrichtung: verbinde mit '%s' ...\n", s.c_str());
+  WiFi.disconnect(false, false);
+  WiFi.begin(s.c_str(), password ? password : "");
+  uint32_t start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
+    delay(200);
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    error = "Keine Verbindung mit diesem WLAN";
+    logPrintf("[NET] USB-Einrichtung: keine Verbindung mit '%s'\n", s.c_str());
+    WiFi.disconnect(false, false);
+    String oldSsid, oldPass;
+    loadCredentials(oldSsid, oldPass);
+    if (oldSsid.length()) {
+      WiFi.begin(oldSsid.c_str(), oldPass.c_str());
+    }
+    return false;
+  }
+  if (!wifiSaveCredentials(s.c_str(), password, error)) {
+    return false;
+  }
+  lastConnectedMs = millis();
+  hasCredentials = true;  // der Hotspot endet wie gewohnt, sobald die Verbindung eine Minute steht
   return true;
 }
 
