@@ -387,6 +387,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 12.5 Weboberfläche
 - Menü: Übersicht, Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log, System. Zweisprachig, folgt der Gerätesprache. Login siehe 11.4.
+- Design wie die Projektseite (`docs/style.css`): dunkel, enge große Headlines, Pill-Buttons und -Navigation, weicher Farbverlauf, Karten, Akzent blau. Tokens als CSS-Variablen in `web_page.h` (`:root`), systemeigene Schriften (offline, kein Webfont/CDN). Am Gerät nicht geprüft.
 
 ---
 
