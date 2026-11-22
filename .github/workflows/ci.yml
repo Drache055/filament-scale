@@ -74,3 +74,34 @@ jobs:
       - name: Firmware bauen
         working-directory: firmware
         run: pio run -e waage
+
+  # Rendert die echten Screens am Rechner (tools/screenshots) und vergleicht sie pixelgenau mit firmware/screenshots.
+  # Schlägt fehl, wenn das Werkzeug nicht mehr baut (z. B. fehlende Stubs) oder sich ein Screen geändert hat.
+  # Dann Referenzen neu erzeugen (siehe firmware/CLAUDE.md 13.4) und mit dem PR einchecken.
+  screenshots:
+    needs: changes
+    if: needs.changes.outputs.firmware == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - uses: actions/cache@v4
+        with:
+          path: firmware/.pio/libdeps/waage
+          key: shots-libs-${{ hashFiles('firmware/platformio.ini') }}
+      - name: LVGL und ArduinoJson (Versionen wie in platformio.ini)
+        working-directory: firmware
+        run: |
+          mkdir -p .pio/libdeps/waage && cd .pio/libdeps/waage
+          [ -d lvgl ] || git clone -q --depth 1 --branch v9.5.0 https://github.com/lvgl/lvgl.git
+          [ -d ArduinoJson ] || git clone -q --depth 1 --branch v7.4.3 https://github.com/bblanchon/ArduinoJson.git
+      - name: Screens rendern und vergleichen (Deutsch, Englisch)
+        working-directory: firmware
+        run: |
+          OUT_DIR=$RUNNER_TEMP/shots_de sh tools/screenshots/build.sh > /dev/null
+          python3 tools/screenshots/check.py $RUNNER_TEMP/shots_de/1x screenshots/1x
+          SHOT_LANG=en OUT_DIR=$RUNNER_TEMP/shots_en sh tools/screenshots/build.sh > /dev/null
+          python3 tools/screenshots/check.py $RUNNER_TEMP/shots_en/1x screenshots/en/1x

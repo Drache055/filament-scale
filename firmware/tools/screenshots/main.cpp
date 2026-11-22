@@ -325,7 +325,7 @@ int main(int argc, char **argv) {
   setWeight(1254);
   advance(400);
   shot("ablauf_6_bestaetigen");
-  clickRowButton(2, 0);
+  clickRowButton(3, 0);  // Speichern (Kinder: Titel, Karte, Archiv-Zeile, Button-Zeile, QR-Button)
   advance(400);
   shot("ablauf_7_speichern");
   mock.write.seq = 1;
@@ -474,6 +474,33 @@ int main(int argc, char **argv) {
   advance(100);
   shot("qr_spule");
   uiShowHome();
+
+  // --- Trocknungs-Erinnerung (7.8), hinten angehängt; "heute" = 22.11.2026, Voreinstellung PLA 90 Tage x Box-Faktor 3 ---
+  mock.today = dryingDayNumber(2026, 11, 22);
+  mock.userLoggedIn = false;
+  mock.adminLoggedIn = true;
+  setWeight(0);
+  setSpoolTag();
+  strlcpy(mock.lookup.spool.lastDried, "2025-12-01", sizeof(mock.lookup.spool.lastDried));
+  screenNfcOpen();
+  shot("trocknung_nfc_faellig");
+  setSpoolTag();
+  strlcpy(mock.lookup.spool.lastDried, "2026-11-01", sizeof(mock.lookup.spool.lastDried));
+  screenNfcOpen();
+  shot("trocknung_nfc_ok");
+  setSpoolTag();
+  screenNfcOpen();
+  shot("trocknung_nfc_nie_getrocknet");
+  mock.adminLoggedIn = false;
+  mock.userLoggedIn = true;
+  uiShowHome();
+  setBoxTag(false);
+  strlcpy(sp.lastDried, "2025-12-01", sizeof(sp.lastDried));
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
+  advance(400);
+  shot("trocknung_ablauf_faellig");
+  uiShowHome();
+  mock.today = -1;
 
   return 0;
 }

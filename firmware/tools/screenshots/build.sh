@@ -28,7 +28,7 @@ fi
 
 clang++ -std=gnu++17 -O1 -w -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -DDATA_DIR=\"$PWD/$ROOT/data\" \
   -Istubs -I. -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$LVGL -I$JSON \
-  main.cpp stubs.cpp $ROOT/src/i18n/i18n.cpp $ROOT/src/ui/theme.cpp $ROOT/src/nfc/tags.cpp $ROOT/src/nfc/ndef.cpp $ROOT/src/core/weigh_core.cpp $ROOT/src/core/simple_core.cpp $ROOT/src/core/spool_url.cpp \
+  main.cpp stubs.cpp $ROOT/src/i18n/i18n.cpp $ROOT/src/ui/theme.cpp $ROOT/src/nfc/tags.cpp $ROOT/src/nfc/ndef.cpp $ROOT/src/core/weigh_core.cpp $ROOT/src/core/simple_core.cpp $ROOT/src/core/spool_url.cpp $ROOT/src/core/drying_core.cpp \
   "$LVOBJ" -o "$BUILD/shots"
 
 rm -rf "$BUILD/ppm" && mkdir -p "$BUILD/ppm"

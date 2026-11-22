@@ -1,5 +1,6 @@
 #pragma once
 #include "app/session.h"
+#include "core/drying_core.h"
 #include "net/spoolman.h"
 #include "nfc/nfc.h"
 #include "scale/scale.h"
@@ -27,5 +28,7 @@ struct MockState {
   Lang lang = Lang::DE;
   uint32_t langGen = 0;
   uint32_t now = 100000;
+  long today = -1;  // Tageszahl für die Trocknungs-Erinnerung, -1 = Uhr nicht gestellt
+  DryingConfig dryingCfg = dryingDefaults();
 };
 extern MockState mock;
