@@ -211,7 +211,12 @@ bool fwAllowedUrl(const char *url) {
   return endsWith(h, dom) && strlen(h) > strlen(dom);
 }
 
-bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+namespace {
+
+// Gemeinsame Auswertung für Puffer und Stream. Das Filter-Dokument hält nur die benötigten Felder, ArduinoJson liest
+// Eingabe (Puffer, Stream) direkt, es entsteht keine Kopie der ganzen Antwort.
+template <typename ReadFn>
+bool parseReleases(ReadFn read, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
   out = FwRelease();
   found = false;
   JsonDocument filter;
@@ -225,7 +230,7 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
   f["assets"][0]["size"] = true;
   f["assets"][0]["browser_download_url"] = true;
   JsonDocument doc;
-  if (deserializeJson(doc, json, len, DeserializationOption::Filter(filter)) || !doc.is<JsonArrayConst>()) {
+  if (read(doc, DeserializationOption::Filter(filter)) || !doc.is<JsonArrayConst>()) {
     error = "Antwort von GitHub ist kein gültiges JSON";
     return false;
   }
@@ -286,3 +291,22 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
   out.notes[n] = 0;
   return true;
 }
+
+}  // namespace
+
+bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+  auto read = [&](JsonDocument &doc, auto filter) { return deserializeJson(doc, json, len, filter); };
+  return parseReleases(read, channel, out, found, error);
+}
+
+#ifdef ARDUINO
+bool fwParseReleases(Stream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+  auto read = [&](JsonDocument &doc, auto filter) { return deserializeJson(doc, stream, filter); };
+  return parseReleases(read, channel, out, found, error);
+}
+#else
+bool fwParseReleases(std::istream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error) {
+  auto read = [&](JsonDocument &doc, auto filter) { return deserializeJson(doc, stream, filter); };
+  return parseReleases(read, channel, out, found, error);
+}
+#endif

@@ -1,6 +1,7 @@
 #include <unity.h>
 
 #include <cstring>
+#include <sstream>
 #include <string>
 
 #include "core/update_core.h"
@@ -168,6 +169,19 @@ void test_pick_per_channel() {
   TEST_ASSERT_EQUAL_STRING("beta", r.notes);
 }
 
+void test_pick_from_stream() {
+  FwRelease r;
+  bool found = false;
+  const char *err = nullptr;
+  std::istringstream in(RELEASES);
+  TEST_ASSERT_TRUE(fwParseReleases(in, FwChannel::Stable, r, found, err));
+  TEST_ASSERT_TRUE(found);
+  TEST_ASSERT_EQUAL_STRING("v1.2", r.tag);
+  TEST_ASSERT_EQUAL_UINT32(1900000, r.otaSize);
+  std::istringstream bad("{not json");
+  TEST_ASSERT_FALSE(fwParseReleases(bad, FwChannel::Stable, r, found, err));
+}
+
 void test_parse_releases_edge_cases() {
   FwRelease r;
   bool found = true;
@@ -215,6 +229,7 @@ int main() {
   RUN_TEST(test_update_available);
   RUN_TEST(test_allowed_url);
   RUN_TEST(test_pick_per_channel);
+  RUN_TEST(test_pick_from_stream);
   RUN_TEST(test_parse_releases_edge_cases);
   RUN_TEST(test_notes_cut_at_utf8_boundary);
   return UNITY_END();
