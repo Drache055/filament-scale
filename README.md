@@ -68,6 +68,8 @@ pio run -e waage -t uploadfs                     # theme data
 
 After that, updates go over Wi-Fi. Without Wi-Fi credentials the scale opens the hotspot `Filamentwaage-Setup`.
 
+**Updating:** you only flash once. After that the admin opens the web UI, goes to **System → Firmware update**, checks GitHub for new releases and installs one with **Update now**. The scale never updates on its own. Channels: **stable** (`v1.2`), **release candidate** (`v1.3-rc1`) and **test** (`v1.3-beta1`). Settings, users and calibration are kept; if an update fails, the current firmware keeps running.
+
 Unit tests run on the host without hardware: `cd firmware && pio test -e native`
 
 Default login: admin password `Filament`, device PIN `1234`. Change both after the first start.
