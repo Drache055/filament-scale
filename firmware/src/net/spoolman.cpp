@@ -9,6 +9,7 @@
 #include <freertos/semphr.h>
 
 #include "config.h"
+#include "core/uid_check.h"
 #include "secrets.h"
 #include "storage/catalog.h"
 #include "storage/devmode.h"
@@ -200,6 +201,11 @@ void doLookup(const Job &job) {
       errorText(r, res.error, sizeof(res.error));
       done = true;
     }
+  }
+  if (!done && job.uid[0] && !isValidTagUid(job.uid)) {
+    res.state = SpoolmanState::Error;
+    strlcpy(res.error, "Ungültige UID", sizeof(res.error));
+    done = true;
   }
   if (!done && job.uid[0]) {
     r = request("GET", String("/api/v1/spool?allow_archived=true&limit=1&tag=") + job.uid);
@@ -638,6 +644,12 @@ void doCatalogSync() {
 void doLinkTag(const Job &job) {
   SpoolmanResult res;
   strlcpy(res.uid, job.uid, sizeof(res.uid));
+  if (!isValidTagUid(job.uid)) {
+    res.state = SpoolmanState::Error;
+    strlcpy(res.error, "Ungültige UID", sizeof(res.error));
+    publish(writeResult, res);
+    return;
+  }
   String body = String("{\"uid\":\"") + job.uid + "\",\"format\":\"ntag\"}";
   Http r = request("POST", String("/api/v1/spool/") + job.id + "/tag", body);
   res.httpStatus = r.code;

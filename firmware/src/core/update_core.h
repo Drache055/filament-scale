@@ -1,6 +1,11 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#ifdef ARDUINO
+#include <Stream.h>
+#else
+#include <istream>
+#endif
 
 // Online-Update (CLAUDE.md 12.6): Versionsvergleich und Auswertung der GitHub-Release. Reine Logik ohne Hardwarezugriff.
 
@@ -60,6 +65,14 @@ struct FwRelease {
 // die der Kanal erlaubt. Entwürfe, Tags ohne Versionsnummer und Releases ohne OTA-Asset werden übersprungen.
 // true und found=false: keine passende Release. false: JSON kaputt (error gesetzt).
 bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+
+// Wie oben, liest die Antwort aber direkt aus dem Stream (HTTP-Body) mit ArduinoJson-Filter. Die ganze Antwort
+// (bei 15 Releases weit über 100 KB) liegt nie im RAM, nur die gefilterten Felder.
+#ifdef ARDUINO
+bool fwParseReleases(Stream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+#else
+bool fwParseReleases(std::istream &stream, FwChannel channel, FwRelease &out, bool &found, const char *&error);
+#endif
 
 // Ist url ein erlaubter Download-Link (https, github.com bzw. *.githubusercontent.com)?
 bool fwAllowedUrl(const char *url);
