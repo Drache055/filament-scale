@@ -1,6 +1,6 @@
 {
   "name": "Filament Scale",
-  "version": "v0.2",
+  "version": "v0.2.1",
   "new_install_prompt_erase": true,
   "builds": [
     {

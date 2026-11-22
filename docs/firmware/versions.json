@@ -1,5 +1,10 @@
 [
   {
+    "tag": "v0.2.1",
+    "date": "2026-11-22",
+    "channel": "stable"
+  },
+  {
     "tag": "v0.2",
     "date": "2026-11-22",
     "channel": "stable"
