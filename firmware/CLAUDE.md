@@ -406,6 +406,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - **Rechte per HTTP** (curl gegen das Gerät): Login der drei Rollen, Rechte-Matrix (Benutzer/Generic bekommen für Log, Benutzerliste, WLAN, Spoolman, Theme, Admin, Neustart 403), Tara-Recht, eigene Sprache und PIN, Beenden der Sitzungen, Sperre aus/an, Fehlversuch-Sperre.
 - **Hotspot** über die Webseite ein/aus, Captive-DNS und Weiterleitung.
 - **Display-VCOMS** per Sichtprüfung.
+- **HX711:** verdrahtet und kalibriert (laut Fabian, 22.11.2026, mit einem früheren Firmware-Stand). Keine ungültigen Lesungen mehr.
 
 ### 14.2 Am Gerät nicht geprüft
 - **Wiegeablauf** mit echter Waage, Box-Tag und Spoolman, inklusive „Neue Box anlegen“. Die Firmware baut, die Logik ist nativ getestet, die Screens sind aus dem echten UI-Code gerendert.
@@ -414,6 +415,5 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
 
 ### 14.3 Offen
-- HX711: Verdrahtung prüfen (Rohwerte, Richtung der Zelle), danach kalibrieren. TODO: Stand bei Fabian erfragen.
 - Leseweite des PN532 durch Wiegeplatte und Boxboden praktisch testen.
 - Längenanzeige in m (5.2).
