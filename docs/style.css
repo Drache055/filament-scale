@@ -1,30 +1,37 @@
 /* Filament Scale – Projektseite
-   Layout: linksbündige Doku-Seite, eine Textspalte (~68ch), Bilder und Tabellen dürfen breiter sein.
-   Farben: helles Werkstatt-Grau, Akzent = Blau des Geräte-Themes (data/theme.json). */
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap");
+   Designsprache angelehnt an moderne dunkle Produktseiten: fast schwarzer Grund, riesige eng gesetzte Headlines,
+   Pill-Buttons, großzügige Abstände, weiche Farbverläufe, Einblend-Animationen.
+   Akzent = Blau des Geräte-Themes (data/theme.json). */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root{
-  --bg:#f3f4f2;
-  --surface:#ffffff;
-  --ink:#1a1d21;
-  --muted:#5a6068;
-  --line:#d6d9d6;
-  --accent:#2563d9;
-  --accent-ink:#ffffff;
-  --warn:#b45309;
-  --screen:#10131a;
-  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --text:68ch;
-  --wide:1120px;
-  --r:6px;
+  --bg:#0d100f;
+  --surface:rgba(255,255,255,.04);
+  --surface-solid:#161a19;
+  --ink:#f6f6f6;
+  --muted:rgba(246,246,246,.62);
+  --line:rgba(255,255,255,.12);
+  --accent:#7aa7ff;
+  --accent-ink:#0b1220;
+  --pill:rgba(255,255,255,.08);
+  --warn:#f0a43c;
+  --screen:#05070b;
+  --glow1:rgba(80,120,255,.28);
+  --glow2:rgba(190,110,255,.18);
+  --f-display:"Inter","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --text:64ch;
+  --wide:1160px;
+  --r:14px;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){
+@media (prefers-color-scheme:light){
   :root{
-    --bg:#14171b;--surface:#1b1f24;--ink:#e7e9ec;--muted:#9aa1aa;--line:#2c3239;
-    --accent:#6c9ff5;--accent-ink:#0e1420;--warn:#f0a43c;
-    color-scheme:dark;
+    --bg:#f6f5f0;--surface:#ffffff;--surface-solid:#ffffff;--ink:#0d100f;--muted:rgba(13,16,15,.62);--line:rgba(13,16,15,.12);
+    --accent:#2457d6;--accent-ink:#ffffff;--pill:rgba(13,16,15,.06);--warn:#b45309;--screen:#10131a;
+    --glow1:rgba(80,120,255,.22);--glow2:rgba(190,110,255,.14);
+    color-scheme:light;
   }
 }
 
@@ -183,3 +190,86 @@ html[lang=de] [data-l=de],html[lang=en] [data-l=en]{display:revert}
 .wiring{margin:16px 0 20px}
 .wiring img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r)}
 .wiring figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+
+/* ===== Designsprache: dunkle Produktseite ===== */
+body{font:16px/1.6 var(--f-body);letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);font-stretch:100%;font-weight:500;line-height:1.05}
+h1{font-size:clamp(40px,8vw,96px);letter-spacing:-.03em;margin:0 0 24px}
+h2{font-size:clamp(30px,4.6vw,52px);letter-spacing:-.025em;margin:0 0 18px}
+h3{font-size:18px;font-weight:500;letter-spacing:-.01em;line-height:1.3}
+.label{display:inline-block;font:500 12px var(--f-mono);letter-spacing:.1em;padding:5px 12px;border-radius:999px;background:var(--pill);color:var(--muted);margin:0 0 20px}
+a{text-underline-offset:.2em}
+section{padding-block:clamp(56px,9vw,112px)}
+
+/* Navigation: Pill-Leiste, durchscheinend */
+nav{position:sticky;top:0;z-index:20;border-bottom:0;background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px)}
+nav .wrap{min-height:64px;gap:8px}
+nav b{font:600 16px var(--f-display);letter-spacing:-.01em;margin-right:14px}
+nav a{font-size:14px;padding:6px 12px;border-radius:999px;transition:background .2s,color .2s}
+nav b a{padding:0}
+nav a:hover{background:var(--pill)}
+nav a[aria-current]{background:var(--pill)}
+nav .links{gap:2px}
+nav a.gh{background:var(--pill);color:var(--ink);padding:7px 16px}
+nav a.gh:hover{background:var(--line)}
+.lang{border:0;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:7px 14px;font:500 12px var(--f-mono);transition:filter .2s}
+.lang:hover{filter:brightness(1.1)}
+
+/* Buttons: Pills */
+.btn{padding:12px 22px;border-radius:999px;font-weight:500;font-size:15px;border:0;transition:transform .2s,filter .2s,background .2s}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn.ghost{background:var(--pill);color:var(--ink);border:0}
+.btn.ghost:hover{background:var(--line);filter:none}
+.btn.big{padding:15px 28px;font-size:16px}
+
+/* Karten, Tabellen, Code */
+.card,.flashbox,table,pre,.formula,.note,.flow span.s,.page code,.wiring img,.faq details{background:var(--surface)}
+.card,.flashbox{border-radius:20px}
+.flashbox{padding:28px}
+table{border-radius:var(--r);overflow:hidden;border-collapse:separate;border-spacing:0}
+tr:last-child td,tr:last-child th{border-bottom:0}
+.note{border-radius:var(--r)}
+.two img,.hero-img img,.wiring img,.demo-video{border-radius:20px}
+.page h2{border-top:0;padding-top:0;margin-top:72px}
+
+/* Startseite: Hero */
+.hero{position:relative;padding-block:clamp(72px,12vw,150px) clamp(36px,5vw,64px);text-align:left}
+body{position:relative}
+body::before{content:"";position:absolute;top:0;left:0;right:0;height:760px;z-index:-1;pointer-events:none;
+  background:radial-gradient(60% 55% at 70% 20%,var(--glow1),transparent 70%),radial-gradient(45% 45% at 20% 45%,var(--glow2),transparent 70%)}
+.hero-text{max-width:900px}
+.hero .lead{font-size:clamp(17px,2vw,21px);max-width:60ch;margin-bottom:34px}
+.status{border-top:1px solid var(--line);padding-top:18px;max-width:60ch}
+.hero-img{position:relative;padding:10px;border-radius:28px;background:linear-gradient(135deg,var(--glow1),var(--glow2) 60%,transparent);}
+.hero-img img{border-radius:20px}
+
+/* Ablauf: Karten in Reihe */
+.steps{gap:16px;margin-top:44px}
+.steps li{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;transition:transform .3s,border-color .3s}
+.steps li:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.steps .screen{max-width:none;order:-1}
+.steps .n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:500}
+
+/* Rechnung, Funktionen, FAQ */
+.calc{gap:56px;align-items:center}
+.calc table{font-size:15px}
+.features{gap:0 56px;margin-top:40px}
+.features div{padding:24px 0}
+.features dt{font-size:18px;font-weight:500;margin-bottom:6px}
+.faq summary{padding:20px 0;font-weight:500;font-size:17px}
+.faq details{background:none;border-radius:0}
+.faq summary::after{font-size:22px}
+.demo-video{margin-top:32px;border:1px solid var(--line)}
+footer{border-top:1px solid var(--line);padding-block:40px;margin-top:40px}
+.page{padding-block:clamp(48px,8vw,96px) 24px}
+.page > h1{margin-bottom:20px}
+
+/* Einblenden beim Scrollen (nur mit JS; ohne bleibt alles sichtbar) */
+.js .rv{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);transition-delay:var(--d,0s)}
+.js .rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}.steps li,.btn{transition:none}}
+.page .toc{padding-left:0;margin-top:26px}
+.page table + .note,.page .table-scroll + .note,.page .note{margin-top:18px}
+.page .note + .note{margin-top:12px}
+html,body{overflow-x:clip}
+@media (max-width:480px){.steps .screen{max-width:200px}}
