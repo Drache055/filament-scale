@@ -28,6 +28,7 @@ The box weight never has to be known. Example from the device screens:
 - Uses the native NFC tags of Spoolman 0.27; unknown spools are linked by picking them from the Spoolman list
 - Offline queue: up to 100 updates are kept in flash and sent when Spoolman is reachable again
 - Users sign in with their own tag and are recorded as spool owner; settings are admin only
+- Simple scale mode (set by the admin): "Weigh filament" for a spool alone or box + spool, no sign-in, no NFC, no Spoolman; users can also get a "weigh only" role
 - Web interface for calibration, users, filament catalog, Spoolman, Wi-Fi, log and system settings
 - Wi-Fi setup through a hotspot with captive portal, firmware updates over Wi-Fi (OTA)
 - German and English, language per user

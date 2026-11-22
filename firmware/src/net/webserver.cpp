@@ -20,6 +20,7 @@
 #include "net/websession.h"
 #include "storage/admin.h"
 #include "storage/catalog.h"
+#include "storage/devmode.h"
 #include "storage/devicepw.h"
 #include "storage/users.h"
 #include "web_page.h"
@@ -190,6 +191,7 @@ static void handleStatus() {
   doc["role"] = w.role == WebRole::Admin ? "admin" : w.role == WebRole::User ? "user" : "generic";
   doc["tare"] = mayTare(w);
   doc["catalog"] = mayEditCatalog(w);
+  doc["simple"] = devModeSimple();  // Betriebsart "Einfache Waage"
   // Sprache der Seite: eigene Sprache des Benutzers, sonst die Gerätesprache
   Lang lang = i18nDefault();
   User me;
@@ -916,6 +918,34 @@ static void handleSpoolmanCheck() {
 }
 
 // ---- Sprache des Geräts ----
+// Betriebsart: {"simple": true} = Einfache Waage, false = Smarte Waage. Nur der Admin.
+static void handleModeSet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server.arg("plain")) || !doc["simple"].is<bool>()) {
+    server.send(400, "text/plain", "simple (true/false) fehlt");
+    return;
+  }
+  devModeSetSimple(doc["simple"].as<bool>());
+  server.send(200, "text/plain", "ok");
+}
+
+// Rolle "Nur wiegen" eines Benutzers (allow = 1 oder 0)
+static void handleUsersWeighOnly() {
+  if (!requireAdmin()) {
+    return;
+  }
+  uint16_t id = (uint16_t)server.arg("id").toInt();
+  if (!usersSetWeighOnly(id, server.arg("allow") == "1")) {
+    server.send(404, "text/plain", "Benutzer nicht gefunden");
+    return;
+  }
+  sessionUserChanged(id);
+  server.send(200, "application/json", usersJson());
+}
+
 static void handleLanguageSet() {
   if (!requireAdmin()) {
     return;
@@ -1108,6 +1138,8 @@ static void webStart() {
   server.on("/api/spoolman/update", HTTP_POST, handleSpoolmanUpdate);
   server.on("/api/spoolman/link", HTTP_POST, handleSpoolmanLink);
   server.on("/api/language", HTTP_POST, handleLanguageSet);
+  server.on("/api/mode", HTTP_POST, handleModeSet);
+  server.on("/api/users/weigh", HTTP_POST, handleUsersWeighOnly);
   server.on("/api/wifi", HTTP_GET, handleWifiGet);
   server.on("/api/wifi", HTTP_POST, handleWifiSave);
   server.on("/api/wifi/scan", HTTP_GET, handleWifiScan);

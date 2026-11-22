@@ -43,3 +43,9 @@ void screenAssignSpoolOpen();  // nimmt den aktuell aufliegenden Tag (UID + Inha
 bool weighFlowActive();
 void weighFlowStart(const SpoolInfo &spool, const char *spoolUid, const char *owner);  // owner leer = nicht ändern
 void weighFlowAbort();  // bricht einen laufenden Ablauf ohne Navigation ab (Screen wird von außen verlassen)
+
+// Einfache Waage (Betriebsart "Einfache Waage" oder Benutzer mit "Nur wiegen"): Auswahl Nur Spule / Box + Spule,
+// danach Live-Anzeige des Filamentgewichts. Nur im ui-Task.
+void screenSimpleWeighOpen();
+bool simpleFlowActive();
+void simpleFlowAbort();  // wie weighFlowAbort

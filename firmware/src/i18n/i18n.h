@@ -127,6 +127,18 @@ enum class Str : uint8_t {
   WfSaveFailed,
   WfNewBox,
   WfNewBoxHint,
+  SwWeigh,
+  SwChoose,
+  SwSpoolOnly,
+  SwBoxSpool,
+  SwPlaceBox,
+  SwBoxHint,
+  SwTareBox,
+  SwPlaceSpool,
+  SwGross,
+  SwGrossBox,
+  SwSpoolInBox,
+  SwReady,
   Count
 };
 

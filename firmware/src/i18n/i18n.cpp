@@ -129,6 +129,18 @@ const char *const texts[(int)Str::Count][2] = {
     /* WfSaveFailed */ {"Speichern fehlgeschlagen", "Saving failed"},
     /* WfNewBox */ {"Neue Box anlegen", "Set up new box"},
     /* WfNewBoxHint */ {"Der Tag der Box ist leer oder unbekannt.", "The box tag is empty or unknown."},
+    /* SwWeigh */ {"Filament wiegen", "Weigh filament"},
+    /* SwChoose */ {"Was kommt auf die Waage?", "What goes on the scale?"},
+    /* SwSpoolOnly */ {"Nur Spule", "Spool only"},
+    /* SwBoxSpool */ {"Box + Spule", "Box + spool"},
+    /* SwPlaceBox */ {"Box auflegen", "Place the box"},
+    /* SwBoxHint */ {"Wenn das Gewicht stabil ist: Box tarieren", "When the weight is stable: tare the box"},
+    /* SwTareBox */ {"Box tarieren", "Tare box"},
+    /* SwPlaceSpool */ {"Spule auflegen", "Place the spool"},
+    /* SwGross */ {"Spule gesamt: %d g", "Spool total: %d g"},
+    /* SwGrossBox */ {"Spule %d g • Box %d g", "Spool %d g • box %d g"},
+    /* SwSpoolInBox */ {"Spule in die Box", "Spool into the box"},
+    /* SwReady */ {"Einfache Waage", "Simple scale"},
 };
 
 Lang current = Lang::DE;

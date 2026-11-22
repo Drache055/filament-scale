@@ -9,6 +9,7 @@
 #include "../../src/ui/ui.cpp"
 #include "../../src/ui/screens_menu.cpp"
 #include "../../src/ui/screen_weigh.cpp"
+#include "../../src/ui/screen_simple.cpp"
 
 static uint16_t frame[240 * 320];
 static const char *outDir = ".";
@@ -67,6 +68,12 @@ static void advance(uint32_t ms) {
 static void clickRowButton(int rowIndex, int btnIndex) {
   lv_obj_t *row = lv_obj_get_child(lv_screen_active(), rowIndex);
   lv_obj_send_event(lv_obj_get_child(row, btnIndex), LV_EVENT_CLICKED, nullptr);
+}
+
+// Button im Card-Bereich (Auswahl "Filament wiegen": Kind 1 und 2 der Card)
+static void clickCardButton(int childIndex) {
+  lv_obj_t *card = lv_obj_get_child(lv_screen_active(), 1);
+  lv_obj_send_event(lv_obj_get_child(card, childIndex), LV_EVENT_CLICKED, nullptr);
 }
 
 static void setBoxTag(bool present) {
@@ -398,6 +405,54 @@ int main(int argc, char **argv) {
   advance(400);
   advance(400);
   shot("neue_box_3_spule_einstellen");
+  uiShowHome();
+
+  // --- Einfache Waage (hinten angehängt, Nummern der älteren Bilder bleiben) ---
+  mock.simpleMode = true;
+  mock.userLoggedIn = false;
+  mock.adminLoggedIn = false;
+  setBoxTag(false);
+  setWeight(0);
+  uiShowHome();
+  shot("einfach_1_home");
+  screenSimpleWeighOpen();
+  shot("einfach_2_auswahl");
+  clickCardButton(1);  // Nur Spule
+  setWeight(1092);
+  advance(400);
+  shot("einfach_3_nur_spule_1092g");
+  setWeight(0);
+  advance(400);  // Spule abgenommen: zurück zu Home
+  screenSimpleWeighOpen();
+  clickCardButton(2);  // Box + Spule
+  setWeight(412, false);
+  advance(400);
+  shot("einfach_4_box_auflegen");
+  setWeight(412);
+  advance(400);
+  shot("einfach_5_box_stabil");
+  clickRowButton(2, 0);  // Box tarieren
+  advance(400);
+  setWeight(1254);
+  advance(400);
+  shot("einfach_6_box_und_spule_1254g");
+  clickRowButton(3, 0);  // Fertig
+  advance(400);
+  setWeight(300);
+  screenSimpleWeighOpen();
+  clickCardButton(1);
+  advance(400);
+  shot("einfach_7_waage_leeren");
+  uiShowHome();
+  setWeight(0);
+
+  // Smarte Waage, angemeldeter Benutzer mit "Nur wiegen"
+  mock.simpleMode = false;
+  mock.userLoggedIn = true;
+  mock.weighOnly = true;
+  uiShowHome();
+  shot("home_nur_wiegen");
+  mock.weighOnly = false;
   uiShowHome();
 
   return 0;

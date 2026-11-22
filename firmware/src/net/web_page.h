@@ -250,6 +250,12 @@ h3{font-size:15px;margin:18px 0 8px}
 <!-- System -->
 <section class="page" id="p-system">
   <div class="card">
+    <div class="label" data-i18n="mode">Betriebsart</div>
+    <label class="row"><input type="radio" name="devmode" id="msmart"><span data-i18n="mode_smart">Smarte Waage</span></label>
+    <label class="row"><input type="radio" name="devmode" id="msimple"><span data-i18n="mode_simple">Einfache Waage</span></label>
+    <p class="hint" style="margin:10px 0 0" data-i18n="mode_hint"></p>
+  </div>
+  <div class="card">
     <div class="label" data-i18n="language">Sprache</div>
     <div class="row"><select id="lang"><option value="de">Deutsch</option><option value="en">English</option></select></div>
     <p class="hint" style="margin:10px 0 0" data-i18n="lang_hint"></p>
@@ -304,6 +310,7 @@ ap_hint:'Sind keine WLAN-Daten gespeichert oder kann sich das Gerät eine Minute
 change_wifi:'WLAN ändern',wifi_hint:'Das Gerät speichert die Zugangsdaten und startet neu. Falsche Daten sind unproblematisch: Nach einer Minute ohne Verbindung öffnet das Gerät wieder den Hotspot.',scan:'Netzwerke suchen',scanning:'Suche ...',ssid:'Netzwerkname (SSID)',password:'Passwort',save_restart:'Speichern & neu starten',wifi_reset:'WLAN-Daten löschen',
 wifi_saved:'Gespeichert, Gerät startet neu und verbindet sich ...',confirm_wifi_reset:'Gespeicherte WLAN-Daten löschen? Das Gerät startet neu und öffnet den Hotspot, bis ein WLAN eingerichtet ist.',no_networks:'Keine Netzwerke gefunden',ssid_missing:'Bitte einen Netzwerknamen eingeben',
 pause:'Pause',resume:'Weiter',clear_view:'Anzeige leeren',download:'Herunterladen',
+mode:'Betriebsart',mode_smart:'Smarte Waage (NFC, Anmeldung, Spoolman)',mode_simple:'Einfache Waage (nur wiegen, ohne Anmeldung und Spoolman)',mode_hint:'Einfache Waage: Am Gerät gibt es nur "Filament wiegen" (Spule allein oder Box + Spule). Benutzer-Tags melden nicht an, Spulen werden nicht in Spoolman nachgeschlagen, Spoolman wird nicht abgefragt. Jeder darf tarieren. Einstellungen bleiben beim Admin.',mode_set:'Betriebsart gespeichert',sm_off:'aus (einfache Waage)',weigh_only:'Nur wiegen',weigh_only_right:'Sieht am Gerät nur "Filament wiegen", ohne Spoolman',
 language:'Sprache',lang_hint:'Gilt für die Anzeige am Gerät (es springt dabei zum Startbildschirm) und für diese Webseite.',lang_set:'Sprache auf Deutsch gestellt',
 screensaver:'Bildschirmschoner',ss_hint:'Nach der eingestellten Zeit ohne Berührung, Tag oder Gewichtsänderung wird die Anzeige gedimmt, später ausgeschaltet. 0 = nie. Der erste Tipp weckt nur auf.',dim_after:'Dimmen nach',off_after:'Aus nach',ss_saved:'Bildschirmschoner gespeichert',
 theme_hint:'Farben, Radius, Abstände und Schriftgrößen der Anzeige am Gerät. Nach dem Speichern startet das Gerät neu.',reload:'Neu laden',maintenance:'Wartung',fw_slot:'Firmware-Slot',reboot:'Gerät neu starten',touch_reset:'Touch-Kalibrierung zurücksetzen',
@@ -331,6 +338,7 @@ ap_hint:'If no WiFi credentials are saved, or the device cannot connect for a mi
 change_wifi:'Change WiFi',wifi_hint:'The device stores the credentials and restarts. Wrong credentials are not a problem: after a minute without a connection the device opens the hotspot again.',scan:'Scan networks',scanning:'Scanning ...',ssid:'Network name (SSID)',password:'Password',save_restart:'Save & restart',wifi_reset:'Delete WiFi credentials',
 wifi_saved:'Saved, device restarts and connects ...',confirm_wifi_reset:'Delete saved WiFi credentials? The device restarts and opens the hotspot until a WiFi is set up.',no_networks:'No networks found',ssid_missing:'Please enter a network name',
 pause:'Pause',resume:'Resume',clear_view:'Clear view',download:'Download',
+mode:'Operating mode',mode_smart:'Smart scale (NFC, login, Spoolman)',mode_simple:'Simple scale (weigh only, no login, no Spoolman)',mode_hint:'Simple scale: the device only offers "Weigh filament" (spool alone or box + spool). User tags do not log in, spools are not looked up in Spoolman and Spoolman is not contacted. Everyone may tare. Settings stay with the admin.',mode_set:'Operating mode saved',sm_off:'off (simple scale)',weigh_only:'Weigh only',weigh_only_right:'Only sees "Weigh filament" on the device, no Spoolman',
 language:'Language',lang_hint:'Applies to the display on the device (it jumps to the home screen) and to this web page.',lang_set:'Language set to English',
 screensaver:'Screensaver',ss_hint:'After the set time without touch, tag or weight change the display is dimmed, later switched off. 0 = never. The first tap only wakes it up.',dim_after:'Dim after',off_after:'Off after',ss_saved:'Screensaver saved',
 theme_hint:'Colors, radius, spacing and font sizes of the display on the device. The device restarts after saving.',reload:'Reload',maintenance:'Maintenance',fw_slot:'Firmware slot',reboot:'Restart device',touch_reset:'Reset touch calibration',
@@ -391,6 +399,8 @@ function render(d){
   else{cs.textContent=t('not_calibrated');cs.className='val warn'}
   $('wifishort').textContent=d.wifi?t('wifi_connected')+(d.ssid?' ('+d.ssid+')':''):t('wifi_disconnected');$('wifishort').className='val '+(d.wifi?'ok':'err');
   $('tare').style.display=d.tare?'':'none';$('tare2').style.display=d.tare?'':'none';
+  SIMPLE=!!d.simple;$('msimple').checked=SIMPLE;$('msmart').checked=!SIMPLE;
+  if(SIMPLE){$('smshort').textContent=t('sm_off');$('smshort').className='val'}
   if(d.ip!==undefined){
     $('ssid').textContent=d.ssid;$('ip').textContent=d.ip;$('rssi').textContent=d.rssi+' dBm';
     $('up').textContent=dur(d.uptime_s);
@@ -415,7 +425,7 @@ $('tare').onclick=$('tare2').onclick=async()=>{try{await post('/api/tare','');sa
 $('cal').onclick=async()=>{try{await post('/api/calibrate?grams='+encodeURIComponent($('ref').value),'');say(t('cal_done'),'ok')}catch(e){say(t('cal_fail',e.message),'err')}};
 
 /* ---- Spoolman ---- */
-let smUrlFilled=false;
+let smUrlFilled=false,SIMPLE=false;
 function lookupText(l){
   if(l.state==='found'){const s=l.spool;return '#'+s.id+' '+[s.vendor,s.material].filter(Boolean).join(' ')+(s.remaining>=0?', '+Math.round(s.remaining)+' g':'')+(s.location?', '+s.location:'')+(s.owner?', '+t('owner')+' '+s.owner:'')}
   if(l.state==='not_found')return t('scan_unknown',l.uid);
@@ -427,7 +437,8 @@ async function pollSpoolman(){
   try{const d=await(await api('/api/spoolman')).json();
     if(!smUrlFilled){$('smurl').value=d.url;smUrlFilled=true}
     const st=$('smstate'),sh=$('smshort'),q=d.queue.count;
-    if(!d.checked){st.textContent=t('checking');st.className='';sh.textContent='...';sh.className='val'}
+    if(SIMPLE){st.textContent=t('sm_off');st.className='';sh.textContent=t('sm_off');sh.className='val'}
+    else if(!d.checked){st.textContent=t('checking');st.className='';sh.textContent='...';sh.className='val'}
     else if(d.reachable){st.textContent=t('reachable',d.version);st.className='ok';sh.textContent=t('version',d.version)+(q?' · '+t('pending',q):'');sh.className='val ok'}
     else{st.textContent=t('unreachable');st.className='err';sh.textContent=t('unreach_short')+(q?' · '+t('pending',q):'');sh.className='val err'}
     const lt=lookupText(d.lookup);$('lastscan1').textContent=lt;$('lastscan2').textContent=lt;
@@ -446,13 +457,16 @@ function renderUsers(){
   if(!users.length){box.innerHTML='<div style="color:var(--dim)"></div>';box.firstChild.textContent=t('no_users');return}
   users.forEach(u=>{
     const r=document.createElement('div');r.className='item';
-    r.innerHTML='<span class="name"></span><label class="tarebox"><input type="checkbox"><span></span></label><label class="tarebox catbox"><input type="checkbox"><span></span></label><select></select><button class="sec pin"></button><button></button><button class="sec">&times;</button>';
+    r.innerHTML='<span class="name"></span><label class="tarebox"><input type="checkbox"><span></span></label><label class="tarebox catbox"><input type="checkbox"><span></span></label><label class="tarebox wobox"><input type="checkbox"><span></span></label><select></select><button class="sec pin"></button><button></button><button class="sec">&times;</button>';
     const tb=r.querySelector('.tarebox');tb.title=t('tare_right');tb.querySelector('span').textContent=t('tare');
     const cb=tb.querySelector('input');cb.checked=!!u.tare;
     cb.onchange=async()=>{try{users=await(await post('/api/users/tare?id='+u.id+'&allow='+(cb.checked?1:0),'')).json();renderUsers()}catch(e){say(t('err',e.message),'err');renderUsers()}};
     const cbx=r.querySelector('.catbox');cbx.title=t('cat_right');cbx.querySelector('span').textContent=t('filament');
     const cc=cbx.querySelector('input');cc.checked=!!u.catalog;
     cc.onchange=async()=>{try{users=await(await post('/api/users/catalog?id='+u.id+'&allow='+(cc.checked?1:0),'')).json();renderUsers()}catch(e){say(t('err',e.message),'err');renderUsers()}};
+    const wbx=r.querySelector('.wobox');wbx.title=t('weigh_only_right');wbx.querySelector('span').textContent=t('weigh_only');
+    const wc=wbx.querySelector('input');wc.checked=!!u.weigh_only;
+    wc.onchange=async()=>{try{users=await(await post('/api/users/weigh?id='+u.id+'&allow='+(wc.checked?1:0),'')).json();renderUsers()}catch(e){say(t('err',e.message),'err');renderUsers()}};
     r.querySelector('.name').textContent=u.name;
     const sel=r.querySelector('select');
     [['',t('lang_device')],['de','Deutsch'],['en','English']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;sel.appendChild(o)});
@@ -601,6 +615,8 @@ $('lang').onchange=async()=>{
   const l=$('lang').value;
   try{await post('/api/language?lang='+l,'');applyLang(l);say(t('lang_set'),'ok')}catch(e){say(t('save_fail',e.message),'err')}};
 async function loadSS(){try{const d=await(await api('/api/screensaver')).json();$('ssdim').value=d.dim_min;$('ssoff').value=d.off_min}catch(e){}}
+$('msmart').onchange=$('msimple').onchange=async()=>{const simple=$('msimple').checked;
+  try{await post('/api/mode',JSON.stringify({simple}));SIMPLE=simple;say(t('mode_set'),'ok')}catch(e){say(t('save_fail',e.message),'err')}};
 $('sssave').onclick=async()=>{try{await post('/api/screensaver?dim='+(+$('ssdim').value||0)+'&off='+(+$('ssoff').value||0),'');say(t('ss_saved'),'ok')}catch(e){say(t('save_fail',e.message),'err')}};
 
 /* ---- Anmeldung ---- */

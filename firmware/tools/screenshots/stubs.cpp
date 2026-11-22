@@ -126,11 +126,21 @@ bool sessionCurrentUser(User &out) {
   return true;
 }
 bool sessionUserMayTare() { return false; }
+bool sessionUserWeighOnly() { return mock.userLoggedIn && mock.weighOnly; }
+bool sessionSimpleWeighAllowed() { return mock.simpleMode || sessionUserWeighOnly(); }
 void sessionLogout() { mock.userLoggedIn = false; }
 bool sessionSetMyLanguage(Lang) { return true; }
 void sessionUserChanged(uint16_t) {}
 bool sessionNotice(char *, size_t, int *) { return false; }
 void sessionPostNotice(const char *, int) {}
+
+// Betriebsart (storage/devmode)
+#include "storage/devmode.h"
+static int stubEmptySpool = 250;
+bool devModeSimple() { return mock.simpleMode; }
+void devModeSetSimple(bool on) { mock.simpleMode = on; }
+int devModeEmptySpoolG() { return stubEmptySpool; }
+void devModeSetEmptySpoolG(int g) { stubEmptySpool = g; }
 
 // i2c
 void i2cBusBegin() {}
