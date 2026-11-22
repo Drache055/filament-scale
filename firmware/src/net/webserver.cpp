@@ -14,6 +14,7 @@
 #include "display/display.h"
 #include "i18n/i18n.h"
 #include "util/log.h"
+#include "core/auth_throttle.h"
 #include "core/diag_core.h"
 #include "core/uid_check.h"
 #include "net/fwupdate.h"
@@ -41,16 +42,28 @@ static uint32_t apPwApplyAt = 0;  // neues Hotspot-Passwort übernehmen, nachdem
 // Admin: Benutzer "admin" mit dem Admin-Passwort (Login-Seite, Cookie "sid"; Basic-Auth für Skripte).
 // User: Name + PIN (nur wiegen, NFC lesen, WLAN-Status, Tara mit Recht, eigene Sprache und PIN). Generic: wie User ohne Tara.
 // Ist die Admin-Sperre aus, darf jeder alles.
-static uint8_t authFailures = 0;
-static uint32_t authBlockedUntil = 0;
+// Fehlversuch-Sperre pro Client-IP (core/auth_throttle): ein Angreifer sperrt nur sich selbst aus,
+// nicht den Admin an einem anderen Rechner. Wartezeit steigt mit jeder Sperre (30 s bis 15 min).
+static AuthThrottle authThrottle;
 
-static bool authBlocked() { return (int32_t)(authBlockedUntil - millis()) > 0; }
+static uint32_t clientIp() { return (uint32_t)server.client().remoteIP(); }
+
+static bool authBlocked() { return authThrottleBlockedMs(authThrottle, clientIp(), millis()) > 0; }
 
 static void authFailed() {
-  if (++authFailures >= 5) {
-    authFailures = 0;
-    authBlockedUntil = millis() + 30000;
-    logPrintln("[WEB] 5 Fehlversuche bei der Anmeldung, 30 s gesperrt");
+  IPAddress ip = server.client().remoteIP();
+  uint32_t ms = authThrottleFail(authThrottle, (uint32_t)ip, millis());
+  if (ms) {
+    logPrintf("[WEB] %u Fehlversuche von %s, Anmeldung %lu s gesperrt\n", (unsigned)AUTH_FAILS_PER_LOCK,
+              ip.toString().c_str(), (unsigned long)(ms / 1000));
+  }
+}
+
+// Nur eine Admin-Anmeldung setzt den Zähler zurück: sonst könnte jemand mit eigener PIN (oder Generic ohne PIN)
+// zwischen den Rateversuchen kurz erfolgreich anmelden und so nie gesperrt werden
+static void authSucceeded(WebRole role) {
+  if (role == WebRole::Admin) {
+    authThrottleSuccess(authThrottle, clientIp());
   }
 }
 
@@ -100,7 +113,7 @@ static WebWho currentWho() {
       return nullptr;
     });
     if (ok) {
-      authFailures = 0;
+      authSucceeded(WebRole::Admin);
       w.role = WebRole::Admin;
     } else {
       authFailed();
@@ -284,7 +297,7 @@ static void handleLogin() {
     server.send(401, "text/plain", "Name oder PIN falsch");
     return;
   }
-  authFailures = 0;
+  authSucceeded(role);
   String token = webSessionCreate(role, userId);
   server.sendHeader("Set-Cookie", "sid=" + token + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=" + String(WEB_SESSION_MS / 1000));
   WebWho w;
