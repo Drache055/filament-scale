@@ -189,6 +189,7 @@ static void handleStatus() {
                 : n.content.kind == TagKind::User  ? "user"
                 : n.content.kind == TagKind::Admin ? "admin"
                                                    : "unknown";
+  nfc["format"] = n.content.openPrintTag ? "openprinttag" : n.hasNdef ? "json" : "";
   nfc["json"] = n.content.kind == TagKind::Admin ? "" : n.json;  // der Admin-Tag enthält ein Geheimnis
   User current;
   doc["user"] = sessionCurrentUser(current) ? current.name : "";

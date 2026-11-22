@@ -59,6 +59,7 @@ bool scaleTare() { return true; }
 bool scaleCalibrate(float) { return true; }
 NfcState nfcGet() { return mock.nfc; }
 bool nfcRequestWrite(const char *, NfcWriteOrigin) { return true; }
+bool nfcRequestWriteOpenPrintTag(const SpoolTag &) { return true; }
 NfcWriteOrigin nfcWriteOrigin() { return NfcWriteOrigin::Device; }
 void nfcAcknowledgeWrite() {}
 NfcWrite nfcWriteStatus() { return mock.nfcWrite; }
