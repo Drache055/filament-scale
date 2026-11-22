@@ -683,7 +683,9 @@ $('apon').onclick=async()=>{try{await post('/api/wifi/ap?on=1','');await sleep(8
 $('apoff').onclick=async()=>{try{await post('/api/wifi/ap?on=0','');await sleep(800);loadWifi()}catch(e){say(e.message,'err')}};
 $('scan').onclick=async()=>{
   $('scanmsg').textContent=t('scanning');$('nets').innerHTML='';
-  try{const list=await(await api('/api/wifi/scan')).json();$('scanmsg').textContent=list.length?'':t('no_networks');
+  try{let r;for(let i=0;i<20;i++){r=await api('/api/wifi/scan');if(r.status!==202)break;await sleep(800)}
+    if(r.status===202)throw new Error('Timeout');
+    const list=await r.json();$('scanmsg').textContent=list.length?'':t('no_networks');
     list.sort((a,b)=>b.rssi-a.rssi).forEach(n=>{
       const r=document.createElement('div');r.className='item net';
       r.innerHTML='<span class="name"></span><span style="color:var(--dim)"></span>';

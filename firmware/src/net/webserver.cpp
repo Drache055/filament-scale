@@ -1154,13 +1154,32 @@ static void handleWifiGet() {
   sendJson(doc);
 }
 
-// Blockiert einige Sekunden (Scan)
+// Blockiert nicht: 202 = Suche läuft (die Seite fragt erneut), 200 = Liste [{"ssid","rssi","open"}], 503 = gescheitert
 static void handleWifiScan() {
   if (!requireAdmin()) {
     return;
   }
-  server.sendHeader("Cache-Control", "no-store");
-  server.send(200, "application/json", wifiScanJson());
+  std::vector<WifiNet> nets;
+  ScanState st = wifiScanRequest(&nets);
+  if (st == ScanState::Failed) {
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(503, "text/plain", "WLAN-Suche fehlgeschlagen");
+    return;
+  }
+  if (st != ScanState::Done) {
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(202, "application/json", "{\"scanning\":true}");
+    return;
+  }
+  JsonDocument doc;
+  JsonArray arr = doc.to<JsonArray>();
+  for (const WifiNet &n : nets) {
+    JsonObject o = arr.add<JsonObject>();
+    o["ssid"] = n.ssid.c_str();
+    o["rssi"] = n.rssi;
+    o["open"] = n.open;
+  }
+  sendJson(doc);
 }
 
 static void handleWifiSave() {

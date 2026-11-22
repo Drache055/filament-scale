@@ -301,6 +301,7 @@ Geprüft gegen **Spoolman 0.27.0** (`http://spoolman.local:7912`). API-Präfix `
 
 - **LVGL ist nicht threadsafe.** LVGL-Funktionen ausschließlich im `ui`-Task aufrufen.
 - Datenfluss in die UI: Die anderen Tasks senden Events über Queues oder schreiben in mutex-geschützte Strukturen, die die UI per `lv_timer` liest. Aufträge an `spoolman` gehen per Queue, Ergebnisse ebenso zurück.
+- **WLAN-Zugriffe nur im `net`-Task.** Scan und Verbindungsaufbau der USB-Einrichtung stellen andere Tasks als Anfrage (`wifiScanRequest`, `wifiProvision` in `net/wifi`, mutex-geschützt), `wifiLoop` führt sie aus. Logik in `core/wifi_core` (`ScanJob`, `ProvisionJob`, nativ getestet, `test/test_wifi`). Der Scan läuft asynchron (`WiFi.scanNetworks(true, …)`), ein Ergebnis gilt 10 s, ein Fehler wird 3 s gemeldet. Während eines Verbindungsversuchs startet kein Scan und die Hotspot-Automatik ruht; ein laufender Scan wird vorher zu Ende gebracht.
 - Der I²C-Bus gehört nur dem Touch (`bus/i2c_bus`, Mutex). Der Touch wird direkt über `Wire` gelesen, nicht über den LovyanGFX-Touchtreiber, weil der Bus per Mutex geschützt ist. Das PN532 hängt per SPI an eigenen Pins und kann den Touch nicht blockieren.
 
 ### 8.2 Dateistruktur
@@ -321,6 +322,7 @@ src/
   core/drying_core            Trocknungs-Erinnerung: Intervalle, Datum, Status (ohne Arduino, getestet)
   core/update_core            Online-Update: Versionsvergleich, GitHub-Release auswerten (ohne Arduino, getestet)
   core/diag_core              Selbstdiagnose: Zustände der Komponenten → Befund-Codes (ohne Arduino, getestet)
+  core/wifi_core              WLAN-Aufträge: Scan, Verbindungsversuch der USB-Einrichtung (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
@@ -369,7 +371,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core` und `core/drying_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core`, `core/drying_core` und `core/wifi_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---
@@ -419,7 +421,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Kann sich das Gerät mit gespeicherten Daten eine Minute lang nicht verbinden, startet der Hotspot ebenfalls, parallel zu den Verbindungsversuchen. Er endet, sobald das Gerät eine Minute stabil verbunden ist (`WIFI_AP_STABLE_MS`) und niemand daran hängt.
 
 - **Einrichtung per USB (Standardweg nach dem Flashen):** Webseite `docs/bauen.html#einrichten` (`docs/setup.js`, Web Serial, 115200 Baud) schickt SSID, WLAN-Passwort und neues Admin-Passwort. Protokoll: Improv-Serial-Rahmen (`IMPROV`, Version 1, Typ, Länge, Daten, 8-Bit-Prüfsumme, `\n`) mit eigenen RPC-Befehlen `0x80` Hello (Antwort: Name, Firmware, Chip, gespeicherte SSID, Standardpasswort aktiv), `0x81` Setup (`[SSID, WLAN-Passwort, Admin-Passwort]`), `0x82` Netzwerkliste (je Netz ein Ergebnis, zum Schluss ein leeres). Logik in `core/usb_setup_core` (nativ getestet), Gerät in `net/usbsetup`, Aufruf aus `loop()` vor den Textbefehlen.
-- Ablauf Setup: Prüfung (SSID 1 bis 32, WLAN-Passwort leer oder 8 bis 63, Admin-Passwort wie 11.2 und nicht `Filament`) → Zustand „Provisioning“ → `wifiProvision` verbindet ohne Neustart (max. 20 s) → nur bei Erfolg WLAN-Daten und Admin-Passwort speichern → Zustand „Provisioned“ + Ergebnis mit `http://<IP>/`. Bei Fehler Fehlerpaket (`0x03` keine Verbindung, `0x80`–`0x82` ungültige Eingabe), nichts wird gespeichert, die alten Zugangsdaten bzw. der Hotspot bleiben. Der Hotspot endet wie üblich nach einer Minute stabiler Verbindung.
+- Ablauf Setup: Prüfung (SSID 1 bis 32, WLAN-Passwort leer oder 8 bis 63, Admin-Passwort wie 11.2 und nicht `Filament`) → Zustand „Provisioning“ → `wifiProvision` lässt den `net`-Task ohne Neustart verbinden (max. 20 s) → nur bei Erfolg WLAN-Daten und Admin-Passwort speichern → Zustand „Provisioned“ + Ergebnis mit `http://<IP>/`. Bei Fehler Fehlerpaket (`0x03` keine Verbindung, `0x80`–`0x82` ungültige Eingabe), nichts wird gespeichert, die alten Zugangsdaten bzw. der Hotspot bleiben. Der Hotspot endet wie üblich nach einer Minute stabiler Verbindung.
 - Die Improv-Standardbefehle (`0x01`–`0x04`) beantwortet die Waage absichtlich nicht, sonst fragt der ESP-Web-Tools-Dialog zusätzlich nach dem WLAN. Paketinhalte gehen nie in den Zeilenpuffer oder das Log, Passwörter werden nach der Verarbeitung im RAM überschrieben. Wer USB-Zugang hat, kann ohnehin `admin reset` ausführen, deshalb ist die Einrichtung jederzeit möglich, nicht nur beim ersten Start.
 - **Am Gerät nicht geprüft:** ganzer USB-Einrichtungsablauf, insbesondere ob sich der native USB-Port nach dem Flashen neu anmeldet (dann fragt der Browser erneut nach dem Anschluss) und ob das Öffnen des Ports die Waage neu startet (die Seite fragt bis zu 16 s nach).
 
@@ -433,7 +435,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Nach `dim` Minuten ohne Berührung, Tag-Scan, Gewichtsänderung (> 3 g) oder Meldung auf 10 % gedimmt, nach `off` Minuten aus (Standard 5/15, 0 = nie, NVS, Webseite → System). Der erste Tipp weckt nur und löst nichts aus.
 
 ### 12.5 Weboberfläche
-- Menü: Übersicht, Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log, System. Zweisprachig, folgt der Gerätesprache. Login siehe 11.4.
+- Menü: Übersicht, Kalibrierung, Benutzer, Filament-Katalog, Spoolman, WLAN, Log, System. `GET /api/wifi/scan` blockiert nicht: 202 = Suche läuft (die Seite fragt alle 0,8 s nach, höchstens 20-mal), 200 = Liste, 503 = Suche gescheitert. Zweisprachig, folgt der Gerätesprache. Login siehe 11.4.
 - Design wie die Projektseite (`docs/style.css`): dunkel, enge große Headlines, Pill-Buttons und -Navigation, weicher Farbverlauf, Karten, Akzent blau. Tokens als CSS-Variablen in `web_page.h` (`:root`), systemeigene Schriften (offline, kein Webfont/CDN). Am Gerät nicht geprüft.
 
 ### 12.6 Online-Update (GitHub-Releases)
@@ -508,6 +510,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Hotspot-Start beim Boot ohne gespeicherte Daten, Beitreten mit einem Handy, automatischer Rückfall nach einer Minute ohne Verbindung.
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.
 
+- **WLAN-Aufträge im `net`-Task** (8.1): asynchroner Scan (Webseite und USB), Verbindungsaufbau der USB-Einrichtung im `net`-Task. Logik nativ getestet, Webseite nur mit `node --check`.
 - **OpenPrintTag** auf NTAG215/216 (4.7): Lesen, Schreiben, Anzeige unter Menü → NFC und auf der Webseite.
 - **Selbstdiagnose** (12.7): Seite im Browser, Befunde mit echten Fehlern (HX711/PN532 abgesteckt, Spoolman aus, falsche URL, WLAN weg). Logik nativ getestet, JavaScript nur mit `node --check`.
 - **Wägesensor wählbar** (6.4): NAU7802 und ADS1232 ohne Hardware umgesetzt, Webseite nur mit `node --check` geprüft, HX711 nach dem Umbau auf die Treiber-Schnittstelle noch nicht am Gerät.

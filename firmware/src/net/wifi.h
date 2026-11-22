@@ -1,6 +1,10 @@
 #pragma once
 #include <Arduino.h>
 
+#include <vector>
+
+#include "core/wifi_core.h"
+
 // WLAN-Verbindung. Zugangsdaten liegen im NVS (Weboberfläche oder serielle Konsole). Beim allerersten Start nach einer
 // Firmware ohne diese Funktion werden WIFI_SSID/WIFI_PASSWORD aus secrets.h einmalig übernommen.
 // Sind keine Zugangsdaten gespeichert, startet sofort ein Hotspot (WIFI_AP_SSID, Passwort = Geräte-Passwort aus
@@ -18,11 +22,14 @@ int wifiRssi();  // dBm, nur sinnvoll wenn verbunden
 bool wifiHasCredentials();
 String wifiSavedSsid();               // "" = keine gespeichert (Hotspot)
 bool wifiSaveCredentials(const char *ssid, const char *password, String &error);
-// Einrichtung per USB: verbindet sofort (ohne Neustart) und speichert die Daten nur bei Erfolg. Blockiert bis timeoutMs.
+// Einrichtung per USB: verbindet sofort (ohne Neustart) und speichert die Daten nur bei Erfolg. Blockiert den Aufrufer bis
+// timeoutMs; die Verbindung baut der net-Task auf (wifiLoop), nicht der Aufrufer. Nicht aus dem net-Task aufrufen.
 // Scheitert die Verbindung, bleibt alles wie vorher (alte Zugangsdaten bzw. Hotspot).
 bool wifiProvision(const char *ssid, const char *password, uint32_t timeoutMs, String &error);
 void wifiResetCredentials();          // Zugangsdaten löschen, nach dem Neustart startet der Hotspot
-String wifiScanJson();                // blockiert einige Sekunden: [{"ssid","rssi","open"}]
+// Netzwerksuche, blockiert nicht. Startet bei Bedarf einen Scan im net-Task, den sich alle Anfragen teilen.
+// Pending/Running = später erneut fragen, Done = Liste in *nets (zusammengefasst, max. 30), Failed = Suche gescheitert.
+ScanState wifiScanRequest(std::vector<WifiNet> *nets);
 
 // Einrichtungs-WLAN
 bool wifiApActive();

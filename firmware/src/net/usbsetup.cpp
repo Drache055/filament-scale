@@ -1,6 +1,6 @@
 #include "usbsetup.h"
 
-#include <WiFi.h>
+#include <vector>
 
 #include "config.h"
 #include "core/usb_setup_core.h"
@@ -17,6 +17,7 @@ using namespace usbsetup;
 namespace {
 
 constexpr uint32_t kConnectTimeoutMs = 20000;  // die Webseite wartet 40 s auf die Antwort
+constexpr uint32_t kScanWaitMs = 15000;        // Scan dauert einige Sekunden, die Webseite wartet 20 s
 
 Parser parser;
 
@@ -40,19 +41,23 @@ void handleHello() {
                               adminIsDefaultPassword() ? "1" : "0"}));
 }
 
+// Der Scan läuft im net-Task (net/wifi), hier nur warten. Bei Fehler oder Zeitüberschreitung kommt eine leere Liste.
 void handleScan() {
-  int n = WiFi.scanNetworks(false, false, false, 300);
-  int sent = 0;
-  for (int i = 0; i < n && sent < 30; i++) {
-    String ssid = WiFi.SSID(i);
-    if (ssid.length() == 0) {
-      continue;
+  std::vector<WifiNet> nets;
+  uint32_t start = millis();
+  ScanState st;
+  while ((st = wifiScanRequest(&nets)) == ScanState::Pending || st == ScanState::Running) {
+    if (millis() - start > kScanWaitMs) {
+      break;
     }
-    send(buildResult(CmdScan, {ssid.c_str(), String(WiFi.RSSI(i)).c_str(),
-                               WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "NO" : "YES"}));
-    sent++;
+    delay(100);
   }
-  WiFi.scanDelete();
+  if (st != ScanState::Done) {
+    logPrintln("[SETUP] Netzwerksuche ohne Ergebnis");
+  }
+  for (const WifiNet &n : nets) {
+    send(buildResult(CmdScan, {n.ssid.c_str(), String(n.rssi).c_str(), n.open ? "NO" : "YES"}));
+  }
   send(buildResult(CmdScan, {}));
 }
 
