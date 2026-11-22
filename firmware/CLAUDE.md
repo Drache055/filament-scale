@@ -48,7 +48,7 @@ Sprache für UI-Texte und Kommentare: **Deutsch**. Bezeichner im Code: Englisch.
 
 ```ini
 [env:waage]
-platform = https://github.com/pioarduino/platform-espressif32/releases/download/stable/platform-espressif32.zip
+platform = https://github.com/pioarduino/platform-espressif32/releases/download/55.03.312/platform-espressif32.zip
 board = esp32-s3-devkitc-1
 framework = arduino
 board_build.arduino.memory_type = qio_opi
@@ -70,7 +70,7 @@ lib_deps =
     bblanchon/ArduinoJson@^7
 ```
 
-- `stable` im Plattform-Link später durch einen festen Release-Tag ersetzen. LovyanGFX ebenfalls auf eine feste Version pinnen, sobald es läuft.
+- Plattform und Bibliotheken sind fest gepinnt (siehe `platformio.ini`): pioarduino **55.03.312** (Arduino 3.3.12, ESP-IDF 5.5, GCC 14.2). Nicht `stable` verwenden: Am 21.11.2026 sprang `stable` auf 61.4.0 (Arduino 4.0.0, GCC 15.2), damit scheitert LVGL 9.5.0 an `lv_blend_helium.S`. Ein Plattform-Update nur bewusst und mit erfolgreichem CI-Build.
 - **LVGL 9.5.0** (exakt gepinnt). `include/lv_conf.h` aus dem 9.5.0-Template erstellen, keine 8.x-Konfiguration verwenden. Nicht benötigte Features (OpenGL, 3D, Blur) bleiben deaktiviert.
 - **LovyanGFX** als Display-/Touch-Treiber (nicht TFT_eSPI). Die LVGL-9-Anbindung (Flush-Callback, Touch-Read-Callback) wird selbst geschrieben. Aus den Waveshare-Beispielen werden nur Pins und Treiber-Init übernommen.
 - Die UI wird **handgeschrieben in LVGL-C++** umgesetzt. EEZ Studio dient nur zum Ausprobieren von Layouts, generierter Code wird nicht übernommen.
