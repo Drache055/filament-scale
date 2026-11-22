@@ -333,6 +333,7 @@ src/
   net/spoolman                Spoolman-Client
   nfc/ndef, tags, nfc         siehe 4.6
   core/sensor_core            Wägesensor: Typen, Pinprüfung, Rohwerte (ohne Arduino, getestet)
+  core/web_guard              Webschutz: Host-Header und Pflicht-Header für POST (ohne Arduino, getestet)
   scale/scale                 Sensorwahl, Filter, Stabilität, Kalibrierung
   scale/sensor, sensor_drivers  Treiber-Schnittstelle LoadSensor, HX711, NAU7802, ADS1232
   storage/admin, users        Admin, Benutzer, PINs
@@ -401,13 +402,14 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 11.4 Webseite
 - Zuerst eine **Login-Maske** (Name + PIN bzw. Passwort). Sitzungen im RAM (`net/websession.cpp`, Cookie `sid`, HttpOnly, SameSite=Strict, `WEB_SESSION_MS` 30 min ohne Anfrage, max. 6). Rollen über `requireRole` in `net/webserver.cpp`:
-  - **Admin** (Name `admin`, Admin-Passwort): sieht und darf alles. Für Skripte zusätzlich Basic-Auth (`curl -u admin:...`).
+  - **Admin** (Name `admin`, Admin-Passwort): sieht und darf alles. Für Skripte zusätzlich Basic-Auth (`curl -u admin:... -H 'X-Requested-With: curl'`).
   - **Benutzer** (Name + eigene **PIN**, 4 bis 6 Ziffern): Gewicht, NFC, WLAN-Status (verbunden ja/nein), Tara-Knopf nur mit Tara-Recht, eigene Sprache und PIN. Kein Log, keine Einstellungen, keine Benutzerliste (alle anderen Schnittstellen antworten 403). Die PIN setzt der Admin (`POST /api/users/pin?id=&pin=`, leer = entfernen); ohne PIN nur Anmeldung per NFC am Gerät. Eigene PIN ändern mit alter PIN (`POST /api/me/pin`).
   - Mit dem Recht **Filament** zusätzlich die Seite **Filament-Katalog** (`GET/POST /api/catalog`, `/api/catalog/sync`).
   - **Generic** (Name `generic`, am Anfang ohne PIN, vom Admin abschaltbar oder mit PIN schützbar): nur wiegen und NFC lesen, kein Tara, keine Sprache.
 - PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen. Gilt auch für Admin-Passwort per USB-Einrichtung oder `admin reset` (alle Admin-Sitzungen) sowie für eine geänderte Generic-PIN und das Abschalten von Generic (Generic-Sitzungen). Am Gerät nicht geprüft.
 - `/api/status` enthält für Nicht-Admins keine Gerätedaten (IP, Speicher, Firmware) und keinen Inhalt eines Admin-Tags. Ist die Sperre aus, ist jeder Admin.
 - Fehlversuch-Sperre **pro Client-IP** (`core/auth_throttle`, Tabelle mit 16 IPs): 5 Fehlversuche (Login, Basic-Auth, alte PIN beim PIN-Wechsel, gemeinsam gezählt) sperren diese IP 30 s, jede weitere Sperre doppelt so lang, höchstens 15 min. Andere IPs bleiben frei, ein Angreifer im LAN sperrt den Admin also nicht mehr aus. Nur eine erfolgreiche Admin-Anmeldung setzt den Zähler der IP zurück (sonst könnte man zwischen Rateversuchen mit eigener PIN oder als Generic den Zähler leeren); nach 1 h ohne Fehlversuch fängt die IP von vorn an. Ist die Tabelle voll, wird der am längsten ruhige ungesperrte Eintrag ersetzt. Grenzen: Wer viele IPs nutzt, bekommt pro IP eigene Versuche; Clients hinter einem gemeinsamen NAT/Proxy teilen sich einen Zähler. Am Gerät nicht geprüft.
+- **CSRF und DNS-Rebinding** (`core/web_guard`, `requestAllowed` in `net/webserver.cpp`): Jede Route prüft den Host-Header. Erlaubt sind IP-Adressen, `<OTA_HOSTNAME>` und `<OTA_HOSTNAME>.local`, sonst 403 (im Hotspot Umleitung auf die Einrichtungsseite). Router-Namen wie `filamentwaage.fritz.box` sind damit gesperrt. Alles außer GET braucht den Header `X-Requested-With` (beliebiger Wert), die Weboberfläche schickt ihn mit. Fremde Seiten können ihn nur mit CORS-Preflight setzen, den die Waage nicht beantwortet. Das gilt auch bei ausgeschalteter Sperre und im Hotspot.
 - Wer im **geschützten** Setup-WLAN ist (Hotspot-Passwort, 13.2), braucht keine zweite Anmeldung. Ein offener Hotspot zählt nicht als Ausweis.
 
 ### 11.5 Sprache pro Benutzer
@@ -512,6 +514,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - **Einrichtung per USB** (12.1): Protokoll nativ getestet, `docs/setup.js` nur mit `node --check` geprüft. Nicht geprüft: Ablauf mit echter Waage und Chrome/Edge, Neuanmeldung des USB-Ports nach dem Flashen, Neustart beim Öffnen des Ports, Netzwerksuche während eines laufenden Verbindungsversuchs.
 - **Wiegeablauf** mit echter Waage, Box-Tag und Spoolman, inklusive „Neue Box anlegen“. Die Firmware baut, die Logik ist nativ getestet, die Screens sind aus dem echten UI-Code gerendert.
 - Geräte-Passwörter (`devicepw`, 13.2).
+- **CSRF/DNS-Rebinding-Schutz** (11.4): Host-Prüfung nativ getestet, Weboberfläche nur mit `node --check`. Nicht geprüft: Zugriff über IP, `.local` und Hotspot im Browser, Captive-Portal, Ablehnung fremder Hosts am Gerät.
 - **QR-Code zur Spule** (5.1): Anzeige und Scannen mit einem Handy, Speicherbedarf von `lv_qrcode` auf dem ESP32. Der Screen ist gerendert, der QR-Code in der Vorschau mit OpenCV gelesen.
 - **Einfache Waage** und Rolle „Nur wiegen“ (5.4): Ablauf am Gerät, Umschalten auf der Webseite, Benutzer-Spalte. Logik nativ getestet, Screens gerendert, Webseite nur mit `node --check` geprüft.
 - **Trocknungs-Erinnerung** (7.8): Logik nativ getestet, Webseite nur mit `node --check` geprüft. Nicht gegen eine echte Spoolman-Instanz geprüft: Anlegen und Schreiben des Extra-Felds `last_dried`, Anzeige am Gerät und Webseiten-Karte.
