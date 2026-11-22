@@ -261,7 +261,7 @@ Geprüft gegen **Spoolman 0.27.0** (`http://spoolman.local:7912`). API-Präfix `
 - Auch über Menü → NFC → „Spule zuordnen“ erreichbar, solange ein unbekannter Tag aufliegt.
 
 ### 7.5 Offline-Warteschlange
-- `core/queue_core` (Logik, nativ getestet), `storage/queue` (Datei). Updates, die wegen Netzwerkfehler oder HTTP 5xx scheitern, landen als JSON-Zeile (`spool_id`, `remaining_weight`, `location`, `timestamp`) in `/queue.jsonl` (LittleFS), je Spule nur das neueste, max. 100.
+- `core/queue_core` (Logik, nativ getestet), `storage/queue` (Datei). Updates, die wegen Netzwerkfehler oder HTTP 5xx scheitern, landen als JSON-Zeile (`spool_id`, `remaining_weight`, `location`, `timestamp`) in `/queue.jsonl` (LittleFS), je Spule ein Eintrag (neuere Updates werden mit älteren zusammengeführt, `archive`, `owner` und `tag_uid` gehen nicht verloren), max. 100.
 - Nachgeholt wird automatisch alle 15 s, sobald Spoolman erreichbar ist. Dauerhafte Fehler (HTTP 4xx) werden verworfen und gezählt. `SpoolmanResult.queued` zeigt, dass ein Update eingereiht wurde.
 - Zeitstempel per NTP (`Europe/Berlin`), 0 ohne Uhr.
 - Home zeigt „Ausstehende Updates: n“, die Webseite (Spoolman) bietet „Jetzt senden“ und „Alle verwerfen“.

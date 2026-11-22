@@ -68,6 +68,35 @@ void test_newest_entry_per_spool_wins() {
   TEST_ASSERT_EQUAL_FLOAT(750, list[1].remaining);
 }
 
+void test_merge_keeps_older_archive_owner_and_tag() {
+  std::vector<QueueEntry> list;
+  QueueEntry a = entry(1, 5, "Box 01", "Anna", 100);
+  a.archive = true;
+  strcpy(a.tagUid, "04A1B2C3D4E5F6");
+  queueAddEntry(list, a, 10);
+  QueueEntry b = entry(1, 3, nullptr, "", 200);  // nur neues Gewicht
+  queueAddEntry(list, b, 10);
+  TEST_ASSERT_EQUAL(1, list.size());
+  TEST_ASSERT_EQUAL_FLOAT(3, list[0].remaining);
+  TEST_ASSERT_TRUE(list[0].archive);
+  TEST_ASSERT_EQUAL_STRING("04A1B2C3D4E5F6", list[0].tagUid);
+  TEST_ASSERT_EQUAL_STRING("Anna", list[0].owner);
+  TEST_ASSERT_TRUE(list[0].hasLocation);
+  TEST_ASSERT_EQUAL_STRING("Box 01", list[0].location);
+  TEST_ASSERT_EQUAL_UINT32(200u, list[0].timestamp);
+}
+
+void test_merge_newer_values_override() {
+  std::vector<QueueEntry> list;
+  queueAddEntry(list, entry(1, 500, "Box 01", "Anna", 100), 10);
+  queueAddEntry(list, entry(1, 400, "Box 02", "Ben", 200), 10);
+  TEST_ASSERT_EQUAL(1, list.size());
+  TEST_ASSERT_EQUAL_FLOAT(400, list[0].remaining);
+  TEST_ASSERT_EQUAL_STRING("Box 02", list[0].location);
+  TEST_ASSERT_EQUAL_STRING("Ben", list[0].owner);
+  TEST_ASSERT_FALSE(list[0].archive);
+}
+
 void test_oldest_entries_drop_when_full() {
   std::vector<QueueEntry> list;
   for (int i = 1; i <= 5; i++) {
@@ -102,6 +131,8 @@ int main() {
   RUN_TEST(test_archive_roundtrip);
   RUN_TEST(test_optional_fields_stay_optional);
   RUN_TEST(test_newest_entry_per_spool_wins);
+  RUN_TEST(test_merge_keeps_older_archive_owner_and_tag);
+  RUN_TEST(test_merge_newer_values_override);
   RUN_TEST(test_oldest_entries_drop_when_full);
   RUN_TEST(test_parse_skips_broken_lines);
   RUN_TEST(test_serialize_parse_roundtrip);
