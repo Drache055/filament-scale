@@ -22,10 +22,14 @@ o = []
 a = o.append
 a('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 740" '
   'font-family="IBM Plex Mono,Menlo,Consolas,monospace" font-size="13">')
-a('<rect width="960" height="740" rx="10" fill="#f6f6f2"/>')
+a('<style>.bg{fill:#f3f4f2}.tx{fill:#1a1d21}.mu{fill:#5a6068}.wa{fill:#b45309}.ha{stroke:none}'
+  '@media (prefers-color-scheme:dark){.bg{fill:#1b1f24}.tx{fill:#e7e9ec}.mu{fill:#9aa1aa}.wa{fill:#f0a43c}.ha{stroke:#8a9096}}</style>')
+a('<rect class="bg" width="960" height="740" rx="10"/>')
 
 
 def wire(d, c):
+    if c == BLK:  # Halo, damit schwarze Leitungen auf dunklem Hintergrund sichtbar bleiben
+        a(f'<path class="ha" d="{d}" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>')
     a(f'<path d="{d}" fill="none" stroke="{c}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>')
 
 
@@ -78,18 +82,18 @@ for n, y in hr:
 for n, y, c in hl:
     a(f'<circle cx="176" cy="{y}" r="4" fill="{"#f2c94c" if c else "#9a8a52"}"/>'
       f'<text x="184" y="{y+4}" fill="{"#fff" if c else "#a7c9b0"}" font-size="12">{n}</text>')
-a('<text x="230" y="466" text-anchor="middle" font-size="11" fill="#5a6068">optional: 100 µF + 100 nF</text>'
-  '<text x="230" y="481" text-anchor="middle" font-size="11" fill="#5a6068">between VCC and GND</text>')
+a('<text x="230" y="466" text-anchor="middle" font-size="11" class="mu">optional: 100 µF + 100 nF</text>'
+  '<text x="230" y="481" text-anchor="middle" font-size="11" class="mu">between VCC and GND</text>')
 
 # --- load cell ---
 a('<rect x="30" y="246" width="90" height="124" rx="4" fill="#c9ccd1" stroke="#7d838a" stroke-width="2"/>')
-a('<circle cx="58" cy="282" r="9" fill="#f6f6f2" stroke="#7d838a"/><circle cx="92" cy="282" r="9" fill="#f6f6f2" stroke="#7d838a"/>')
+a('<circle cx="58" cy="282" r="9" class="bg" stroke="#7d838a"/><circle cx="92" cy="282" r="9" class="bg" stroke="#7d838a"/>')
 a('<text x="75" y="320" text-anchor="middle" font-size="12" fill="#1a1d21">Load cell</text>'
   '<text x="75" y="337" text-anchor="middle" font-size="12" fill="#1a1d21">5 kg</text>')
-a('<text x="75" y="392" text-anchor="middle" font-size="11" fill="#5a6068">red=E+ black=E-</text>'
-  '<text x="75" y="407" text-anchor="middle" font-size="11" fill="#5a6068">white=A- green=A+</text>'
-  '<text x="75" y="422" text-anchor="middle" font-size="11" fill="#b45309">typical colors,</text>'
-  '<text x="75" y="437" text-anchor="middle" font-size="11" fill="#b45309">check yours</text>')
+a('<text x="75" y="392" text-anchor="middle" font-size="11" class="mu">red=E+ black=E-</text>'
+  '<text x="75" y="407" text-anchor="middle" font-size="11" class="mu">white=A- green=A+</text>'
+  '<text x="75" y="422" text-anchor="middle" font-size="11" class="wa">typical colors,</text>'
+  '<text x="75" y="437" text-anchor="middle" font-size="11" class="wa">check yours</text>')
 
 # --- PN532 ---
 a('<rect x="760" y="140" width="160" height="310" rx="6" fill="#1b3f8f" stroke="#10275a" stroke-width="2"/>')
@@ -107,9 +111,9 @@ for n, p in pr:
     a(f'<circle cx="766" cy="{y}" r="4" fill="#f2c94c"/><text x="774" y="{y+4}" fill="#fff" font-size="12">{n}</text>')
 
 # --- notes ---
-a('<text x="30" y="686" font-size="12" fill="#1a1d21">View from the back. Labels as printed on the board. GPIOs: firmware/include/pins.h.</text>')
-a('<text x="30" y="704" font-size="12" fill="#1a1d21">Power everything from 3V3, not 5V. Any G (GND) pin works. 19/20 are USB, do not use.</text>')
-a('<text x="30" y="722" font-size="12" fill="#b45309">Not verified: whether GPIO11–15 are used elsewhere on the board.</text>')
+a('<text x="30" y="686" font-size="12" class="tx">View from the back. Labels as printed on the board. GPIOs: firmware/include/pins.h.</text>')
+a('<text x="30" y="704" font-size="12" class="tx">Power everything from 3V3, not 5V. Any G (GND) pin works. 19/20 are USB, do not use.</text>')
+a('<text x="30" y="722" font-size="12" class="wa">Not verified: whether GPIO11–15 are used elsewhere on the board.</text>')
 a('</svg>')
 
 out = pathlib.Path(__file__).resolve().parent.parent / "docs/img/wiring.svg"
