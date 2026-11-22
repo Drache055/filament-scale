@@ -48,6 +48,7 @@
 
 <h2 id="pins"><span data-l="de">Verdrahtung</span><span data-l="en">Wiring</span></h2>
 <p><span data-l="de">Alle Pins stehen zentral in <code>firmware/include/pins.h</code>. Display und Touch sind auf dem Waveshare-Board fest verdrahtet. Extern kommen nur HX711 und PN532 an die Header.</span><span data-l="en">All pins are defined in <code>firmware/include/pins.h</code>. Display and touch are wired on the Waveshare board. Only the HX711 and PN532 connect to the headers.</span></p>
+<figure class="wiring"><a href="img/wiring.svg"><img src="img/wiring.svg" alt="Wiring diagram: load cell to HX711, HX711 and PN532 to headers P1 and P2 of the Waveshare ESP32-S3-Touch-LCD-2" width="960" height="740"></a><figcaption><span data-l="de">Verkabelungsplan, Board von hinten gesehen (Display zeigt nach unten). Klicken zum Vergrößern. Kabelfarben der Wägezelle sind typisch, bitte am eigenen Exemplar prüfen.</span><span data-l="en">Wiring diagram, board seen from the back (display facing down). Click to enlarge. Load cell wire colours are typical, check your own cell.</span></figcaption></figure>
 <table>
   <tr><th>HX711</th><td>SCK = GPIO17 (Header P1 Pin 5)<br>DOUT = GPIO18 (Header P1 Pin 6)<br>VCC = 3V3 (P2 Pin 1), GND</td></tr>
   <tr><th>PN532 (SPI)</th><td>SCK = GPIO15 (P2 Pin 7)<br>MISO = GPIO13 (P2 Pin 8)<br>MOSI = GPIO11 (P2 Pin 9)<br>SS = GPIO12 (P2 Pin 10)<br>3V3 = P2 Pin 1, GND = P2 Pin 2</td></tr>

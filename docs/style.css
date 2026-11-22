@@ -180,3 +180,6 @@ footer{border-top:1px solid var(--line);padding-block:26px;margin-top:30px;color
 /* Sprache */
 [data-l]{display:none}
 html[lang=de] [data-l=de],html[lang=en] [data-l=en]{display:revert}
+.wiring{margin:16px 0 20px}
+.wiring img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r)}
+.wiring figcaption{font-size:13px;color:var(--muted);margin-top:6px}
