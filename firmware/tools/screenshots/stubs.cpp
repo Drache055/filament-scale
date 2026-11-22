@@ -80,6 +80,7 @@ SpoolmanResult spoolmanWriteResult() { return mock.write; }
 void spoolmanRequestLookup(const char *, int) {}
 void spoolmanRequestUpdate(int, float, const char *, const char *) {}
 void spoolmanRequestLinkTag(int, const char *) {}
+String spoolmanUrl() { return "http://192.168.178.40:7912"; }
 int spoolmanQueueCount() { return mock.queued; }
 void spoolmanRequestList() {}
 void spoolmanListResult(SpoolListResult &out) { out = mock.list; }

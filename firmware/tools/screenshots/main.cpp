@@ -455,5 +455,25 @@ int main(int argc, char **argv) {
   mock.weighOnly = false;
   uiShowHome();
 
+  // --- QR-Code zur Spule (virtuelles Label), hinten angehängt ---
+  setWeight(0);
+  setBoxTag(false);
+  weighFlowStart(sp, "04A1B2C3D4E5F6", "Fabian");
+  advance(2800);
+  setWeight(412, false);
+  setBoxTag(true);
+  advance(400);
+  setWeight(412);
+  advance(400);
+  setWeight(412, false);
+  setBoxTag(true);
+  advance(400);
+  setWeight(1254);
+  advance(400);
+  lv_obj_send_event(lv_obj_get_child(lv_screen_active(), 3), LV_EVENT_CLICKED, nullptr);  // QR-Button neben dem Titel
+  advance(100);
+  shot("qr_spule");
+  uiShowHome();
+
   return 0;
 }

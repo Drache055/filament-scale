@@ -139,6 +139,7 @@ UPLOAD ─ fertig ────────────────────�
 - Schwellen in `config.h` (`WEIGH_*`): „hinzugefügt“ 50 g, Timeout 120 s je Wartezustand (danach zurück nach `IDLE` mit Hinweis), Mindestanzeige „Spule erkannt“ 2 s.
 - **Start:** Auf Home liegt ein Spulen-Tag (oder ein Tag ohne bekanntes Format), den Spoolman kennt (`ui.cpp`, `refreshTimerCb`). Unbekannte Tags öffnen „Unbekannte Spule“. Bis die Waage leer und stabil ist, zeigt der Screen „Waage leeren“.
 - Ab `WAIT_BOX` werden **Spulen**-Tags ignoriert, auch der bereits gescannte. Die Box wird in `WAIT_BOX` festgelegt und danach nicht mehr geändert, danach zählen nur noch Gewichte.
+- **QR-Code zur Spule (virtuelles Label):** Auf „Bestätigen“ öffnet der Button mit QR-Symbol (rechts neben dem Titel, nur wenn eine Spoolman-URL gesetzt ist) einen Vollbild-QR-Code mit dem Link `<Spoolman-URL>/spool/show/<id>` (`core/spool_url`, Test `test/test_spoolurl`) und einem ✕ zum Schließen. LVGL `lv_qrcode` ist dafür in `lv_conf.h` aktiviert (`LV_USE_QRCODE 1`). Das Symbol ist aus kleinen Quadraten gezeichnet, die Schrift hat kein QR-Zeichen. Der Link zeigt auf die Spoolman-Adresse aus den Einstellungen, das Handy muss sie erreichen können.
 - **Abbrechen:** In jedem Zustand führt [Abbrechen] (in „Bestätigen“ das ✕) zu `IDLE`. Während des Sendens ist Abbrechen nicht möglich.
 - **Sicherheitsnetz:** `uiShowHome()` bricht einen laufenden Ablauf ab (`weighFlowAbort`), damit keine gelöschten Widgets mehr benutzt werden. Admin-Ablauf und Sprachwechsel springen während des Ablaufs nicht zu Home.
 
@@ -447,6 +448,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 ### 14.2 Am Gerät nicht geprüft
 - **Wiegeablauf** mit echter Waage, Box-Tag und Spoolman, inklusive „Neue Box anlegen“. Die Firmware baut, die Logik ist nativ getestet, die Screens sind aus dem echten UI-Code gerendert.
 - Geräte-Passwort (`devicepw`).
+- **QR-Code zur Spule** (5.1): Anzeige und Scannen mit einem Handy, Speicherbedarf von `lv_qrcode` auf dem ESP32. Der Screen ist gerendert, der QR-Code in der Vorschau mit OpenCV gelesen.
 - **Einfache Waage** und Rolle „Nur wiegen“ (5.4): Ablauf am Gerät, Umschalten auf der Webseite, Benutzer-Spalte. Logik nativ getestet, Screens gerendert, Webseite nur mit `node --check` geprüft.
 - Hotspot-Start beim Boot ohne gespeicherte Daten, Beitreten mit einem Handy, automatischer Rückfall nach einer Minute ohne Verbindung.
 - Aussehen von Login-Maske und Benutzer-Ansicht im Browser (nur JavaScript-Syntax mit `node --check`), Touch-Anmeldung mit dem Ziffernblock (Layout und Tastenhöhe), Auflegen eines Admin-Tags, Sprachwechsel beim Anmelden am Gerät, Ablauf der Admin-Anmeldung.

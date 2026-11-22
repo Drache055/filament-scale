@@ -5,6 +5,7 @@
 
 #include "app/session.h"
 #include "config.h"
+#include "core/spool_url.h"
 #include "core/weigh_core.h"
 #include "i18n/i18n.h"
 #include "net/spoolman.h"
@@ -49,6 +50,7 @@ struct Ctx {
   lv_obj_t *hint = nullptr;
   lv_obj_t *emptyLabel = nullptr;
   lv_obj_t *saveBtn = nullptr;
+  lv_obj_t *qrOverlay = nullptr;  // QR-Code zur Spule (Kind des Screens, verschwindet mit ihm)
   lv_obj_t *boxNumber = nullptr;  // Neue Box: gewählte Nummer
   lv_obj_t *writeInfo = nullptr;  // Neue Box: Schreibstatus
 };
@@ -133,6 +135,81 @@ void onNewBoxWrite(lv_event_t *) {
   lv_obj_set_style_text_color(ctx->writeInfo, themeColors().warn, 0);
 }
 
+// ---- Virtuelles Spulen-Label: QR-Code mit dem Link zur Spule in Spoolman ----
+void onQrClose(lv_event_t *) {
+  if (!ctx || !ctx->qrOverlay) return;
+  lv_obj_delete_async(ctx->qrOverlay);
+  ctx->qrOverlay = nullptr;
+}
+
+void onQrOpen(lv_event_t *) {
+  if (!ctx || ctx->qrOverlay) return;
+  char url[128];
+  if (spoolShowUrl(spoolmanUrl().c_str(), ctx->spool.id, url, sizeof(url)) == 0) return;
+  lv_obj_t *ov = lv_obj_create(lv_screen_active());
+  ctx->qrOverlay = ov;
+  lv_obj_remove_style_all(ov);
+  lv_obj_add_style(ov, &theme().screen, 0);
+  lv_obj_add_flag(ov, LV_OBJ_FLAG_FLOATING);
+  lv_obj_set_size(ov, LV_PCT(100), LV_PCT(100));
+  lv_obj_set_pos(ov, 0, 0);
+  lv_obj_set_flex_flow(ov, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(ov, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_all(ov, themePadding(), 0);
+  lv_obj_set_style_pad_row(ov, themePadding(), 0);
+  lv_obj_remove_flag(ov, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_label_set_text(makeLabel(ov, &theme().body), tr(Str::WfQrHint));
+  lv_obj_t *qr = lv_qrcode_create(ov);
+  lv_qrcode_set_size(qr, 136);
+  lv_qrcode_set_dark_color(qr, lv_color_black());
+  lv_qrcode_set_light_color(qr, lv_color_white());
+  lv_qrcode_update(qr, url, strlen(url));
+  lv_obj_set_style_border_color(qr, lv_color_white(), 0);  // ruhige Zone um den Code
+  lv_obj_set_style_border_width(qr, 6, 0);
+  lv_obj_t *u = makeLabel(ov, &theme().dim);
+  lv_label_set_text(u, url);
+  lv_obj_t *row = makeRow(ov);
+  lv_obj_set_flex_grow(row, 0);
+  uiMakeButton(row, LV_SYMBOL_CLOSE, onQrClose);
+  lv_obj_set_style_margin_top(row, 0, 0);
+}
+
+// Kleines QR-Symbol (drei Positionsmarken und ein paar Punkte), da die Schrift keins mitbringt.
+void drawQrIcon(lv_obj_t *btn) {
+  const lv_color_t fg = themeColors().text;
+  int u = themeButtonHeight() / 10;
+  if (u < 2) u = 2;
+  lv_obj_t *icon = lv_obj_create(btn);
+  lv_obj_remove_style_all(icon);
+  lv_obj_set_size(icon, 7 * u, 7 * u);
+  lv_obj_center(icon);
+  lv_obj_remove_flag(icon, LV_OBJ_FLAG_CLICKABLE);
+  auto block = [&](int gx, int gy, int n, bool hollow) {
+    lv_obj_t *b = lv_obj_create(icon);
+    lv_obj_remove_style_all(b);
+    lv_obj_remove_flag(b, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_pos(b, gx * u, gy * u);
+    lv_obj_set_size(b, n * u, n * u);
+    if (hollow) {
+      lv_obj_set_style_border_color(b, fg, 0);
+      lv_obj_set_style_border_width(b, u, 0);
+      lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
+    } else {
+      lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+      lv_obj_set_style_bg_color(b, fg, 0);
+    }
+  };
+  block(0, 0, 3, true);
+  block(4, 0, 3, true);
+  block(0, 4, 3, true);
+  block(4, 4, 1, false);
+  block(6, 4, 1, false);
+  block(5, 5, 1, false);
+  block(4, 6, 1, false);
+  block(6, 6, 1, false);
+}
+
 void onSave(lv_event_t *) { if (ctx) ctx->reqSave = true; }
 
 void adjustEmpty(int delta) {
@@ -167,6 +244,7 @@ void build() {
   WeighState st = ctx->flow.state();
   ctx->weight = ctx->info = ctx->hint = ctx->emptyLabel = ctx->saveBtn = nullptr;
   ctx->boxNumber = ctx->writeInfo = nullptr;
+  ctx->qrOverlay = nullptr;
   lv_obj_t *scr = uiNewScreen();
   const ThemeColors &c = themeColors();
   char buf[96];
@@ -252,6 +330,13 @@ void build() {
       lv_obj_t *cancel = uiMakeButton(row, LV_SYMBOL_CLOSE, onCancel);  // schmal, damit "Speichern" Platz hat
       lv_obj_set_flex_grow(cancel, 0);
       lv_obj_set_width(cancel, themeButtonHeight());
+      if (ctx->spool.id >= 0 && spoolmanUrl().length() > 0) {  // QR-Code zur Spule (virtuelles Label), rechts neben dem Titel
+        lv_obj_t *qr = uiMakeButton(scr, "", onQrOpen);
+        lv_obj_add_flag(qr, LV_OBJ_FLAG_FLOATING);
+        lv_obj_set_size(qr, themeButtonHeight(), themeButtonHeight());
+        lv_obj_align(qr, LV_ALIGN_TOP_RIGHT, 0, 0);
+        drawQrIcon(qr);
+      }
       uiNavigate(scr);
       return;
     }
