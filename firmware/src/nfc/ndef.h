@@ -34,6 +34,10 @@ struct NdefMime {
 // Parst den ersten Record. Nur TNF 0x02 (MIME), nicht gechunkt.
 bool ndefParseMimeRecord(const uint8_t *rec, size_t len, NdefMime &out);
 
+// Sucht in einer NDEF-Nachricht (mehrere Records möglich, z. B. URI + MIME) den ersten MIME-Record mit dem Typ
+// mimeType. Gechunkte Records werden übersprungen.
+bool ndefFindMimeRecord(const uint8_t *msg, size_t len, const char *mimeType, NdefMime &out);
+
 // Baut TLV (0x03, Länge, Record) + Terminator 0xFE, aufgefüllt auf ganze Pages (4 Byte).
 // Rückgabe: Bytes in out, oder 0, wenn es nicht in capacityBytes bzw. outCap passt.
 size_t ndefBuildMimeTlv(const char *mimeType, const uint8_t *payload, size_t payloadLen, size_t capacityBytes,

@@ -8,6 +8,7 @@
 #include "pins.h"
 #include "config.h"
 #include "ndef.h"
+#include "openprinttag.h"
 
 namespace {
 
@@ -17,8 +18,10 @@ Adafruit_PN532 pn532(PIN_NFC_SCK, PIN_NFC_MISO, PIN_NFC_MOSI, PIN_NFC_SS);
 SemaphoreHandle_t stateMutex = nullptr;
 NfcState state;
 
-// Schreibauftrag
+// Schreibauftrag: JSON-Record oder OpenPrintTag
 char writeJson[512];
+bool writeOpt = false;
+OpenPrintTag writeOptTag;
 volatile NfcWrite writeStatus = NfcWrite::Idle;
 volatile NfcWriteOrigin writeOrigin = NfcWriteOrigin::Device;
 uint32_t writeSeq = 0;  // state.seq beim Auftrag: Web-Aufträge brauchen eine spätere Erkennung
@@ -114,14 +117,22 @@ bool readTag() {
       r = ndefLocate(buf, have, loc);
     }
     if (r == NdefLocate::Found) {
+      const uint8_t *msg = buf + loc.recordOffset;
       NdefMime mime;
-      if (ndefParseMimeRecord(buf + loc.recordOffset, loc.recordLength, mime) &&
-          strcmp(mime.type, "application/json") == 0) {
+      OpenPrintTag opt;
+      if (ndefFindMimeRecord(msg, loc.recordLength, "application/json", mime)) {
         next.hasNdef = true;
         size_t n = min(mime.payloadLength, sizeof(next.json) - 1);
         memcpy(next.json, mime.payload, n);
         next.json[n] = '\0';
         next.content = tagParse((const char *)mime.payload, mime.payloadLength);
+      } else if (ndefFindMimeRecord(msg, loc.recordLength, OPT_MIME_TYPE, mime) &&
+                 optParse(mime.payload, mime.payloadLength, opt)) {
+        next.hasNdef = true;
+        optDescribeJson(opt, next.json, sizeof(next.json));
+        next.content.kind = TagKind::Spool;
+        next.content.openPrintTag = true;
+        optToSpool(opt, next.content.spool);
       }
     }
     next.locked = tagIsLocked(cc);
@@ -145,8 +156,9 @@ NfcWrite doWrite() {
     return NfcWrite::ErrNotNtag;
   }
   static uint8_t out[MAX_NDEF_BYTES];
-  size_t len = ndefBuildMimeTlv("application/json", (const uint8_t *)writeJson, strlen(writeJson), cc.capacityBytes, out,
-                                sizeof(out));
+  size_t len = writeOpt ? optBuildTlv(writeOptTag, cc.capacityBytes, out, sizeof(out))
+                        : ndefBuildMimeTlv("application/json", (const uint8_t *)writeJson, strlen(writeJson),
+                                           cc.capacityBytes, out, sizeof(out));
   if (len == 0) {
     return NfcWrite::ErrTooBig;
   }
@@ -298,7 +310,21 @@ bool nfcRequestWrite(const char *json, NfcWriteOrigin origin) {
     return false;
   }
   strcpy(writeJson, json);
+  writeOpt = false;
   writeOrigin = origin;
+  writeSeq = nfcGet().seq;
+  writeDeadline = millis() + NFC_WRITE_TIMEOUT_MS;
+  writeStatus = NfcWrite::WaitingForTag;
+  return true;
+}
+
+bool nfcRequestWriteOpenPrintTag(const SpoolTag &spool) {
+  if (writeStatus == NfcWrite::WaitingForTag || writeStatus == NfcWrite::Writing) {
+    return false;
+  }
+  optFromSpool(spool, writeOptTag);
+  writeOpt = true;
+  writeOrigin = NfcWriteOrigin::Device;
   writeSeq = nfcGet().seq;
   writeDeadline = millis() + NFC_WRITE_TIMEOUT_MS;
   writeStatus = NfcWrite::WaitingForTag;

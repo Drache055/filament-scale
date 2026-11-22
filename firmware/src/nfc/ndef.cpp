@@ -61,26 +61,33 @@ NdefLocate ndefLocate(const uint8_t *data, size_t avail, NdefLocation &loc) {
   return NdefLocate::NeedMore;
 }
 
-bool ndefParseMimeRecord(const uint8_t *rec, size_t len, NdefMime &out) {
+namespace {
+
+struct RawRecord {
+  uint8_t flags = 0;
+  const uint8_t *type = nullptr;
+  size_t typeLen = 0;
+  const uint8_t *payload = nullptr;
+  size_t payloadLen = 0;
+  size_t total = 0;  // Länge des ganzen Records
+};
+
+bool parseRecord(const uint8_t *rec, size_t len, RawRecord &out) {
   if (len < 3) {
     return false;
   }
-  uint8_t flags = rec[0];
-  bool cf = flags & 0x20, sr = flags & 0x10, il = flags & 0x08;
-  uint8_t tnf = flags & 0x07;
-  if (tnf != 0x02 || cf) {
-    return false;
-  }
+  out.flags = rec[0];
+  bool sr = out.flags & 0x10, il = out.flags & 0x08;
   size_t pos = 1;
-  size_t typeLen = rec[pos++];
-  size_t payloadLen;
+  out.typeLen = rec[pos++];
   if (sr) {
-    payloadLen = rec[pos++];
+    out.payloadLen = rec[pos++];
   } else {
     if (len < pos + 4) {
       return false;
     }
-    payloadLen = ((size_t)rec[pos] << 24) | ((size_t)rec[pos + 1] << 16) | ((size_t)rec[pos + 2] << 8) | rec[pos + 3];
+    out.payloadLen =
+        ((size_t)rec[pos] << 24) | ((size_t)rec[pos + 1] << 16) | ((size_t)rec[pos + 2] << 8) | rec[pos + 3];
     pos += 4;
   }
   size_t idLen = 0;
@@ -90,15 +97,52 @@ bool ndefParseMimeRecord(const uint8_t *rec, size_t len, NdefMime &out) {
     }
     idLen = rec[pos++];
   }
-  if (typeLen >= sizeof(out.type) || pos + typeLen + idLen + payloadLen > len) {
+  if (out.payloadLen > len || pos + out.typeLen + idLen + out.payloadLen > len) {
     return false;
   }
-  memcpy(out.type, rec + pos, typeLen);
-  out.type[typeLen] = '\0';
-  pos += typeLen + idLen;
-  out.payload = rec + pos;
-  out.payloadLength = payloadLen;
+  out.type = rec + pos;
+  out.payload = rec + pos + out.typeLen + idLen;
+  out.total = pos + out.typeLen + idLen + out.payloadLen;
   return true;
+}
+
+bool toMime(const RawRecord &r, NdefMime &out) {
+  bool cf = r.flags & 0x20;
+  if ((r.flags & 0x07) != 0x02 || cf || r.typeLen >= sizeof(out.type)) {
+    return false;
+  }
+  memcpy(out.type, r.type, r.typeLen);
+  out.type[r.typeLen] = '\0';
+  out.payload = r.payload;
+  out.payloadLength = r.payloadLen;
+  return true;
+}
+
+}  // namespace
+
+bool ndefParseMimeRecord(const uint8_t *rec, size_t len, NdefMime &out) {
+  RawRecord r;
+  return parseRecord(rec, len, r) && toMime(r, out);
+}
+
+bool ndefFindMimeRecord(const uint8_t *msg, size_t len, const char *mimeType, NdefMime &out) {
+  size_t pos = 0;
+  while (pos < len) {
+    RawRecord r;
+    if (!parseRecord(msg + pos, len - pos, r)) {
+      return false;
+    }
+    NdefMime m;
+    if (toMime(r, m) && strcmp(m.type, mimeType) == 0) {
+      out = m;
+      return true;
+    }
+    if (r.flags & 0x40) {  // ME: letzter Record
+      return false;
+    }
+    pos += r.total;
+  }
+  return false;
 }
 
 size_t ndefBuildMimeTlv(const char *mimeType, const uint8_t *payload, size_t payloadLen, size_t capacityBytes,
