@@ -16,6 +16,7 @@
 #include "util/log.h"
 #include "core/auth_throttle.h"
 #include "core/diag_core.h"
+#include "core/uid_check.h"
 #include "net/fwupdate.h"
 #include "net/ota.h"
 #include "net/spoolman.h"
@@ -667,7 +668,12 @@ static void handleUsersPin() {
     server.send(error == "Benutzer nicht gefunden" ? 404 : 400, "text/plain", error);
     return;
   }
-  webSessionsDropUser(id);  // wer mit der alten PIN angemeldet war, muss sich neu anmelden
+  // wer mit der alten PIN angemeldet war, muss sich neu anmelden (id 0 = Generic-Sitzungen)
+  if (id == 0) {
+    webSessionsDropGeneric();
+  } else {
+    webSessionsDropUser(id);
+  }
   server.send(200, "application/json", usersJson());
 }
 
@@ -682,6 +688,9 @@ static void handleGenericSet() {
     return;
   }
   usersSetGenericEnabled(doc["enabled"].as<bool>());
+  if (!doc["enabled"].as<bool>()) {
+    webSessionsDropGeneric();  // bestehende Generic-Sitzungen enden sofort
+  }
   server.send(200, "text/plain", "ok");
 }
 
@@ -971,8 +980,8 @@ static void handleSpoolmanLookup() {
   String uid = server.arg("uid");
   uid.toUpperCase();
   int id = server.hasArg("id") ? server.arg("id").toInt() : -1;
-  if (uid.length() > 20 || (uid.length() == 0 && id < 0)) {
-    server.send(400, "text/plain", "uid (Hex, max. 20 Zeichen) oder id angeben");
+  if ((uid.length() > 0 && !isValidTagUid(uid.c_str())) || (uid.length() == 0 && id < 0)) {
+    server.send(400, "text/plain", "uid (Hex, 8 bis 20 Zeichen) oder id angeben");
     return;
   }
   spoolmanRequestLookup(uid.c_str(), id);
@@ -1005,8 +1014,8 @@ static void handleSpoolmanLink() {
   int id = server.arg("id").toInt();
   String uid = server.arg("uid");
   uid.toUpperCase();
-  if (id <= 0 || uid.length() == 0 || uid.length() > 20) {
-    server.send(400, "text/plain", "id und uid (Hex, max. 20 Zeichen) angeben");
+  if (id <= 0 || !isValidTagUid(uid.c_str())) {
+    server.send(400, "text/plain", "id und uid (Hex, 8 bis 20 Zeichen) angeben");
     return;
   }
   spoolmanRequestLinkTag(id, uid.c_str());

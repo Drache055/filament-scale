@@ -88,13 +88,12 @@ bool check(bool auto_) {
     }
     return false;
   }
-  String body = http.getString();
-  http.end();
   FwRelease *r = new FwRelease();  // ca. 4 KB, nicht auf den Task-Stack
   const char *err = nullptr;
   bool found = false;
-  bool ok = fwParseReleases(body.c_str(), body.length(), ch, *r, found, err);
-  body = String();
+  // Direkt aus dem Stream parsen, die ganze Antwort (über 100 KB) wird nie als String gehalten
+  bool ok = fwParseReleases(http.getStream(), ch, *r, found, err);
+  http.end();
   if (!ok) {
     delete r;
     setError(err ? err : "Releases nicht lesbar");
