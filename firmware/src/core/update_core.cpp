@@ -224,6 +224,7 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
   f["assets"][0]["name"] = true;
   f["assets"][0]["size"] = true;
   f["assets"][0]["browser_download_url"] = true;
+  f["assets"][0]["digest"] = true;
   JsonDocument doc;
   if (deserializeJson(doc, json, len, DeserializationOption::Filter(filter)) || !doc.is<JsonArrayConst>()) {
     error = "Antwort von GitHub ist kein gültiges JSON";
@@ -233,6 +234,7 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
   FwVersion bestVer;
   const char *bestUrl = nullptr;
   uint32_t bestSize = 0;
+  char bestSha[65] = "";
   for (JsonObjectConst r : doc.as<JsonArrayConst>()) {
     const char *tag = r["tag_name"] | "";
     FwVersion v = fwParseVersion(tag);
@@ -244,12 +246,14 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
     }
     const char *url = nullptr;
     uint32_t size = 0;
+    char sha[65] = "";
     for (JsonObjectConst a : r["assets"].as<JsonArrayConst>()) {
       const char *name = a["name"] | "";
       const char *u = a["browser_download_url"] | "";
       if (endsWith(name, "-ota.bin") && fwAllowedUrl(u) && strlen(u) < sizeof(out.otaUrl)) {
         url = u;
         size = a["size"] | 0u;
+        fwParseDigest(a["digest"] | "", sha);  // fehlt oder ungültig: sha bleibt leer, die Installation lehnt dann ab
         break;
       }
     }
@@ -262,6 +266,7 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
       bestVer = v;
       bestUrl = url;
       bestSize = size;
+      memcpy(bestSha, sha, sizeof(bestSha));
     }
   }
   if (!found) {
@@ -272,6 +277,7 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
   out.channel = fwReleaseChannel(tag, best["prerelease"] | false);
   copy(out.otaUrl, sizeof(out.otaUrl), bestUrl);
   out.otaSize = bestSize;
+  memcpy(out.otaSha256, bestSha, sizeof(out.otaSha256));
   copy(out.pageUrl, sizeof(out.pageUrl), best["html_url"] | "");
   const char *body = best["body"] | "";
   size_t n = strlen(body);
@@ -285,4 +291,34 @@ bool fwParseReleases(const char *json, size_t len, FwChannel channel, FwRelease 
   memcpy(out.notes, body, n);
   out.notes[n] = 0;
   return true;
+}
+
+bool fwParseDigest(const char *digest, char out[65]) {
+  out[0] = 0;
+  if (!digest || strncmp(digest, "sha256:", 7) != 0) {
+    return false;
+  }
+  const char *h = digest + 7;
+  if (strlen(h) != 64) {
+    return false;
+  }
+  for (int i = 0; i < 64; i++) {
+    if (!isxdigit((unsigned char)h[i])) {
+      return false;
+    }
+  }
+  for (int i = 0; i < 64; i++) {
+    out[i] = (char)tolower((unsigned char)h[i]);
+  }
+  out[64] = 0;
+  return true;
+}
+
+void fwHashToHex(const uint8_t hash[32], char out[65]) {
+  static const char *HEX = "0123456789abcdef";
+  for (int i = 0; i < 32; i++) {
+    out[2 * i] = HEX[hash[i] >> 4];
+    out[2 * i + 1] = HEX[hash[i] & 15];
+  }
+  out[64] = 0;
 }

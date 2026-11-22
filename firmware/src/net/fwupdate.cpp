@@ -7,6 +7,7 @@
 #include <WiFiClientSecure.h>
 #include <esp_ota_ops.h>
 #include <freertos/semphr.h>
+#include <mbedtls/sha256.h>
 
 #include <algorithm>
 
@@ -160,14 +161,20 @@ void install() {
     char tag[FW_TAG_LEN];
     char otaUrl[FW_URL_LEN];
     uint32_t otaSize;
+    char sha256[65];
   } r;  // nur das Nötige, die Release Notes bleiben vom Task-Stack fern
   locked([&]() {
     strlcpy(r.tag, release.tag, sizeof(r.tag));
     strlcpy(r.otaUrl, release.otaUrl, sizeof(r.otaUrl));
     r.otaSize = release.otaSize;
+    strlcpy(r.sha256, release.otaSha256, sizeof(r.sha256));
   });
   if (!r.otaUrl[0]) {
     setError("Keine Version gefunden, erst nach Updates suchen");
+    return;
+  }
+  if (!r.sha256[0]) {
+    setError("Release hat keine Prüfsumme (SHA-256), Installation aus Sicherheitsgründen abgelehnt");
     return;
   }
   const esp_partition_t *running = esp_ota_get_running_partition();
@@ -232,6 +239,9 @@ void install() {
   uint32_t written = 0, lastData = millis();
   uint8_t lastPct = 255;
   const char *fail = nullptr;
+  mbedtls_sha256_context sha;
+  mbedtls_sha256_init(&sha);
+  mbedtls_sha256_starts(&sha, 0);  // 0 = SHA-256
   if (!buf) {
     fail = "Kein Speicher frei";
   }
@@ -256,6 +266,7 @@ void install() {
       fail = Update.errorString();
       break;
     }
+    mbedtls_sha256_update(&sha, buf, got);
     written += got;
     locked([&]() { status.done = written; });
     uint8_t pct = (uint64_t)written * 100 / len;
@@ -266,6 +277,18 @@ void install() {
   }
   free(buf);
   http.end();
+  uint8_t digest[32];
+  mbedtls_sha256_finish(&sha, digest);
+  mbedtls_sha256_free(&sha);
+  // Prüfsumme vor Update.end(), das erst den neuen Slot aktiviert; bei Abweichung bleibt die alte Firmware aktiv
+  if (!fail) {
+    char hex[65];
+    fwHashToHex(digest, hex);
+    if (strcmp(hex, r.sha256) != 0) {
+      logPrintf("[UPDATE] SHA-256 erwartet %s, berechnet %s\n", r.sha256, hex);
+      fail = "Prüfsumme (SHA-256) stimmt nicht mit der Release überein";
+    }
+  }
   // end() prüft das Image (Magic, Prüfsumme) und setzt erst dann den neuen Slot als Boot-Partition
   if (!fail && !Update.end()) {
     fail = Update.errorString();
