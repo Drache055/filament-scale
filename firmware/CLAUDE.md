@@ -157,7 +157,7 @@ remaining_weight = spool_gross - empty_spool
 - `remaining_weight > initial_weight + 50 g` (falls bekannt) → Warnung, Speichern bleibt möglich.
 - Überlast: Gesamtgewicht > 4500 g (`SCALE_OVERLOAD_G`) → Warnung „Überlast“ (Zelle 5 kg).
 - **Speichern:** `spoolmanRequestUpdate(id, rest, box, owner)`. Erfolg (HTTP 2xx) oder Eintrag in die Warteschlange gilt als erledigt („Gespeichert“ bzw. „In Warteschlange“).
-- Optionale Längenberechnung (nicht umgesetzt): `laenge_m = remaining_weight / (dichte_g_cm3 * pi * (d_mm/20)^2 * 100)`, Dichte und Durchmesser aus `spool.filament`.
+- **Länge:** Auf „Bestätigen“ steht unter dem Restgewicht „ca. n m Filament“, wenn Spoolman Dichte und Durchmesser der Filamentsorte kennt (`filamentLengthM` in `core/weigh_core`, nativ getestet): `laenge_m = remaining_weight / (dichte_g_cm3 * pi * (d_mm/20)^2 * 100)`. Ohne diese Angaben bleibt die Zeile leer. Screen am Gerät nicht geprüft.
 
 ### 5.3 Neue Box anlegen (Zustand `NewBox`)
 - Steht in „Box auflegen“ eine Box stabil ≥ 50 g auf der Waage und liegt ein **leerer oder unbekannter** Tag auf (`tagIsBlankForBox`: kein NDEF, kein bekanntes JSON oder Box-Tag ohne `name`), öffnet sich „Neue Box anlegen“.
@@ -453,4 +453,3 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 14.3 Offen
 - Leseweite des PN532 durch Wiegeplatte und Boxboden praktisch testen.
-- Längenanzeige in m (5.2).

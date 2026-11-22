@@ -1,5 +1,12 @@
 #include "weigh_core.h"
 
+float filamentLengthM(float grams, float density, float diameterMm) {
+  if (grams <= 0 || density <= 0 || diameterMm <= 0) return 0;
+  const float r = diameterMm / 20.0f;  // Radius in cm
+  const float areaCm2 = 3.14159265f * r * r;
+  return grams / (density * areaCm2) / 100.0f;
+}
+
 WeighResult weighCompute(float w1, float w2, float emptySpool, float initialWeight) {
   WeighResult r;
   r.gross = w2 - w1;

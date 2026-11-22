@@ -21,6 +21,13 @@ void test_compute_ok() {
   TEST_ASSERT_EQUAL(WeighCheck::Ok, r.check);
 }
 
+void test_length() {
+  // 1.75 mm PLA (1.24 g/cm3): ca. 335 m pro kg
+  TEST_ASSERT_FLOAT_WITHIN(1.0f, 335.3f, filamentLengthM(1000, 1.24f, 1.75f));
+  TEST_ASSERT_EQUAL_FLOAT(0, filamentLengthM(1000, 0, 1.75f));
+  TEST_ASSERT_EQUAL_FLOAT(0, filamentLengthM(-5, 1.24f, 1.75f));
+}
+
 void test_compute_clamped_and_error() {
   TEST_ASSERT_EQUAL(WeighCheck::Clamped, weighCompute(0, 245, 250, -1).check);
   TEST_ASSERT_EQUAL_FLOAT(0, weighCompute(0, 245, 250, -1).remaining);
@@ -180,6 +187,7 @@ void test_box_tag_wins_over_blank() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_compute_ok);
+  RUN_TEST(test_length);
   RUN_TEST(test_compute_clamped_and_error);
   RUN_TEST(test_compute_too_heavy);
   RUN_TEST(test_full_flow);

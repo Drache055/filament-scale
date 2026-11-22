@@ -114,6 +114,7 @@ enum class Str : uint8_t {
   WfRemaining,
   WfEmptySpool,
   WfLastRemaining,
+  WfLength,
   WfSaving,
   WfQueued,
   WfRemoveBox,

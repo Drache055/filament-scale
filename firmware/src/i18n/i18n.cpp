@@ -116,6 +116,7 @@ const char *const texts[(int)Str::Count][2] = {
     /* WfRemaining */ {"Restgewicht", "Remaining"},
     /* WfEmptySpool */ {"Leerspule", "Empty spool"},
     /* WfLastRemaining */ {"Letzter Rest: %d g", "Last remaining: %d g"},
+    /* WfLength */ {"ca. %d m Filament", "approx. %d m of filament"},
     /* WfSaving */ {"Speichere ...", "Saving ..."},
     /* WfQueued */ {"In Warteschlange", "Queued"},
     /* WfRemoveBox */ {"Box entnehmen", "Remove the box"},

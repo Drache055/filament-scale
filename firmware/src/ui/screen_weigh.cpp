@@ -47,6 +47,7 @@ struct Ctx {
   lv_obj_t *weight = nullptr;
   lv_obj_t *info = nullptr;
   lv_obj_t *hint = nullptr;
+  lv_obj_t *length = nullptr;  // Länge in m (nur wenn Dichte und Durchmesser bekannt)
   lv_obj_t *emptyLabel = nullptr;
   lv_obj_t *saveBtn = nullptr;
   lv_obj_t *boxNumber = nullptr;  // Neue Box: gewählte Nummer
@@ -165,7 +166,7 @@ void setTitle(lv_obj_t *scr, const char *text, lv_color_t color) {
 // Baut den Screen zum aktuellen Zustand
 void build() {
   WeighState st = ctx->flow.state();
-  ctx->weight = ctx->info = ctx->hint = ctx->emptyLabel = ctx->saveBtn = nullptr;
+  ctx->weight = ctx->info = ctx->hint = ctx->length = ctx->emptyLabel = ctx->saveBtn = nullptr;
   ctx->boxNumber = ctx->writeInfo = nullptr;
   lv_obj_t *scr = uiNewScreen();
   const ThemeColors &c = themeColors();
@@ -235,6 +236,7 @@ void build() {
       lv_label_set_text(makeLabel(card, &theme().body), buf);
       lv_label_set_text(makeLabel(card, &theme().dim), tr(Str::WfRemaining));
       ctx->weight = makeLabel(card, &theme().weight);
+      ctx->length = makeLabel(card, &theme().dim);
       ctx->hint = makeLabel(card, &theme().dim);
       if (ctx->emptyManual) {  // kein Leerspulengewicht in Spoolman: Wert von Hand einstellen
         lv_obj_t *row = makeRow(scr);
@@ -342,6 +344,14 @@ void refreshLive(const ScaleReading &r, const NfcState &n) {
     case WeighState::Confirm: {
       WeighResult res = currentResult();
       lv_label_set_text_fmt(ctx->weight, "%d g", (int)lroundf(res.remaining));
+      if (ctx->length) {
+        float m = filamentLengthM(res.remaining, ctx->spool.density, ctx->spool.diameter);
+        if (m >= 0.5f) {
+          lv_label_set_text_fmt(ctx->length, tr(Str::WfLength), (int)lroundf(m));
+        } else {
+          lv_label_set_text(ctx->length, "");
+        }
+      }
       lv_obj_set_style_text_color(ctx->weight, res.check == WeighCheck::EmptyTooBig ? c.error : c.text, 0);
       switch (res.check) {
         case WeighCheck::EmptyTooBig: setHint(tr(Str::WfCheckEmpty), c.error); break;
