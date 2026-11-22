@@ -121,6 +121,8 @@ enum class Str : uint8_t {
   WfCheckEmpty,
   WfClamped,
   WfTooHeavy,
+  WfArchiveOff,
+  WfArchiveOn,
   WfTimeout,
   WfCancel,
   WfRetry,

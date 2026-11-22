@@ -15,6 +15,12 @@ std::string queueEntryToLine(const QueueEntry &e) {
   if (e.owner[0]) {
     doc["owner"] = e.owner;
   }
+  if (e.archive) {
+    doc["archive"] = true;
+    if (e.tagUid[0]) {
+      doc["tag_uid"] = e.tagUid;
+    }
+  }
   doc["timestamp"] = e.timestamp;
   std::string out;
   serializeJson(doc, out);
@@ -37,6 +43,8 @@ bool queueEntryFromLine(const std::string &line, QueueEntry &out) {
     strncpy(out.location, doc["location"].as<const char *>(), sizeof(out.location) - 1);
   }
   strncpy(out.owner, doc["owner"] | "", sizeof(out.owner) - 1);
+  out.archive = doc["archive"] | false;
+  strncpy(out.tagUid, doc["tag_uid"] | "", sizeof(out.tagUid) - 1);
   out.timestamp = doc["timestamp"] | 0u;
   return true;
 }

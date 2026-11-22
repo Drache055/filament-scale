@@ -33,6 +33,7 @@ struct Ctx {
   char boxName[65] = "";
   float emptySpool = -1;      // aus Spoolman oder manuell
   bool emptyManual = false;
+  bool archive = false;       // leere Spule beim Speichern archivieren und Tag lösen
   WeighState shown = WeighState::Idle;
   lv_timer_t *timer = nullptr;
   uint32_t writeSeq = 0;      // Ergebnis-Zähler vor dem Senden
@@ -50,6 +51,8 @@ struct Ctx {
   lv_obj_t *length = nullptr;  // Länge in m (nur wenn Dichte und Durchmesser bekannt)
   lv_obj_t *emptyLabel = nullptr;
   lv_obj_t *saveBtn = nullptr;
+  lv_obj_t *archiveRow = nullptr;  // nur sichtbar bei (fast) leerer Spule
+  lv_obj_t *archiveLabel = nullptr;
   lv_obj_t *boxNumber = nullptr;  // Neue Box: gewählte Nummer
   lv_obj_t *writeInfo = nullptr;  // Neue Box: Schreibstatus
 };
@@ -135,6 +138,7 @@ void onNewBoxWrite(lv_event_t *) {
 }
 
 void onSave(lv_event_t *) { if (ctx) ctx->reqSave = true; }
+void onArchiveToggle(lv_event_t *) { if (ctx) ctx->archive = !ctx->archive; }
 
 void adjustEmpty(int delta) {
   if (!ctx) return;
@@ -166,7 +170,7 @@ void setTitle(lv_obj_t *scr, const char *text, lv_color_t color) {
 // Baut den Screen zum aktuellen Zustand
 void build() {
   WeighState st = ctx->flow.state();
-  ctx->weight = ctx->info = ctx->hint = ctx->length = ctx->emptyLabel = ctx->saveBtn = nullptr;
+  ctx->weight = ctx->info = ctx->hint = ctx->length = ctx->emptyLabel = ctx->saveBtn = ctx->archiveRow = ctx->archiveLabel = nullptr;
   ctx->boxNumber = ctx->writeInfo = nullptr;
   lv_obj_t *scr = uiNewScreen();
   const ThemeColors &c = themeColors();
@@ -249,6 +253,9 @@ void build() {
         ctx->emptyLabel = mid;
         uiMakeButton(row, "+10", onEmptyPlus);
       }
+      ctx->archiveRow = makeRow(scr);
+      ctx->archiveLabel = lv_obj_get_child(uiMakeButton(ctx->archiveRow, "", onArchiveToggle), 0);
+      lv_obj_add_flag(ctx->archiveRow, LV_OBJ_FLAG_HIDDEN);
       lv_obj_t *row = makeRow(scr);
       ctx->saveBtn = uiMakeButton(row, tr(Str::Save), onSave);
       lv_obj_t *cancel = uiMakeButton(row, LV_SYMBOL_CLOSE, onCancel);  // schmal, damit "Speichern" Platz hat
@@ -366,6 +373,16 @@ void refreshLive(const ScaleReading &r, const NfcState &n) {
           lv_obj_remove_flag(ctx->saveBtn, LV_OBJ_FLAG_HIDDEN);
         }
       }
+      if (ctx->archiveRow) {
+        bool low = res.check != WeighCheck::EmptyTooBig && res.remaining <= WEIGH_ARCHIVE_MAX_G;
+        if (!low) ctx->archive = false;
+        if (low) {
+          lv_obj_remove_flag(ctx->archiveRow, LV_OBJ_FLAG_HIDDEN);
+        } else {
+          lv_obj_add_flag(ctx->archiveRow, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ctx->archiveLabel) lv_label_set_text(ctx->archiveLabel, tr(ctx->archive ? Str::WfArchiveOn : Str::WfArchiveOff));
+      }
       if (ctx->emptyLabel) {
         lv_label_set_text_fmt(ctx->emptyLabel, "%s: %d g", tr(Str::WfEmptySpool), (int)lroundf(ctx->emptySpool));
       }
@@ -446,7 +463,8 @@ void tick(lv_timer_t *) {
       WeighResult res = currentResult();
       ctx->savedRemaining = res.remaining;
       ctx->writeSeq = spoolmanWriteResult().seq;
-      spoolmanRequestUpdate(ctx->spool.id, res.remaining, ctx->boxName, ctx->owner[0] ? ctx->owner : nullptr);
+      spoolmanRequestUpdate(ctx->spool.id, res.remaining, ctx->boxName, ctx->owner[0] ? ctx->owner : nullptr, ctx->archive,
+                            ctx->spoolUid);
       logPrintf("[FLOW] Spule %d: W1 %.1f, W2 %.1f, Leerspule %.0f -> Rest %.1f g, Box %s\n", ctx->spool.id,
                 ctx->flow.w1(), ctx->flow.w2(), ctx->emptySpool, res.remaining, ctx->boxName);
     }

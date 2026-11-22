@@ -17,6 +17,7 @@
 #define WEIGH_ADDED_G        50.0f   // Objekt hinzugefügt: stabil und >= Referenz + Schwelle
 #define WEIGH_TIMEOUT_MS    120000  // Timeout je Wartezustand
 #define WEIGH_SHOW_SPOOL_MS 2000    // Mindestdauer des Screens "Spule erkannt"
+#define WEIGH_ARCHIVE_MAX_G  10.0f  // bis zu diesem Restgewicht bietet "Bestätigen" das Archivieren an
 #define WEIGH_DEFAULT_EMPTY_G 250   // Startwert der manuellen Eingabe, wenn kein Leerspulengewicht bekannt ist
 
 // NFC (PN532, I²C, Adresse 0x24)

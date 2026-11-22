@@ -123,6 +123,8 @@ const char *const texts[(int)Str::Count][2] = {
     /* WfCheckEmpty */ {"Leerspulengewicht prüfen", "Check empty spool weight"},
     /* WfClamped */ {"Unter 0 g, auf 0 gesetzt", "Below 0 g, set to 0"},
     /* WfTooHeavy */ {"Mehr als Anfangsgewicht, prüfen", "More than initial weight, check"},
+    /* WfArchiveOff */ {"Archivieren: nein", "Archive: no"},
+    /* WfArchiveOn */ {"Archivieren: ja", "Archive: yes"},
     /* WfTimeout */ {"Zeit abgelaufen", "Timed out"},
     /* WfCancel */ {"Abbrechen", "Cancel"},
     /* WfRetry */ {"Nochmal", "Retry"},
