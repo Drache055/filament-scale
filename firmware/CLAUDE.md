@@ -402,7 +402,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
   - **Generic** (Name `generic`, am Anfang ohne PIN, vom Admin abschaltbar oder mit PIN schützbar): nur wiegen und NFC lesen, kein Tara, keine Sprache.
 - PINs nur als Salted-SHA-256-Hash im NVS (`pin<ID>`, ID 0 = Generic). Eine geänderte PIN, ein gelöschter Benutzer oder ein geändertes Admin-Passwort beenden die betroffenen Sitzungen.
 - `/api/status` enthält für Nicht-Admins keine Gerätedaten (IP, Speicher, Firmware) und keinen Inhalt eines Admin-Tags. Ist die Sperre aus, ist jeder Admin.
-- 5 Fehlversuche (Login oder Basic-Auth, gemeinsam gezählt) sperren die Anmeldung 30 s.
+- Fehlversuch-Sperre **pro Client-IP** (`core/auth_throttle`, Tabelle mit 16 IPs): 5 Fehlversuche (Login, Basic-Auth, alte PIN beim PIN-Wechsel, gemeinsam gezählt) sperren diese IP 30 s, jede weitere Sperre doppelt so lang, höchstens 15 min. Andere IPs bleiben frei, ein Angreifer im LAN sperrt den Admin also nicht mehr aus. Nur eine erfolgreiche Admin-Anmeldung setzt den Zähler der IP zurück (sonst könnte man zwischen Rateversuchen mit eigener PIN oder als Generic den Zähler leeren); nach 1 h ohne Fehlversuch fängt die IP von vorn an. Ist die Tabelle voll, wird der am längsten ruhige ungesperrte Eintrag ersetzt. Grenzen: Wer viele IPs nutzt, bekommt pro IP eigene Versuche; Clients hinter einem gemeinsamen NAT/Proxy teilen sich einen Zähler. Am Gerät nicht geprüft.
 - Wer im **geschützten** Setup-WLAN ist (Passwort mindestens 8 Zeichen), braucht keine zweite Anmeldung. Ein offener Hotspot zählt nicht als Ausweis.
 
 ### 11.5 Sprache pro Benutzer
