@@ -79,6 +79,7 @@ const char *const texts[(int)Str::Count][2] = {
     /* User */ {"Benutzer", "User"},
     /* UserLoggedIn */ {"Angemeldet", "Logged in"},
     /* UserUnknown */ {"Unbekannter Benutzer", "Unknown user"},
+    /* UserTagOutdated */ {"Tag veraltet, im Web neu schreiben", "Outdated tag, rewrite it on the web"},
     /* WriteOccupied */ {"Tag enthält eine Spule", "Tag holds a spool"},
     /* Spoolman */ {"Spoolman", "Spoolman"},
     /* SpoolmanUnknown */ {"Nicht in Spoolman", "Not in Spoolman"},

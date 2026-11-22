@@ -77,6 +77,7 @@ enum class Str : uint8_t {
   User,
   UserLoggedIn,
   UserUnknown,
+  UserTagOutdated,
   WriteOccupied,
   Spoolman,
   SpoolmanUnknown,

@@ -1,4 +1,5 @@
 #include "webserver.h"
+#include "util/secret.h"
 #include "util/log.h"
 
 #include <Arduino.h>
@@ -192,7 +193,8 @@ static void handleStatus() {
                 : n.content.kind == TagKind::Admin ? "admin"
                                                    : "unknown";
   nfc["format"] = n.content.openPrintTag ? "openprinttag" : n.hasNdef ? "json" : "";
-  nfc["json"] = n.content.kind == TagKind::Admin ? "" : n.json;  // der Admin-Tag enthält ein Geheimnis
+  // Admin- und Benutzer-Tags enthalten ein Geheimnis (Token), ihr Inhalt geht nicht an die Webseite
+  nfc["json"] = n.content.kind == TagKind::Admin || n.content.kind == TagKind::User ? "" : n.json;
   User current;
   doc["user"] = sessionCurrentUser(current) ? current.name : "";
   doc["role"] = w.role == WebRole::Admin ? "admin" : w.role == WebRole::User ? "user" : "generic";
@@ -783,8 +785,10 @@ static void handleUsersWrite() {
     server.send(404, "text/plain", "Benutzer nicht gefunden");
     return;
   }
-  char json[128];
-  if (tagBuildUser(u.id, u.name, json, sizeof(json)) == 0) {
+  char json[192];
+  // Neues Token: gespeichert erst, wenn der Schreibauftrag angenommen ist; der bisherige Tag wird damit ungültig
+  String token = secretRandomHex(16);
+  if (tagBuildUser(u.id, u.name, token.c_str(), json, sizeof(json)) == 0) {
     server.send(500, "text/plain", "Tag-Inhalt zu groß");
     return;
   }
@@ -792,6 +796,7 @@ static void handleUsersWrite() {
     server.send(409, "text/plain", "Es läuft bereits ein Schreibvorgang");
     return;
   }
+  usersSetTagToken(u.id, token);
   logPrintf("[WEB] Benutzer-Tag für '%s' angefordert\n", u.name);
   server.send(200, "text/plain", "ok");
 }

@@ -101,7 +101,7 @@ Daneben gibt es die Betriebsart **Einfache Waage** (5.4): nur wiegen, ohne Spool
 - Leerer bzw. unbekannter Tag beim Box-Schritt → „Neue Box anlegen“ (siehe 5.3).
 
 ### 4.4 Benutzer- und Admin-Tag
-- Benutzer: `{"type":"user","id":3,"name":"Fabian"}` (siehe 11.1).
+- Benutzer: `{"type":"user","id":3,"name":"Fabian","token":"<32 Hex>"}` (siehe 11.1). Ältere Tags ohne `token` melden nicht mehr an.
 - Admin: `{"type":"admin","token":"<32 Hex>"}` (siehe 11.2).
 
 ### 4.5 Tag-Typ-Erkennung
@@ -379,7 +379,9 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 
 ### 11.1 Benutzer (Besitzer)
 - Die Webseite legt Benutzer an (`storage/users.cpp`, NVS, max. 16, ID fortlaufend) und löst das Schreiben des Benutzer-Tags aus. Benutzer legen sich nicht selbst an, das geht nur mit Admin-Rechten.
-- Ein Benutzer-Tag an der Waage meldet an (`app/session.cpp`), maßgeblich ist die ID in der Benutzerliste. Ein gelöschter Benutzer wird abgemeldet und sein Tag ist ungültig.
+- Ein Benutzer-Tag an der Waage meldet an (`app/session.cpp`), maßgeblich sind ID und Token. Ein gelöschter Benutzer wird abgemeldet und sein Tag ist ungültig.
+- **Token pro Benutzer:** Die ID allein meldet nicht an, sonst könnte jeder per Handy-App einen Tag mit `"id":1` schreiben. „Tag schreiben“ erzeugt ein neues geheimes Token (32 Hex, gespeichert mit `usersSetTagToken` sobald der Schreibauftrag angenommen ist, NVS-Schlüssel `tok<id>` im Namespace `users`), das auf den Tag kommt; es gilt nur der zuletzt geschriebene Tag (wie beim Admin-Tag). Prüfung mit `tagCheckUserToken` (`nfc/tags`, nativ getestet, Vergleich ohne frühen Abbruch). Der Inhalt von Benutzer-Tags geht wie beim Admin-Tag nicht an `/api/status`. Ein Tag lässt sich weiterhin 1:1 kopieren; das Token verhindert nur selbst geschriebene Tags.
+- **Migration:** Tags aus älteren Versionen haben kein Token und melden nicht mehr an. Das Gerät zeigt „Tag veraltet, im Web neu schreiben“, die Webseite markiert „Tag schreiben“ mit ⚠, solange für den Benutzer noch kein Tag mit Token geschrieben wurde (`"tag":false` in `/api/users`). Am Gerät nicht geprüft.
 - Abmeldung nach `USER_TIMEOUT_MS` (15 min) ohne Spulen-/Box-Scan oder per Tippen auf den Namen in der Statusleiste von Home.
 
 ### 11.2 Admin, Passwort, Geräte-PIN, Sperre
