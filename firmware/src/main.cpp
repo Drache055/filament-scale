@@ -6,6 +6,7 @@
 #include "nfc/nfc.h"
 #include "app/session.h"
 #include "bus/i2c_bus.h"
+#include "net/bootcheck.h"
 #include "net/fwupdate.h"
 #include "net/ota.h"
 #include "net/spoolman.h"
@@ -36,6 +37,7 @@ static void netTask(void *) {
       ipLogged = false;
     }
     wifiLoop();
+    bootCheckLoop();
     otaLoop();
     webLoop();
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -50,6 +52,7 @@ void setup() {
   logPrintf("[BOOT] Flash %u MB, PSRAM %u MB\n", ESP.getFlashChipSize() / (1024 * 1024),
                 ESP.getPsramSize() / (1024 * 1024));
   logPrintf("[BOOT] Laufende Partition: %s\n", esp_ota_get_running_partition()->label);
+  bootCheckBegin();
 
   devicePwBegin();  // vor dem net-Task: Hotspot und OTA brauchen ihre Passwörter
   adminBegin();  // vor dem net-Task, die Webseite fragt die Sperre ab
@@ -69,6 +72,7 @@ void setup() {
   nfcBegin();
   sessionBegin();
   uiStart();
+  bootCheckSetupDone();
 }
 
 // Serielle Notbedienung (USB), z. B. wenn das WLAN nicht erreichbar ist:
