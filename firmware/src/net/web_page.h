@@ -152,7 +152,14 @@ h3{font-size:15px;margin:18px 0 8px}
     <ol class="steps"><li data-i18n-html="cal1"></li><li data-i18n-html="cal2"></li><li data-i18n-html="cal3"></li></ol>
     <div class="row"><button class="sec" id="tare2" data-i18n="tare">Tara</button>
       <input id="ref" type="number" min="1" max="5000" step="1" value="200"> <span>g</span>
-      <button id="cal" data-i18n="calibrate">Kalibrieren</button></div>
+      <button id="cal" data-i18n="calibrate">Kalibrieren</button>
+      <button class="sec" id="caladd" data-i18n="cal_add">Punkt hinzufügen</button></div>
+  </div>
+  <div class="card">
+    <div class="label" data-i18n="cal_points">Kalibrierpunkte und Linearität</div>
+    <p style="color:var(--dim)" data-i18n="cal_multi_hint"></p>
+    <table id="calpts"></table>
+    <p id="callin" style="margin:8px 0 0"></p>
   </div>
   <div class="card">
     <div class="label" data-i18n="sensor">Wägesensor</div>
@@ -352,7 +359,7 @@ const I18N={
 de:{
 m_overview:'Übersicht',m_calibration:'Kalibrierung',m_users:'Benutzer',m_catalog:'Filament-Katalog',m_spoolman:'Spoolman',m_wifi:'WLAN',m_log:'Log',m_system:'System',
 weight:'Gewicht',tare:'Tara',cur_user:'Angemeldeter Benutzer',nobody:'niemand',last_scan:'Zuletzt gescannte Spule',device:'Gerät',wlan:'WLAN',ip:'IP-Adresse',signal:'Signal',uptime:'Laufzeit',mem:'Freier RAM / PSRAM',
-status:'Status',raw_net:'Rohwert (netto)',procedure:'Ablauf',cal1:'Waage leeren und <b>Tara</b> drücken.',cal2:'Ein Gewicht mit bekannter Masse auflegen (je schwerer, desto genauer).',cal3:'Die Masse eingeben und <b>Kalibrieren</b> drücken.',calibrate:'Kalibrieren',
+status:'Status',raw_net:'Rohwert (netto)',procedure:'Ablauf',cal1:'Waage leeren und <b>Tara</b> drücken.',cal2:'Ein Gewicht mit bekannter Masse auflegen (je schwerer, desto genauer).',cal3:'Die Masse eingeben und <b>Kalibrieren</b> drücken. Für mehr Genauigkeit danach weitere Gewichte auflegen und mit <b>Punkt hinzufügen</b> ergänzen (bis zu 5).',calibrate:'Kalibrieren',cal_add:'Punkt hinzufügen',cal_points:'Kalibrierpunkte und Linearität',cal_multi_hint:'Zwischen den Punkten rechnet die Waage stückweise linear, eine nichtlineare Wägezelle wird so ausgeglichen. Die Abweichung zeigt, wie weit jeder Punkt von einer Geraden durch Null liegt. Ab 2 Punkten aussagekräftig, am besten über den ganzen Bereich (z. B. 200, 500, 1000, 2000 g). Kalibrieren beginnt neu, Punkt hinzufügen mit einem vorhandenen Gewicht ersetzt diesen Punkt. Vor dem ersten Punkt Tara.',cal_g:'Gewicht',cal_raw:'Rohwert',cal_dev:'Abweichung',cal_none:'Keine Punkte gespeichert.',cal_legacy:'Alte Einpunkt-Kalibrierung (nur Faktor). Mit Kalibrieren neu beginnen, um Punkte zu sammeln.',cal_one:'Ein Punkt: Gerade durch Null. Für die Linearitätsprüfung ein weiteres Gewicht hinzufügen.',cal_lin_ok:'Linear: größte Abweichung {0} g ({1} %).',cal_lin_warn:'Nicht linear: größte Abweichung {0} g ({1} %). Die Mehrpunkt-Korrektur gleicht das an den Punkten aus. Bei großen Werten Mechanik prüfen (Auflage, Schrauben, Kabel unter Zug).',cal_added:'Punkt gespeichert',
 no_sensor:'{0} nicht gefunden',sensor:'Wägesensor',sensor_save:'Speichern und neu starten',sensor_restart:'Gespeicherte Auswahl ist noch nicht aktiv, Neustart nötig.',sensor_cal_hint:'Die Kalibrierung wird pro Sensortyp gespeichert. Nach dem ersten Wechsel auf einen Sensor neu kalibrieren.',sensor_confirm:'Sensor {0} speichern und Gerät neu starten?',sensor_none:'– (nicht belegt)',sensor_bus:'Touch-Bus',sh_hx711:'Standard. Versorgung 3,3 V (DOUT darf keine 5 V führen). HX710B-Module laufen mit demselben Treiber.',sh_nau7802:'I²C, Adresse 0x2A, 3,3 V. SCL = GPIO47 und SDA = GPIO48 nutzt den Touch-Bus mit (Header P2 Pin 5 und 6, keine weiteren Pins), andere Pins bekommen einen eigenen Bus. Am Gerät nicht geprüft.',sh_ads1232:'2-Draht wie HX711. PDWN ist optional (sonst am Modul fest auf 3,3 V). Verstärkung und Datenrate (10 SPS) per Lötbrücke am Modul. Am Gerät nicht geprüft.',not_calibrated:'Nicht kalibriert',calibrated:'Kalibriert',overload:'Überlast',stable:'stabil',no_connection:'Keine Verbindung',
 users_hint:'Ein Benutzer-Tag an der Waage meldet den Benutzer an, gescanntes Filament gehört dann ihm. Abmeldung nach 15 Minuten ohne Scan oder durch Tippen auf den Namen am Gerät.',
 name:'Name',create:'Anlegen',write_tag:'Tag schreiben',tag_outdated:'Noch kein Tag im neuen Format: Tag neu schreiben, der alte meldet nicht mehr an.',delete:'Löschen',no_users:'Noch keine Benutzer.',confirm_del_user:'Benutzer "{0}" löschen? Sein Tag wird damit ungültig.',user_created:'Benutzer angelegt',
@@ -382,7 +389,7 @@ dg_title:'Selbstdiagnose',dg_hint:'Prüft Wägesensor, NFC-Modul, WLAN und Spool
 en:{
 m_overview:'Overview',m_calibration:'Calibration',m_users:'Users',m_catalog:'Filament catalog',m_spoolman:'Spoolman',m_wifi:'WiFi',m_log:'Log',m_system:'System',
 weight:'Weight',tare:'Tare',cur_user:'Logged-in user',nobody:'nobody',last_scan:'Last scanned spool',device:'Device',wlan:'WiFi',ip:'IP address',signal:'Signal',uptime:'Uptime',mem:'Free RAM / PSRAM',
-status:'Status',raw_net:'Raw value (net)',procedure:'Procedure',cal1:'Empty the scale and press <b>Tare</b>.',cal2:'Place a weight of known mass (the heavier, the more accurate).',cal3:'Enter the mass and press <b>Calibrate</b>.',calibrate:'Calibrate',
+status:'Status',raw_net:'Raw value (net)',procedure:'Procedure',cal1:'Empty the scale and press <b>Tare</b>.',cal2:'Place a weight of known mass (the heavier, the more accurate).',cal3:'Enter the mass and press <b>Calibrate</b>. For more accuracy, then place further weights and add them with <b>Add point</b> (up to 5).',calibrate:'Calibrate',cal_add:'Add point',cal_points:'Calibration points and linearity',cal_multi_hint:'Between the points the scale interpolates piecewise linearly, which compensates a non-linear load cell. The deviation shows how far each point is from a straight line through zero. Meaningful from 2 points, ideally across the whole range (e.g. 200, 500, 1000, 2000 g). Calibrate starts over, Add point with an existing weight replaces that point. Tare before the first point.',cal_g:'Weight',cal_raw:'Raw value',cal_dev:'Deviation',cal_none:'No points stored.',cal_legacy:'Old single-point calibration (factor only). Start over with Calibrate to collect points.',cal_one:'One point: straight line through zero. Add another weight to check linearity.',cal_lin_ok:'Linear: largest deviation {0} g ({1} %).',cal_lin_warn:'Not linear: largest deviation {0} g ({1} %). The multi-point correction compensates this at the points. For large values check the mechanics (mounting, screws, cable under tension).',cal_added:'Point saved',
 no_sensor:'{0} not found',sensor:'Load sensor',sensor_save:'Save and restart',sensor_restart:'The saved selection is not active yet, restart required.',sensor_cal_hint:'Calibration is stored per sensor type. Calibrate again after switching to a sensor for the first time.',sensor_confirm:'Save sensor {0} and restart the device?',sensor_none:'– (not connected)',sensor_bus:'touch bus',sh_hx711:'Default. Supply 3.3 V (DOUT must not carry 5 V). HX710B modules work with the same driver.',sh_nau7802:'I²C, address 0x2A, 3.3 V. SCL = GPIO47 and SDA = GPIO48 shares the touch bus (header P2 pins 5 and 6, no extra pins), other pins get a bus of their own. Not tested on the device.',sh_ads1232:'2-wire like the HX711. PDWN is optional (otherwise tied to 3.3 V on the module). Gain and data rate (10 SPS) are set by solder jumpers on the module. Not tested on the device.',not_calibrated:'Not calibrated',calibrated:'Calibrated',overload:'Overload',stable:'stable',no_connection:'No connection',
 users_hint:'A user tag held to the scale logs the user in; scanned filament then belongs to them. Logout after 15 minutes without a scan or by tapping the name on the device.',
 name:'Name',create:'Create',write_tag:'Write tag',tag_outdated:'No tag in the new format yet: rewrite the tag, the old one no longer logs in.',delete:'Delete',no_users:'No users yet.',confirm_del_user:'Delete user "{0}"? Their tag becomes invalid.',user_created:'User created',
@@ -429,7 +436,7 @@ const post=(p,body)=>api(p,{method:'POST',headers:{'Content-Type':'text/plain'},
 /* ---- Menü ---- */
 const PAGES=['overview','calibration','users','catalog','spoolman','wifi','log','system'];
 const loaded={};
-const ONLOAD={calibration:()=>loadSensor(),spoolman:()=>loadDry(),users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS();loadFw(true)},wifi:()=>loadWifi(),log:()=>startLog()};
+const ONLOAD={calibration:()=>{loadSensor();loadCal()},spoolman:()=>loadDry(),users:()=>{loadUsers();loadAdmin()},catalog:()=>{loadCat();loadSync()},system:()=>{loadTheme();loadSS();loadFw(true)},wifi:()=>loadWifi(),log:()=>startLog()};
 function show(langOnly){
   let p=location.hash.slice(1);if(!PAGES.includes(p)||(p!=='overview'&&!(ME&&(ME.role==='admin'||(p==='catalog'&&ME.catalog)))))p='overview';
   document.querySelectorAll('.page').forEach(e=>e.classList.toggle('active',e.id==='p-'+p));
@@ -508,7 +515,22 @@ $('ssave').onclick=async()=>{const ty=$('stype').value,pins=[-1,-1,-1];
   document.querySelectorAll('#spins select').forEach(s=>{pins[+s.dataset.idx]=+s.value});
   if(!confirm(t('sensor_confirm',$('stype').selectedOptions[0].textContent)))return;
   try{await post('/api/sensor',JSON.stringify({type:ty,pins,reboot:true}));say(t('rebooting'),'ok')}catch(e){say(e.message,'err')}};
-$('cal').onclick=async()=>{try{await post('/api/calibrate?grams='+encodeURIComponent($('ref').value),'');say(t('cal_done'),'ok')}catch(e){say(t('cal_fail',e.message),'err')}};
+$('cal').onclick=async()=>{try{await post('/api/calibrate?grams='+encodeURIComponent($('ref').value),'');say(t('cal_done'),'ok')}catch(e){say(t('cal_fail',e.message),'err')}loadCal()};
+$('caladd').onclick=async()=>{try{await post('/api/calibrate?add=1&grams='+encodeURIComponent($('ref').value),'');say(t('cal_added'),'ok')}catch(e){say(t('cal_fail',e.message),'err')}loadCal()};
+/* Linearität: unter 0,2 % des schwersten Gewichts gilt als linear (Annahme, typische 5-kg-Biegebalken liegen bei 0,02-0,05 % vom Nennwert) */
+const CAL_LIN_OK_PCT=0.2;
+async function loadCal(){
+  let d;try{d=await(await api('/api/calibration')).json()}catch(e){return}
+  const tb=$('calpts'),lin=$('callin');tb.innerHTML='';lin.textContent='';lin.className='';
+  if(d.points.length){
+    const h=tb.insertRow();[t('cal_g'),t('cal_raw'),t('cal_dev')].forEach(x=>{const c=document.createElement('th');c.textContent=x;c.style.textAlign='left';h.appendChild(c)});
+    d.points.forEach(p=>{const r=tb.insertRow();
+      [p.grams.toFixed(1)+' g',String(p.raw),d.points.length>1?(p.dev>=0?'+':'')+p.dev.toFixed(2)+' g':'-'].forEach(x=>{r.insertCell().textContent=x})})}
+  if(!d.calibrated){lin.textContent=t('cal_none');return}
+  if(!d.points.length){lin.textContent=t('cal_legacy');lin.className='warn';return}
+  if(d.points.length<2){lin.textContent=t('cal_one');return}
+  const ok=d.max_dev_pct<CAL_LIN_OK_PCT;
+  lin.textContent=t(ok?'cal_lin_ok':'cal_lin_warn',d.max_dev.toFixed(2),d.max_dev_pct.toFixed(2));lin.className=ok?'ok':'warn'}
 
 /* ---- Spoolman ---- */
 let smUrlFilled=false,SIMPLE=false;

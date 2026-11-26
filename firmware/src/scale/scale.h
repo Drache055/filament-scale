@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 
+#include "core/calib_core.h"
 #include "core/sensor_core.h"
 
 // Waage (HX711, NAU7802 oder ADS1232, wählbar): Messung, Stabilitätserkennung, Tara, Kalibrierung (CLAUDE.md Abschnitt 6).
@@ -18,7 +19,15 @@ struct ScaleReading {
 void scaleBegin();                     // startet den scale-Task, lädt Kalibrierung aus NVS
 ScaleReading scaleGet();               // threadsicherer Schnappschuss
 bool scaleTare();                      // aktuellen Mittelwert als Nullpunkt setzen und speichern
-bool scaleCalibrate(float knownGrams); // Faktor aus aktuellem Mittelwert und bekanntem Gewicht berechnen und speichern
+bool scaleCalibrate(float knownGrams); // Einpunkt-Kalibrierung: verwirft weitere Punkte, berechnet den Faktor und speichert
+// Mehrpunkt (CLAUDE.md 6.2): add = false wie scaleCalibrate, add = true ergänzt oder ersetzt einen Punkt (max. 5)
+CalError scaleCalibratePoint(float knownGrams, bool add);
+
+struct ScaleCalibration {
+  bool calibrated = false;
+  CalModel model;  // count = 0: alte Einpunkt-Kalibrierung, nur Faktor bekannt
+};
+ScaleCalibration scaleCalibration();
 
 // Sensorwahl (Webseite, Admin). Gespeichert wird sofort, wirksam wird sie erst nach dem Neustart.
 SensorConfig scaleSensorActive();  // läuft gerade
