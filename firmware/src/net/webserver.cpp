@@ -423,11 +423,48 @@ static void handleCalibrate() {
     server.send(400, "text/plain", "Referenzgewicht muss zwischen 1 und 5000 g liegen");
     return;
   }
-  if (scaleCalibrate(grams)) {
-    server.send(200, "text/plain", "ok");
-  } else {
-    server.send(409, "text/plain", "Signal zu klein oder Wägesensor ohne Daten (erst Tara, dann Gewicht auflegen)");
+  bool add = server.arg("add") == "1";
+  switch (scaleCalibratePoint(grams, add)) {
+    case CalError::None:
+      server.send(200, "text/plain", "ok");
+      break;
+    case CalError::Full:
+      server.send(409, "text/plain", "Schon 5 Punkte. Neu beginnen oder ein vorhandenes Gewicht ersetzen");
+      break;
+    case CalError::WrongSign:
+    case CalError::NotMonotonic:
+      server.send(409, "text/plain",
+                  "Punkt passt nicht zu den anderen (schwereres Gewicht muss mehr Signal geben). Gewicht und Eingabe prüfen");
+      break;
+    default:
+      server.send(409, "text/plain", "Signal zu klein oder Wägesensor ohne Daten (erst Tara, dann Gewicht auflegen)");
+      break;
   }
+}
+
+// Kalibrierpunkte und Linearität (Admin). Abweichung = Messung nach Ausgleichsgerade minus bekanntes Gewicht.
+static void handleCalibrationGet() {
+  if (!requireAdmin()) {
+    return;
+  }
+  ScaleCalibration c = scaleCalibration();
+  CalLinearity lin = calLinearity(c.model);
+  JsonDocument doc;
+  doc["calibrated"] = c.calibrated;
+  doc["factor"] = c.model.factor;
+  doc["max_points"] = CAL_MAX_POINTS;
+  JsonArray pts = doc["points"].to<JsonArray>();
+  for (int i = 0; i < c.model.count; i++) {
+    JsonObject p = pts.add<JsonObject>();
+    p["grams"] = c.model.pt[i].grams;
+    p["raw"] = c.model.pt[i].raw;
+    p["dev"] = lin.dev[i];
+  }
+  if (c.model.count >= 2) {
+    doc["max_dev"] = lin.maxAbsDev;
+    doc["max_dev_pct"] = lin.maxAbsDevPct;
+  }
+  sendJson(doc);
 }
 
 // ---- Wägesensor: Typ und Pins (Admin). Wirksam nach dem Neustart, Kalibrierung gilt pro Sensortyp. ----
@@ -1490,6 +1527,7 @@ static void webStart() {
   route("/api/status", HTTP_GET, handleStatus);
   route("/api/tare", HTTP_POST, handleTare);
   route("/api/calibrate", HTTP_POST, handleCalibrate);
+  route("/api/calibration", HTTP_GET, handleCalibrationGet);
   route("/api/sensor", HTTP_GET, handleSensorGet);
   route("/api/sensor", HTTP_POST, handleSensorSet);
   route("/api/theme", HTTP_GET, handleThemeGet);
