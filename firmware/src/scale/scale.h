@@ -10,8 +10,8 @@ struct ScaleReading {
   bool stable = false;
   bool empty = false;       // stabil und |Gewicht| <= SCALE_EMPTY_G
   bool overload = false;
-  float grams = 0;          // Mittelwert des Fensters, nur sinnvoll wenn calibrated
-  long rawMean = 0;         // Mittelwert der Rohwerte im Fenster
+  float grams = 0;          // getrimmter Mittelwert des Fensters, nur sinnvoll wenn calibrated
+  long rawMean = 0;         // getrimmter Mittelwert der Rohwerte im Fenster (ohne SCALE_TRIM Extremwerte je Seite)
   long rawNet = 0;          // rawMean - Nulloffset
 };
 
@@ -19,6 +19,7 @@ void scaleBegin();                     // startet den scale-Task, lädt Kalibrie
 ScaleReading scaleGet();               // threadsicherer Schnappschuss
 bool scaleTare();                      // aktuellen Mittelwert als Nullpunkt setzen und speichern
 bool scaleCalibrate(float knownGrams); // Faktor aus aktuellem Mittelwert und bekanntem Gewicht berechnen und speichern
+void scaleSetIdle(bool idle);          // UI meldet IDLE (Home, kein Wiegeablauf): nur dann Nullpunkt-Nachführung
 
 // Sensorwahl (Webseite, Admin). Gespeichert wird sofort, wirksam wird sie erst nach dem Neustart.
 SensorConfig scaleSensorActive();  // läuft gerade

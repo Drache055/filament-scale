@@ -211,6 +211,13 @@ MEASURE ─ Spule lag stabil ≥ 50 g auf, danach Waage leer ─► IDLE;  [Fert
 - Tara über den Button auf Home (Rechte siehe 11.3). Außerdem automatisches Nullen beim Booten, wenn die Waage leer und stabil ist.
 - Kalibrierung: Tara, bekanntes Gewicht auflegen, Wert eingeben. Daraus Faktor berechnen und in NVS speichern.
 - Drift: Nullpunkt-Nachführung nur in `IDLE`, nur wenn die Waage leer und stabil ist und die Abweichung kleiner als 2 g ist.
+- Umsetzung: Logik in `core/scale_filter.{h,cpp}` (Tests in `test/test_scale_filter`), angebunden in `scale/scale.cpp`. Schwellen in `config.h` (`SCALE_*`).
+  - Filter: getrimmtes Mittel über das Fenster (10 Werte, je Seite `SCALE_TRIM` = 2 Extremwerte verworfen). Auch „stabil“ (max − min ≤ 1 g) gilt für die verbleibenden 6 Werte, ein einzelner Störimpuls verschiebt also weder das Gewicht noch blockiert er die Stabilität für 1 s.
+  - Einschwingen: nach dem ersten Wert (und nach jedem Datenausfall) `SCALE_SETTLE_MS` = 3 s kein automatisches Nullen.
+  - Autonullung nach dem Start: einmalig, sobald die Waage in IDLE stabil und |Gewicht| ≤ 5 g ist. Sie wird `SCALE_BOOT_ZERO_MS` = 3 min lang versucht (bisher nur am ersten vollen Fenster), danach nicht mehr.
+  - Nachführung: in IDLE (Home-Screen, kein Wiegeablauf, gemeldet von der UI über `scaleSetIdle`), stabil und |Gewicht| < 2 g seit `SCALE_ZERO_TRACK_HOLD_MS` = 2 s: Nullpunkt auf den aktuellen Mittelwert, danach beginnt die Haltezeit neu. Nur im RAM, nicht in NVS (Flash-Verschleiß). Gespeichert wird der Nullpunkt nur durch Tara.
+  - Temperaturkompensation gibt es nicht. Langsame Drift im Leerlauf fängt die Nachführung ab, Drift während eines Ablaufs nicht.
+  - **Am Gerät nicht geprüft:** Filter, Einschwingzeit, Autonullung und Nachführung (nur nativ getestet).
 
 ### 6.3 HX711 ohne Daten
 - Ohne angeschlossenen HX711 liest die Bibliothek am freien DOUT-Pin lauter Nullen (0) oder Einsen (−1). Mit dem gespeicherten Offset ergibt das eine feste Anzeige wie −67 g. Der `scale`-Task verwirft deshalb die Rohwerte 0, −1 und die Sättigungswerte (`rawInvalid` in `scale/scale.cpp`) und meldet alle 5 s, wie viele es waren (`[SCALE] n ungültige Lesungen verworfen`).
