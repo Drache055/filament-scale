@@ -205,11 +205,16 @@ MEASURE ─ Spule lag stabil ≥ 50 g auf, danach Waage leer ─► IDLE;  [Fert
 - Stabil, wenn `max − min ≤ 1,0 g` im Fenster (`SCALE_STABLE_G`).
 - „Leer“: stabil und `|Gewicht| ≤ 5 g` (`SCALE_EMPTY_G`).
 - „Objekt hinzugefügt“: stabil und `Gewicht ≥ Referenz + 50 g` (`WEIGH_ADDED_G`).
-- Ausgegeben wird der Mittelwert des stabilen Fensters, intern auf 0,1 g, in der Anzeige auf 1 g gerundet.
+- Ausgegeben wird der getrimmte Mittelwert des stabilen Fensters (siehe 6.2), intern auf 0,1 g, in der Anzeige auf 1 g gerundet.
 
 ### 6.2 Kalibrierung und Tara
 - Tara über den Button auf Home (Rechte siehe 11.3). Außerdem automatisches Nullen beim Booten, wenn die Waage leer und stabil ist.
 - Kalibrierung: Tara, bekanntes Gewicht auflegen, Wert eingeben. Daraus Faktor berechnen und in NVS speichern.
+- **Mehrpunkt-Kalibrierung und Linearität** (Webseite → Kalibrierung, nur Admin): Nach „Kalibrieren“ (erster Punkt, verwirft alle anderen) weitere Gewichte auflegen und mit „Punkt hinzufügen“ ergänzen, bis zu 5 (`CAL_MAX_POINTS`). Logik in `core/calib_core` (nativ getestet, `test/test_calib`). Umrechnung stückweise linear durch (0, 0) und alle Punkte, oberhalb des schwersten Punkts und unter Null mit der Steigung des äußeren Abschnitts. Gewichte mit weniger als 1 g Unterschied ersetzen den vorhandenen Punkt. Abgelehnt (409): Signal < `SCALE_MIN_CAL_DELTA`, mehr als 5 Punkte, schwereres Gewicht mit kleinerem Rohwert oder falschem Vorzeichen.
+- Linearität: Abweichung jedes Punkts von der Ausgleichsgeraden durch Null (kleinste Quadrate), in g und in % des schwersten Gewichts. Unter 0,2 % zeigt die Seite „linear“, sonst einen Hinweis auf die Mechanik (Schwelle ist eine Annahme). `GET /api/calibration` liefert `calibrated`, `factor`, `points` (`grams`, `raw`, `dev`), ab 2 Punkten `max_dev`, `max_dev_pct`. `POST /api/calibrate?grams=..[&add=1]`.
+- Speicherung: zusätzlich zu `offset`/`factor`/`cal` der Schlüssel `pts` (mit Sensor-Anhang wie in 6.4, Blob: Anzahl + je Punkt int32 Rohwert und float Gramm). `factor` ist die Ausgleichsgerade und gilt für die Stabilitätsprüfung und für ältere Firmware nach einem Rückschritt. Eine Kalibrierung ohne `pts` (ältere Firmware) bleibt als reiner Faktor gültig. Die Punkte sind relativ zum Nullpunkt gespeichert, Tara und Autonullung verschieben sie mit.
+- Die Kalibrierung am Gerät (Menü → Einstellungen → Kalibrierung) bleibt einpunktig und verwirft vorhandene Zusatzpunkte.
+- **Am Gerät nicht geprüft:** Mehrpunkt-Kalibrierung, Speichern und Laden der Punkte, Karte auf der Webseite (nur `node --check`).
 - Drift: Nullpunkt-Nachführung nur in `IDLE`, nur wenn die Waage leer und stabil ist und die Abweichung kleiner als 2 g ist.
 - Umsetzung: Logik in `core/scale_filter.{h,cpp}` (Tests in `test/test_scale_filter`), angebunden in `scale/scale.cpp`. Schwellen in `config.h` (`SCALE_*`).
   - Filter: getrimmtes Mittel über das Fenster (10 Werte, je Seite `SCALE_TRIM` = 2 Extremwerte verworfen). Auch „stabil“ (max − min ≤ 1 g) gilt für die verbleibenden 6 Werte, ein einzelner Störimpuls verschiebt also weder das Gewicht noch blockiert er die Stabilität für 1 s.
@@ -330,6 +335,7 @@ src/
   core/update_core            Online-Update: Versionsvergleich, GitHub-Release auswerten (ohne Arduino, getestet)
   core/diag_core              Selbstdiagnose: Zustände der Komponenten → Befund-Codes (ohne Arduino, getestet)
   core/wifi_core              WLAN-Aufträge: Scan, USB-Einrichtung, Wiederverbindung (ohne Arduino, getestet)
+  core/calib_core             Mehrpunkt-Kalibrierung, Linearität (ohne Arduino, getestet)
   display/display             LovyanGFX-Setup, LVGL-Flush/Touch, Panel-Tuning
   i18n/i18n                   UI-Texte Deutsch/Englisch
   net/wifi, ota               WLAN, Hotspot, ArduinoOTA
@@ -380,7 +386,7 @@ tools/screenshots/            Screens am Rechner rendern (siehe 13.3)
 - Größere Puffer (JSON, Listen) im PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Den LVGL-Draw-Buffer zuerst im internen DMA-fähigen RAM anlegen (Teilpuffer, z. B. 240 × 40 Pixel), erst bei Bedarf ins PSRAM.
 - Logging über `logPrintf`/`logPrintln` (`util/log`, nicht direkt `Serial`) mit Modul-Präfix, z. B. `[SCALE]`, `[NFC]`, `[NET]`.
 - Keine Annahmen über unbekannte Pins oder API-Felder: als `TODO` markieren und nachfragen.
-- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core`, `core/drying_core`, `core/update_core`, `core/diag_core`, `core/sensor_core`, `core/spool_url`, `core/usb_setup_core` und `core/wifi_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
+- **Tests:** `pio test -e native` (Unity, am Rechner) prüft `nfc/ndef`, `nfc/tags`, `nfc/cbor`, `nfc/openprinttag`, `core/queue_core`, `core/weigh_core`, `core/simple_core`, `core/drying_core`, `core/update_core`, `core/diag_core`, `core/sensor_core`, `core/spool_url`, `core/usb_setup_core`, `core/wifi_core` und `core/calib_core`. Neue Logik ohne Hardwarezugriff in eine Datei ohne Arduino-Abhängigkeit legen, dort testen und in `build_src_filter` des Envs `native` eintragen.
 - UI-Texte in `src/i18n/i18n.cpp` (UTF-8): neuen Eintrag in `Str` und in die Tabelle aufnehmen, beide Sprachen. Texte der Webseite in `I18N` in `net/web_page.h`, ebenfalls beide Sprachen.
 
 ---

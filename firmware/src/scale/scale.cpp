@@ -3,11 +3,13 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <cstring>
 #include <freertos/semphr.h>
 
 #include <atomic>
 
 #include "config.h"
+#include "core/calib_core.h"
 #include "core/scale_filter.h"
 #include "sensor.h"
 
@@ -20,8 +22,10 @@ SemaphoreHandle_t mutex = nullptr;
 ScaleReading shared;
 
 long offset = 0;
-float factor = 1.0f;
+float factor = 1.0f;     // Rohwert pro Gramm (Ausgleichsgerade), für Stabilität und alte Firmware = cal.factor
 bool calibrated = false;
+CalModel cal;            // Kalibrierpunkte (Mehrpunkt-Kalibrierung, core/calib_core)
+static_assert(sizeof(CalPoint) == 8, "NVS-Format der Kalibrierpunkte");
 
 long window[SCALE_WINDOW];
 int count = 0;
@@ -49,6 +53,11 @@ void saveCalibration() {
   prefs.putLong(calKey("offset").c_str(), offset);
   prefs.putFloat(calKey("factor").c_str(), factor);
   prefs.putBool(calKey("cal").c_str(), calibrated);
+  // Punktliste: Anzahl, Rohwerte, Gewichte. Ältere Firmware kennt den Schlüssel nicht und nutzt den Faktor.
+  uint8_t blob[1 + CAL_MAX_POINTS * 8] = {};
+  blob[0] = (uint8_t)cal.count;
+  memcpy(blob + 1, cal.pt, sizeof(cal.pt));
+  prefs.putBytes(calKey("pts").c_str(), blob, 1 + cal.count * sizeof(CalPoint));
   prefs.end();
 }
 
@@ -58,9 +67,24 @@ void loadCalibration() {
   offset = prefs.getLong(calKey("offset").c_str(), 0);
   factor = prefs.getFloat(calKey("factor").c_str(), 1.0f);
   calibrated = prefs.getBool(calKey("cal").c_str(), false) && factor != 0.0f;
+  // Punktliste (Mehrpunkt). Fehlt sie (alte Einpunkt-Kalibrierung) oder ist sie ungültig, gilt nur der Faktor.
+  cal = CalModel();
+  cal.factor = factor;
+  uint8_t blob[1 + CAL_MAX_POINTS * 8] = {};
+  size_t len = prefs.getBytes(calKey("pts").c_str(), blob, sizeof(blob));
+  if (len >= 1 && blob[0] <= CAL_MAX_POINTS && len == 1 + blob[0] * sizeof(CalPoint)) {
+    CalModel m;
+    m.count = blob[0];
+    memcpy(m.pt, blob + 1, m.count * sizeof(CalPoint));
+    calUpdateFactor(m);
+    if (m.count > 0 && calValid(m)) {
+      cal = m;
+      factor = cal.factor;
+    }
+  }
   prefs.end();
-  logPrintf("[SCALE] Kalibrierung %s: %s, Offset %ld, Faktor %.4f\n", sensorTypeName(active.type),
-            calibrated ? "ja" : "nein", offset, factor);
+  logPrintf("[SCALE] Kalibrierung %s: %s, Offset %ld, Faktor %.4f, %d Punkt(e)\n", sensorTypeName(active.type),
+            calibrated ? "ja" : "nein", offset, factor, cal.count);
 }
 
 // Sensorwahl (NVS-Namensraum "sensor"). Ungültige oder fehlende Einträge ergeben den HX711 an GPIO17/18.
@@ -94,7 +118,7 @@ void update() {
     ZeroInput zi;
     zi.now = millis();
     zi.stable = stable;
-    zi.grams = (w.mean - offset) / factor;
+    zi.grams = calToGrams(cal, w.mean - offset);
     zi.idle = uiIdle.load();
     ZeroAction act = zeroTracker.step(zi);
     if (act != ZeroAction::None) {
@@ -108,7 +132,7 @@ void update() {
   shared.calibrated = calibrated;
   shared.rawMean = w.mean;
   shared.rawNet = w.mean - offset;
-  shared.grams = calibrated ? (w.mean - offset) / factor : 0;
+  shared.grams = calibrated ? calToGrams(cal, w.mean - offset) : 0;
   shared.stable = stable;
   shared.empty = shared.stable && fabsf(shared.grams) <= SCALE_EMPTY_G;
   shared.overload = calibrated && shared.grams > SCALE_OVERLOAD_G;
@@ -220,18 +244,40 @@ bool scaleTare() {
   return ok;
 }
 
-bool scaleCalibrate(float knownGrams) {
+bool scaleCalibrate(float knownGrams) { return scaleCalibratePoint(knownGrams, false) == CalError::None; }
+
+CalError scaleCalibratePoint(float knownGrams, bool add) {
   xSemaphoreTake(mutex, portMAX_DELAY);
   long delta = shared.rawMean - offset;
-  bool ok = shared.valid && knownGrams > 0 && labs(delta) >= SCALE_MIN_CAL_DELTA;
-  if (ok) {
-    factor = delta / knownGrams;
+  CalError err = CalError::SmallSignal;
+  if (shared.valid) {
+    // Ohne gültige Kalibrierung gibt es nichts zu ergänzen: dann wie eine Einpunkt-Kalibrierung
+    bool extend = add && calibrated;
+    if (extend && cal.count == 0) {
+      // Alte Einpunkt-Kalibrierung (nur Faktor): Ergänzen ist ohne den Punkt nicht möglich, neu beginnen
+      extend = false;
+    }
+    err = extend ? calAddPoint(cal, (int32_t)delta, knownGrams, SCALE_MIN_CAL_DELTA)
+                 : calSetSingle(cal, (int32_t)delta, knownGrams, SCALE_MIN_CAL_DELTA);
+  }
+  if (err == CalError::None) {
+    factor = cal.factor;
     calibrated = true;
     saveCalibration();
-    logPrintf("[SCALE] Kalibriert: Delta %ld bei %.1f g, Faktor %.4f\n", delta, knownGrams, factor);
+    logPrintf("[SCALE] Kalibriert: Delta %ld bei %.1f g, %d Punkt(e), Faktor %.4f\n", delta, knownGrams, cal.count,
+              factor);
   }
   xSemaphoreGive(mutex);
-  return ok;
+  return err;
+}
+
+ScaleCalibration scaleCalibration() {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  ScaleCalibration c;
+  c.calibrated = calibrated;
+  c.model = cal;
+  xSemaphoreGive(mutex);
+  return c;
 }
 
 void scaleSetIdle(bool isIdle) { uiIdle.store(isIdle); }
