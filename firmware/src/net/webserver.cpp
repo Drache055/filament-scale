@@ -18,6 +18,7 @@
 #include "core/diag_core.h"
 #include "core/web_guard.h"
 #include "core/uid_check.h"
+#include "net/bootcheck.h"
 #include "net/fwupdate.h"
 #include "net/ota.h"
 #include "net/spoolman.h"
@@ -1408,6 +1409,8 @@ static void handleUpdateGet() {
   doc["done"] = st.done;
   doc["total"] = st.total;
   doc["error"] = st.error;
+  doc["pending"] = bootCheckPending();
+  doc["rolled_back"] = bootCheckRolledBack();
   if (server.hasArg("notes")) {
     bool cut = false;
     doc["notes"] = fwUpdateNotes(&cut);
@@ -1614,6 +1617,7 @@ void webLoop() {
   }
   server.handleClient();
   if (rebootAt && millis() > rebootAt) {
+    bootCheckConfirm();  // die Webseite hat geantwortet, die neue Firmware läuft
     ESP.restart();
   }
   if (apPwApplyAt && millis() > apPwApplyAt) {
