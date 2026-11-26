@@ -7,11 +7,16 @@
 
 // Waage (CLAUDE.md 6)
 #define SCALE_WINDOW        10      // Samples im Stabilitätsfenster (10 Hz = 1 s)
+#define SCALE_TRIM          2       // je Seite so viele Extremwerte im Fenster verwerfen (getrimmtes Mittel)
 #define SCALE_STABLE_G      1.0f    // max - min im Fenster
 #define SCALE_EMPTY_G       5.0f    // |Gewicht| darunter gilt als leer
 #define SCALE_OVERLOAD_G    4500.0f
 #define SCALE_NO_DATA_MS    2000    // so lange ohne HX711-Daten gilt der Sensor als fehlend
 #define SCALE_MIN_CAL_DELTA 1000    // minimaler Rohwert-Unterschied für eine Kalibrierung
+#define SCALE_SETTLE_MS     3000    // nach Datenbeginn so lange kein automatisches Nullen
+#define SCALE_BOOT_ZERO_MS  180000  // Autonullung nach dem Start (leer <= SCALE_EMPTY_G) so lange versuchen
+#define SCALE_ZERO_TRACK_G  2.0f    // Nullpunkt-Nachführung im Leerlauf unter dieser Abweichung
+#define SCALE_ZERO_TRACK_HOLD_MS 2000  // so lange leer und stabil, bevor nachgeführt wird
 
 // Wiegeablauf (CLAUDE.md 5)
 #define WEIGH_ADDED_G        50.0f   // Objekt hinzugefügt: stabil und >= Referenz + Schwelle

@@ -6,8 +6,11 @@
 #include <cstring>
 #include <freertos/semphr.h>
 
+#include <atomic>
+
 #include "config.h"
 #include "core/calib_core.h"
+#include "core/scale_filter.h"
 #include "sensor.h"
 
 namespace {
@@ -28,7 +31,18 @@ long window[SCALE_WINDOW];
 int count = 0;
 int head = 0;
 uint32_t lastSampleMs = 0;
-bool bootZeroDone = false;
+
+ZeroConfig zeroConfig() {
+  ZeroConfig c;
+  c.settleMs = SCALE_SETTLE_MS;
+  c.bootG = SCALE_EMPTY_G;
+  c.bootWindowMs = SCALE_BOOT_ZERO_MS;
+  c.trackG = SCALE_ZERO_TRACK_G;
+  c.trackHoldMs = SCALE_ZERO_TRACK_HOLD_MS;
+  return c;
+}
+ZeroTracker zeroTracker(zeroConfig());
+std::atomic<bool> uiIdle{true};  // von der UI gesetzt (scaleSetIdle)
 
 // Kalibrierung pro Sensortyp: HX711 mit den alten Schlüsseln (offset, factor, cal), andere mit Anhang (offset_nau ...)
 String calKey(const char *base) { return String(base) + sensorCalSuffix(active.type); }
@@ -94,33 +108,32 @@ SensorConfig loadSensorConfig() {
 }
 
 void update() {
-  long long sum = 0;
-  long lo = window[0], hi = window[0];
-  for (int i = 0; i < count; i++) {
-    sum += window[i];
-    lo = min(lo, window[i]);
-    hi = max(hi, window[i]);
-  }
-  long mean = (long)(sum / count);
+  WindowStats w = scaleWindowStats(window, count, SCALE_TRIM);
   bool full = count == SCALE_WINDOW;
 
   xSemaphoreTake(mutex, portMAX_DELAY);
-  // Einmaliges Nullen nach dem Start, wenn die Waage leer und stabil ist (Drift seit der letzten Tara ausgleichen)
-  if (!bootZeroDone && full && calibrated) {
-    bootZeroDone = true;
-    float g = calToGrams(cal, mean - offset);
-    float range = fabsf((hi - lo) / factor);
-    if (range <= SCALE_STABLE_G && fabsf(g) <= SCALE_EMPTY_G) {
-      offset = mean;
-      logPrintf("[SCALE] Autonullung, neuer Offset %ld\n", offset);
+  bool stable = full && calibrated && fabsf((w.hi - w.lo) / factor) <= SCALE_STABLE_G;
+  if (calibrated) {
+    // Autonullung nach dem Start und Nullpunkt-Nachführung im Leerlauf (CLAUDE.md 6.2). Nur im RAM, Tara speichert.
+    ZeroInput zi;
+    zi.now = millis();
+    zi.stable = stable;
+    zi.grams = calToGrams(cal, w.mean - offset);
+    zi.idle = uiIdle.load();
+    ZeroAction act = zeroTracker.step(zi);
+    if (act != ZeroAction::None) {
+      if (act == ZeroAction::BootZero) {
+        logPrintf("[SCALE] Autonullung (%.1f g), neuer Offset %ld\n", zi.grams, w.mean);
+      }
+      offset = w.mean;
     }
   }
   shared.valid = true;
   shared.calibrated = calibrated;
-  shared.rawMean = mean;
-  shared.rawNet = mean - offset;
-  shared.grams = calibrated ? calToGrams(cal, mean - offset) : 0;
-  shared.stable = full && calibrated && fabsf((hi - lo) / factor) <= SCALE_STABLE_G;
+  shared.rawMean = w.mean;
+  shared.rawNet = w.mean - offset;
+  shared.grams = calibrated ? calToGrams(cal, w.mean - offset) : 0;
+  shared.stable = stable;
   shared.empty = shared.stable && fabsf(shared.grams) <= SCALE_EMPTY_G;
   shared.overload = calibrated && shared.grams > SCALE_OVERLOAD_G;
   xSemaphoreGive(mutex);
@@ -129,6 +142,7 @@ void update() {
 void markNoData() {
   xSemaphoreTake(mutex, portMAX_DELAY);
   shared.valid = false;
+  zeroTracker.dataLost();
   xSemaphoreGive(mutex);
   count = 0;
   head = 0;
@@ -222,6 +236,7 @@ bool scaleTare() {
     offset = shared.rawMean;
     shared.rawNet = 0;
     shared.grams = 0;
+    zeroTracker.manualZero();
     saveCalibration();
     logPrintf("[SCALE] Tara, Offset %ld\n", offset);
   }
@@ -264,6 +279,8 @@ ScaleCalibration scaleCalibration() {
   xSemaphoreGive(mutex);
   return c;
 }
+
+void scaleSetIdle(bool isIdle) { uiIdle.store(isIdle); }
 
 SensorConfig scaleSensorActive() { return active; }
 

@@ -242,6 +242,7 @@ static void updateHint() {
 }
 
 static void refreshTimerCb(lv_timer_t *) {
+  scaleSetIdle(lv_screen_active() == homeScreen && !flowActive());  // Nullpunkt-Nachführung nur in IDLE
   lv_label_set_text(wifiLabel, wifiConnected() ? tr(Str::WifiConnectedShort) : tr(Str::WifiDisconnectedShort));
 
   // Bildschirmschoner: Aktivität außer Berührung (Tag, Gewicht, Meldungen, Schreibaufträge) weckt den Bildschirm
